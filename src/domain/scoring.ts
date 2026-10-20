@@ -1,37 +1,10 @@
-import type { CompetitionResult, QualificationRule, RunningKey, ScoreBreakdown } from './types'
-
-export const QUALIFICATION_RULES: Record<CompetitionResult['className'], QualificationRule> = {
-  VK1: { className: 'VK1', minimumTotal: 220, minimumObedience: 42, requireComplete: true },
-  VK2: { className: 'VK2', minimumTotal: 240, minimumObedience: 42, requireComplete: true },
-  VK3: { className: 'VK3', minimumTotal: 250, minimumObedience: 42, requireComplete: true },
-}
-
-export const BASE_POINTS: Record<RunningKey, number> = { hurdles: 80, slalom: 100, obstacle: 100 }
-
-export function runningPoints(kind: RunningKey, time: number | null, faults: number | null): number | null {
-  if (time === null || faults === null || !Number.isFinite(time) || !Number.isFinite(faults)) return null
-  return Math.max(0, Math.round((BASE_POINTS[kind] - time - faults) * 100) / 100)
-}
-
-export function calculateScore(result: CompetitionResult, rules = QUALIFICATION_RULES): ScoreBreakdown {
-  const disciplinePoints = {
-    obedience: result.obedience,
-    hurdles: runningPoints('hurdles', result.hurdles.time, result.hurdles.faults),
-    slalom: runningPoints('slalom', result.slalom.time, result.slalom.faults),
-    obstacle: runningPoints('obstacle', result.obstacle.time, result.obstacle.faults),
-  }
-  const values = Object.values(disciplinePoints)
-  const complete = values.every((value) => value !== null)
-  const enteredSubtotal = Math.round(values.reduce<number>((sum, value) => sum + (value ?? 0), 0) * 100) / 100
-  const rule = rules[result.className]
-  const qualificationReasons: string[] = []
-  if (!complete && rule.requireComplete) qualificationReasons.push('Ergebnis ist noch unvollständig')
-  if (result.obedience !== null && result.obedience < rule.minimumObedience) qualificationReasons.push(`Unterordnung unter ${rule.minimumObedience} Punkten`)
-  if (complete && enteredSubtotal < rule.minimumTotal) qualificationReasons.push(`Gesamtpunktzahl unter ${rule.minimumTotal}`)
-  return {
-    disciplinePoints, enteredSubtotal, complete,
-    total: complete ? enteredSubtotal : null,
-    qualified: complete ? qualificationReasons.length === 0 : null,
-    qualificationReasons,
-  }
-}
+import type { CompetitionResult, Qualification, ScoreBreakdown } from './types'
+export const BASE_POINTS:Record<CompetitionResult['className'],number>={'FCI-VK1':250,'FCI-VK2':255,'FCI-VK3':265}
+export const QUALIFICATION_RULES={
+  'FCI-VK1':[{key:'promotion-vk2',label:'Aufstieg-VK2',color:'gray',minObedience:48,minTotal:250}],
+  'FCI-VK2':[{key:'promotion-vk3',label:'Aufstieg-VK3',color:'gray',minObedience:48,minTotal:260}],
+  'FCI-VK3':[{key:'swhv',label:'swhv-Quali',color:'green',minObedience:48,minTotal:250},{key:'dhv',label:'dhv-Quali',color:'blue',minObedience:48,minTotal:265},{key:'vdh',label:'VDH-Quali',color:'red',minObedience:54,minTotal:270}],
+} as const
+const finite=(value:number|null)=>value!==null&&Number.isFinite(value)
+export function validateResult(result:CompetitionResult):string[]{const errors:string[]=[];if(!result.date)errors.push('Datum fehlt');if(!result.event.trim())errors.push('Turnier / Verein fehlt');if(!finite(result.obedience))errors.push('Unterordnung fehlt');else if(result.obedience!<0||result.obedience!>60)errors.push('Unterordnung muss zwischen 0 und 60 liegen');for(const [label,run] of [['Hürden',result.hurdles],['Slalom',result.slalom],['Hindernis',result.obstacle]] as const){if(!finite(run.time))errors.push(`${label}: Laufzeit fehlt`);else if(run.time!<0)errors.push(`${label}: Laufzeit darf nicht negativ sein`);if(!finite(run.faults))errors.push(`${label}: Fehlerpunkte fehlen`);else if(run.faults!<0)errors.push(`${label}: Fehlerpunkte dürfen nicht negativ sein`)}return errors}
+export function calculateScore(result:CompetitionResult):ScoreBreakdown{const errors=validateResult(result);if(errors.length)return{total:null,complete:false,qualifications:[],errors};const total=Math.round((BASE_POINTS[result.className]+result.obedience!-result.hurdles.time!-result.hurdles.faults!-result.slalom.time!-result.slalom.faults!-result.obstacle.time!-result.obstacle.faults!)*100)/100;const qualifications=QUALIFICATION_RULES[result.className].filter(rule=>result.obedience!>=rule.minObedience&&total>=rule.minTotal).map(({key,label,color})=>({key,label,color}) as Qualification);return{total,complete:true,qualifications,errors:[]}}

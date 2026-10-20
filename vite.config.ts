@@ -10,9 +10,9 @@ export default defineConfig({
     registerType: 'autoUpdate',
     includeAssets: ['icon.svg'],
     manifest: {
-      name: 'THS Performance Tracker', short_name: 'THS Tracker',
-      description: 'Offline-Tracker für Turnierhundsport-Ergebnisse',
-      theme_color: '#101d18', background_color: '#f4f1e8', display: 'standalone',
+      name: '#Dogsport', short_name: '#Dogsport',
+      description: 'Modulare Offline-App für Hundesport',
+      theme_color: '#081c34', background_color: '#f4f7f9', display: 'standalone',
       orientation: 'portrait', lang: 'de-DE',
       icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }]
     },

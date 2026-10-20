@@ -3,12 +3,12 @@ export type RunningKey = Exclude<DisciplineKey, 'obedience'>
 
 export interface RunInput { time: number | null; faults: number | null }
 export interface CompetitionResult {
-  id?: number
+  id: string
   date: string
   event: string
   dog: string
   handler: string
-  className: 'VK1' | 'VK2' | 'VK3'
+  className: 'FCI-VK1' | 'FCI-VK2' | 'FCI-VK3'
   obedience: number | null
   hurdles: RunInput
   slalom: RunInput
@@ -18,18 +18,12 @@ export interface CompetitionResult {
   updatedAt: string
 }
 
-export interface QualificationRule {
-  className: CompetitionResult['className']
-  minimumTotal: number
-  minimumObedience: number
-  requireComplete: boolean
-}
+export type QualificationKey = 'promotion-vk2' | 'promotion-vk3' | 'swhv' | 'dhv' | 'vdh'
+export interface Qualification { key: QualificationKey; label: string; color: 'gray' | 'green' | 'blue' | 'red' }
 
 export interface ScoreBreakdown {
-  disciplinePoints: Record<DisciplineKey, number | null>
   total: number | null
-  enteredSubtotal: number
   complete: boolean
-  qualified: boolean | null
-  qualificationReasons: string[]
+  qualifications: Qualification[]
+  errors: string[]
 }

@@ -1,5 +1,5 @@
 {
-  "name": "ths-performance-tracker",
+  "name": "dogsport",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -27,6 +27,7 @@
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "fake-indexeddb": "^6.2.4",
     "@vitejs/plugin-react": "^6.1.2",
     "@tailwindcss/vite": "^4.1.14",
     "oxlint": "^1.88.0",

@@ -1,42 +1,66 @@
-# THS Performance Tracker
+# #Dogsport
 
-Mobile-first Progressive Web App für Ergebnisse im Turnierhundsport-Vierkampf. Die Anwendung funktioniert offline, speichert ausschließlich lokal im Browser und lässt sich auf dem iPhone wie eine App installieren.
+Installierbare, offlinefähige Hundesport-PWA. Vollständig umgesetzt ist **THS → Performance Tracker THS**; IBGH und die digitalen Leistungsrichter sind als klar markierte, erweiterbare Module vorbereitet.
 
-## Funktionsumfang
+## Implementiert
 
-- Ergebnisse für VK1, VK2 und VK3 erfassen, bearbeiten und löschen
-- unvollständige Ergebnisse als Entwurf sichern; Zwischenstände werden nie als Gesamtergebnis oder Qualifikation gewertet
-- zentrale, getestete Punkte- und Qualifikationslogik
-- persistente Speicherung mit Dexie/IndexedDB und JSON-Backup
-- Statistik mit Bestwert, Durchschnitt, Qualifikationsquote und Recharts-Verlauf
-- responsive Oberfläche aus Tailwind CSS und shadcn/ui-Primitiven
-- offlinefähige PWA mit automatischer Service-Worker-Aktualisierung
+- modulares Dashboard mit THS/IBGH-Modulübersicht und iPhone-Bottom-Navigation
+- CRUD für vollständige Ergebnisse und Entwürfe, eindeutige UUIDs und Zeitstempel
+- automatische Formular-Zwischenspeicherung sowie dauerhafte IndexedDB-Persistenz mit Dexie
+- exakte FCI-VK1/2/3-Gesamtpunkteberechnung und kumulative Qualifikationen
+- Suche, Stufen-/Qualifikationsfilter, Entwurfsschalter und Sortierung
+- kompakte mobile Karten und horizontal scrollbarere vollständige Ergebnistabelle
+- Bestleistungen einschließlich Gleichständen
+- acht Statistikfelder, Zeit- und Stufenfilter, Minimum, Maximum, Mittelwert, Stichproben-Standardabweichung, Trend und begrenzte Prognose
+- interaktive Recharts-Diagramme mit Messpunkten, Tooltip, Mittelwert und Prognosepunkt
+- deutsches JSON-Backup mit Schema- und Konfliktprüfung sowie Excel-kompatibler CSV-Export
+- Hell-/Dunkelmodus entsprechend der Systemeinstellung
+- offlinefähige PWA ohne Tracking, Konto, Server oder kostenpflichtige APIs
 
-## Punkte- und Qualifikationsmodell
+## Fachlogik
 
-Die Berechnung liegt isoliert in `src/domain/scoring.ts`:
+Die reproduzierbare Berechnung liegt in `src/domain/scoring.ts`:
 
-- Unterordnung: erfasste Punkte (maximal 60)
-- Hürdenlauf: `max(0, 80 − Laufzeit − Fehlerpunkte)`
-- Slalomlauf: `max(0, 100 − Laufzeit − Fehlerpunkte)`
-- Hindernislauf: `max(0, 100 − Laufzeit − Fehlerpunkte)`
-- Gesamt: Summe aller vier Disziplinen, aber nur wenn alle Eingaben vorhanden sind
-- Qualifikation: vollständiges Ergebnis, mindestens 42 Punkte in der Unterordnung und klassenbezogener Gesamtwert (VK1 220, VK2 240, VK3 250)
+```text
+Gesamt = Grundwert + Unterordnung
+         − Hürdenzeit − Hürdenfehler
+         − Slalomzeit − Slalomfehler
+         − Hinderniszeit − Hindernisfehler
+```
 
-Die Grenzwerte stehen gesammelt in `QUALIFICATION_RULES`. Da Verbands-/Prüfungsordnungen sich ändern können, müssen sie vor produktivem Einsatz gegen die für Verein, Verband, Altersklasse und Saison geltende Prüfungsordnung geprüft werden.
+Grundwerte: FCI-VK1 `250`, FCI-VK2 `255`, FCI-VK3 `265`. Erst ein vollständig valider Datensatz erhält Gesamtpunkte oder Qualifikationen. Die Qualifikationsregeln entsprechen dem Entwicklungsauftrag und sind kumulativ.
 
-## Lokal starten
+Statistiklogik befindet sich in `src/domain/statistics.ts`. Die Standardabweichung verwendet `n − 1`; der Trend regressiert über die letzten drei, die Prognose über die letzten maximal fünf Werte. Prognosen sind ausdrücklich als Schätzung markiert.
 
-Voraussetzungen: Node.js 20 oder neuer und npm.
+## Architektur
+
+```text
+src/
+  components/ui/       gemeinsame shadcn/ui-Primitiven
+  data/
+    db.ts               Dexie-Datenbank und CRUD
+    backup.ts           JSON-Validierung/-Import und JSON-/CSV-Export
+  domain/
+    types.ts            THS-Domänenmodell
+    scoring.ts          Validierung, Gesamtpunkte, Qualifikationen
+    statistics.ts       Kennwerte, Regression, Trend, Prognose
+    results.ts          Filter, Sortierung, Bestleistungen
+  test/                 Testdaten-Fabrik
+  App.tsx               App-Shell und modulare Ansichten
+```
+
+Spätere Module können eigene Domänentypen, Datenbanken, Berechnungen und Views ergänzen, ohne die THS-Logik zu verändern. Vorbereitet, aber bewusst noch nicht fachlich implementiert: Performance Tracker IBGH, Digitaler Leistungsrichter FCI-IBGH, Statistik IBGH und Digitaler Leistungsrichter FCI-VK.
+
+## Lokal starten und prüfen
+
+Voraussetzung: Node.js 20 oder neuer.
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-Vite zeigt anschließend die lokale URL. Für ein zweites Gerät im WLAN kann `npm run dev -- --host` verwendet werden; iOS-PWA-Funktionen verlangen außerhalb von `localhost` eine HTTPS-Verbindung.
-
-## Qualitätssicherung
+Qualitätssicherung:
 
 ```bash
 npm test
@@ -45,29 +69,24 @@ npm run build
 npm run preview
 ```
 
-Der Production-Build entsteht in `dist/`. Die Unit-Tests decken Rundung, Fehlerabzug, fehlende Disziplinen, Gesamtpunkte und Qualifikationsgrenzen ab.
+Die Tests decken FCI-Berechnung, Grenzwerte, kumulative Qualifikationen, Entwürfe, ungültige Werte, Statistik, Trend, Prognose, Filter, Sortierung, Bestleistungen, Backup-Konflikte und IndexedDB-Wiederherstellung ab. GitHub Actions führt Test, Lint und Build automatisch aus.
 
-## Bereitstellen
+## Bereitstellung
 
-Geeignet sind GitHub Pages, Netlify, Vercel oder jeder statische HTTPS-Host. Der Host muss für unbekannte Routen auf `index.html` zurückfallen. Beispiel Netlify: Repository verbinden, Build-Befehl `npm run build`, Veröffentlichungsverzeichnis `dist`. Beispiel Vercel: Framework `Vite`, Build `npm run build`, Output `dist`.
+`npm run build` erzeugt `dist/`. Dieses Verzeichnis kann unverändert auf Netlify, Vercel, GitHub Pages oder jedem statischen HTTPS-Host veröffentlicht werden. Die Konfiguration verwendet relative Asset-Pfade. Für GitHub Pages unter **Settings → Pages** als Quelle „GitHub Actions“ wählen und einen Pages-Workflow mit `npm ci`, `npm run build` und Upload von `dist/` verwenden.
 
-Der Build verwendet relative Asset-URLs und kann deshalb auch unter einer GitHub-Pages-Projekt-URL veröffentlicht werden. Für GitHub Pages unter **Settings → Pages** als Quelle „GitHub Actions“ auswählen und einen Pages-Workflow verwenden, der `npm ci`, `npm run build` und den Upload von `dist/` ausführt.
+HTTPS ist für Service Worker und Installation außerhalb von `localhost` erforderlich. Nach dem ersten vollständigen Laden funktioniert die App offline.
 
-## Auf dem iPhone installieren
+## Installation auf dem iPhone
 
-1. Die bereitgestellte HTTPS-URL in **Safari** öffnen.
-2. Unten auf **Teilen** tippen.
-3. **Zum Home-Bildschirm** wählen, Namen bestätigen und **Hinzufügen** tippen.
-4. Die App einmal online starten. Danach funktioniert sie offline; Daten bleiben im IndexedDB-Speicher dieses Geräts.
+1. Die bereitgestellte HTTPS-Adresse in **Safari** öffnen.
+2. Auf **Teilen** tippen.
+3. **Zum Home-Bildschirm** auswählen.
+4. Namen bestätigen und **Hinzufügen** tippen.
+5. #Dogsport einmal vom Home-Bildschirm öffnen.
 
-Wichtig: Das Löschen der Website-Daten bzw. der App kann lokale Ergebnisse entfernen. Deshalb regelmäßig unter **Ergebnisse → Export** eine JSON-Sicherung erstellen. Private Safari-Tabs sind nicht für dauerhafte Speicherung geeignet.
+Alle Fachdaten bleiben lokal auf diesem Gerät. Eine Neuinstallation oder das Löschen von Safari-Websitedaten kann sie entfernen. Deshalb regelmäßig unter **Ergebnisse → JSON** ein Backup speichern. Wiederherstellung erfolgt über **Import**; bei ID-Konflikten kann Überspringen oder Ersetzen gewählt werden.
 
-## Projektstruktur
+## Bekannte technische Einschränkung
 
-```text
-src/
-  components/ui/     shadcn/ui-basierte UI-Primitiven
-  data/db.ts          Dexie-Schema und Persistenz
-  domain/             Typen, Punkte- und Qualifikationslogik plus Tests
-  App.tsx             mobile Anwendungsansichten
-```
+Der JavaScript-Hauptchunk liegt wegen Recharts über Vites 500-kB-Warnschwelle. Dies beeinträchtigt Funktion und Offline-Nutzung nicht; bei Wachstum weiterer Module sollte routenbasiertes Code-Splitting ergänzt werden.
