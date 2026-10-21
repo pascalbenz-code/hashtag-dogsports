@@ -1,6 +1,8 @@
-# #Dogsport
+# #Dogsports
 
 Installierbare, offlinefähige Hundesport-PWA. Vollständig umgesetzt ist **THS → Performance Tracker THS**; IBGH und die digitalen Leistungsrichter sind als klar markierte, erweiterbare Module vorbereitet.
+
+Das visuelle System basiert auf dem #Dogsports-Banner in `public/dogsports-banner.webp`: Schwarz/Anthrazit (`#111212`), Weiß (`#FEFEFE`), Stahlblau (`#1776A7`), Hauptblau (`#31ABE4`), Cyan (`#59D3F9`) und kühles Neutralblau (`#A2C0CE`).
 
 ## Implementiert
 
@@ -73,7 +75,7 @@ Die Tests decken FCI-Berechnung, Grenzwerte, kumulative Qualifikationen, Entwür
 
 ## Bereitstellung
 
-`npm run build` erzeugt `dist/`. Dieses Verzeichnis kann unverändert auf Netlify, Vercel, GitHub Pages oder jedem statischen HTTPS-Host veröffentlicht werden. Die Konfiguration verwendet relative Asset-Pfade. Für GitHub Pages unter **Settings → Pages** als Quelle „GitHub Actions“ wählen und einen Pages-Workflow mit `npm ci`, `npm run build` und Upload von `dist/` verwenden.
+`npm run build` erzeugt `dist/`. Das Projekt ist für Vercel mit Framework-Preset **Vite**, Build-Befehl `npm run build` und Output-Verzeichnis `dist` ausgelegt. Das GitHub-Repository darf privat bleiben, solange die Vercel-GitHub-App Zugriff darauf besitzt; öffentliche Sichtbarkeit ist für Vercel nicht erforderlich. Alternativ kann `dist/` auf jedem statischen HTTPS-Host veröffentlicht werden.
 
 HTTPS ist für Service Worker und Installation außerhalb von `localhost` erforderlich. Nach dem ersten vollständigen Laden funktioniert die App offline.
 
@@ -83,7 +85,7 @@ HTTPS ist für Service Worker und Installation außerhalb von `localhost` erford
 2. Auf **Teilen** tippen.
 3. **Zum Home-Bildschirm** auswählen.
 4. Namen bestätigen und **Hinzufügen** tippen.
-5. #Dogsport einmal vom Home-Bildschirm öffnen.
+5. #Dogsports einmal vom Home-Bildschirm öffnen.
 
 Alle Fachdaten bleiben lokal auf diesem Gerät. Eine Neuinstallation oder das Löschen von Safari-Websitedaten kann sie entfernen. Deshalb regelmäßig unter **Ergebnisse → JSON** ein Backup speichern. Wiederherstellung erfolgt über **Import**; bei ID-Konflikten kann Überspringen oder Ersetzen gewählt werden.
 

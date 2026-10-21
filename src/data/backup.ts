@@ -1,8 +1,128 @@
-import type{CompetitionResult}from'../domain/types';import{validateResult}from'../domain/scoring'
-export interface Backup{app:'#Dogsport';version:1;exportedAt:string;results:CompetitionResult[]}
-export const createBackup=(results:CompetitionResult[]):Backup=>({app:'#Dogsport',version:1,exportedAt:new Date().toISOString(),results})
-export const serializeBackup=(results:CompetitionResult[])=>JSON.stringify(createBackup(results),null,2)
-const isRun=(x:unknown):boolean=>!!x&&typeof x==='object'&&('time'in x)&&('faults'in x)
-export function parseBackup(text:string):Backup{let data:unknown;try{data=JSON.parse(text)}catch{throw new Error('Die Datei enthält kein gültiges JSON.')}if(!data||typeof data!=='object'||!('app'in data)||(data as Backup).app!=='#Dogsport'||!Array.isArray((data as Backup).results))throw new Error('Die Datei ist kein gültiges #Dogsport-Backup.');for(const r of(data as Backup).results){if(!r||typeof r!=='object'||typeof r.id!=='string'||typeof r.date!=='string'||typeof r.event!=='string'||!['FCI-VK1','FCI-VK2','FCI-VK3'].includes(r.className)||!isRun(r.hurdles)||!isRun(r.slalom)||!isRun(r.obstacle))throw new Error('Mindestens ein Datensatz hat ein ungültiges Schema.')}return data as Backup}
-export function toCsv(results:CompetitionResult[]){const headers=['ID','Datum','Turnier / Verein','Prüfungsstufe','Unterordnung','Hürdenzeit','Hürdenfehler','Slalomzeit','Slalomfehler','Hinderniszeit','Hindernisfehler','Status','Erstellt','Geändert'];const cell=(v:unknown)=>`"${String(v??'').replaceAll('"','""')}"`;const num=(v:number|null)=>v===null?'':v.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});return '\uFEFF'+[headers.map(cell).join(';'),...results.map(r=>[r.id,r.date,r.event,r.className,num(r.obedience),num(r.hurdles.time),num(r.hurdles.faults),num(r.slalom.time),num(r.slalom.faults),num(r.obstacle.time),num(r.obstacle.faults),validateResult(r).length?'Entwurf':'Vollständig',r.createdAt,r.updatedAt].map(cell).join(';'))].join('\r\n')}
-export function mergeImport(existing:CompetitionResult[],incoming:CompetitionResult[],replace=false){const map=new Map(existing.map(r=>[r.id,r]));let added=0,replaced=0,skipped=0;for(const r of incoming){if(map.has(r.id)){if(replace){map.set(r.id,r);replaced++}else skipped++}else{map.set(r.id,r);added++}}return{results:[...map.values()],added,replaced,skipped}}
+import type { CompetitionResult } from "../domain/types";
+import { validateResult } from "../domain/scoring";
+export interface Backup {
+  app: "#Dogsports";
+  version: 1;
+  exportedAt: string;
+  results: CompetitionResult[];
+}
+export const createBackup = (results: CompetitionResult[]): Backup => ({
+  app: "#Dogsports",
+  version: 1,
+  exportedAt: new Date().toISOString(),
+  results,
+});
+export const serializeBackup = (results: CompetitionResult[]) =>
+  JSON.stringify(createBackup(results), null, 2);
+const isRun = (x: unknown): boolean =>
+  !!x && typeof x === "object" && "time" in x && "faults" in x;
+export function parseBackup(text: string): Backup {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error("Die Datei enthält kein gültiges JSON.");
+  }
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !("app" in data) ||
+    !["#Dogsports", "#Dogsport"].includes(
+      String((data as { app: unknown }).app),
+    ) ||
+    !Array.isArray((data as Backup).results)
+  )
+    throw new Error("Die Datei ist kein gültiges #Dogsports-Backup.");
+  for (const r of (data as Backup).results) {
+    if (
+      !r ||
+      typeof r !== "object" ||
+      typeof r.id !== "string" ||
+      typeof r.date !== "string" ||
+      typeof r.event !== "string" ||
+      !["FCI-VK1", "FCI-VK2", "FCI-VK3"].includes(r.className) ||
+      !isRun(r.hurdles) ||
+      !isRun(r.slalom) ||
+      !isRun(r.obstacle)
+    )
+      throw new Error("Mindestens ein Datensatz hat ein ungültiges Schema.");
+    r.competitionType ??= "Vereinsprüfung";
+  }
+  return { ...(data as Backup), app: "#Dogsports" };
+}
+export function toCsv(results: CompetitionResult[]) {
+  const headers = [
+    "ID",
+    "Datum",
+    "Turnierart",
+    "Turnier / Verein",
+    "Prüfungsstufe",
+    "Unterordnung",
+    "Hürdenzeit",
+    "Hürdenfehler",
+    "Slalomzeit",
+    "Slalomfehler",
+    "Hinderniszeit",
+    "Hindernisfehler",
+    "Status",
+    "Erstellt",
+    "Geändert",
+  ];
+  const cell = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
+  const num = (v: number | null) =>
+    v === null
+      ? ""
+      : v.toLocaleString("de-DE", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+  return (
+    "\uFEFF" +
+    [
+      headers.map(cell).join(";"),
+      ...results.map((r) =>
+        [
+          r.id,
+          r.date,
+          r.competitionType,
+          r.event,
+          r.className,
+          num(r.obedience),
+          num(r.hurdles.time),
+          num(r.hurdles.faults),
+          num(r.slalom.time),
+          num(r.slalom.faults),
+          num(r.obstacle.time),
+          num(r.obstacle.faults),
+          validateResult(r).length ? "Entwurf" : "Vollständig",
+          r.createdAt,
+          r.updatedAt,
+        ]
+          .map(cell)
+          .join(";"),
+      ),
+    ].join("\r\n")
+  );
+}
+export function mergeImport(
+  existing: CompetitionResult[],
+  incoming: CompetitionResult[],
+  replace = false,
+) {
+  const map = new Map(existing.map((r) => [r.id, r]));
+  let added = 0,
+    replaced = 0,
+    skipped = 0;
+  for (const r of incoming) {
+    if (map.has(r.id)) {
+      if (replace) {
+        map.set(r.id, r);
+        replaced++;
+      } else skipped++;
+    } else {
+      map.set(r.id, r);
+      added++;
+    }
+  }
+  return { results: [...map.values()], added, replaced, skipped };
+}
