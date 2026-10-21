@@ -568,10 +568,7 @@ function Editor({
       part: "time" | "faults",
       v: string,
     ) => setForm({ ...form, [key]: { ...form[key], [part]: n(v) } });
-  const persisted = useLiveQuery(
-    () => db.results.get(initial.id),
-    [initial.id],
-  );
+  const persisted = useLiveQuery(() => db.results.get(form.id), [form.id]);
   useEffect(() => {
     const timer = setTimeout(
       () => localStorage.setItem("dogsport-form-draft", JSON.stringify(form)),
@@ -583,7 +580,7 @@ function Editor({
     e.preventDefault();
     await saveResult(form);
     localStorage.removeItem("dogsport-form-draft");
-    close();
+    setForm(blank());
   };
   return (
     <form onSubmit={submit} className="space-y-5">
@@ -717,7 +714,7 @@ function Editor({
             variant="danger"
             onClick={async () => {
               if (confirm("Datensatz wirklich löschen?")) {
-                await deleteResult(initial.id);
+                await deleteResult(form.id);
                 close();
               }
             }}

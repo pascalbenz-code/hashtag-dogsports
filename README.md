@@ -30,7 +30,7 @@ Gesamt = Grundwert + Unterordnung
          − Hinderniszeit − Hindernisfehler
 ```
 
-Grundwerte: FCI-VK1 `250`, FCI-VK2 `255`, FCI-VK3 `265`. Erst ein vollständig valider Datensatz erhält Gesamtpunkte oder Qualifikationen. Die Qualifikationsregeln entsprechen dem Entwicklungsauftrag und sind kumulativ.
+Grundwerte: FCI-VK1 `250`, FCI-VK2 `255`, FCI-VK3 `265`. Erst ein vollständig valider Datensatz erhält Gesamtpunkte oder Qualifikationen. Aufstieg-VK3 und swhv-Quali gelten für Vereinsprüfung/Kreismeisterschaft, die dhv-Quali für die Verbandsmeisterschaft und die VDH-Quali für alle fünf Turnierarten. Auf einer Verbandsmeisterschaft schließt die dhv-Quali kumulativ die swhv-Quali ein. Nach jedem erfolgreichen Speichern wird die Eingabemaske geleert; Bearbeitungen beginnen ausschließlich über die Ergebnisübersicht.
 
 Statistiklogik befindet sich in `src/domain/statistics.ts`. Die Standardabweichung verwendet `n − 1`; der Trend regressiert über die letzten drei, die Prognose über die letzten maximal fünf Werte. Prognosen sind ausdrücklich als Schätzung markiert.
 
