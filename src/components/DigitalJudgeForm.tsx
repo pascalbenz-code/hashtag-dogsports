@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { RotateCcw, Scale } from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
+import { Info, RotateCcw, Scale, X } from "lucide-react";
 import {
   calculateJudgingScore,
   type JudgingFaults,
@@ -27,6 +27,44 @@ const ratingClasses: Record<PerformanceRating, string> = {
 function RatingBadge({ rating }: { rating: PerformanceRating }) {
   return (
     <span className={`judge-rating ${ratingClasses[rating]}`}>{rating}</span>
+  );
+}
+
+function CriterionInfo({
+  criterion,
+  exerciseLabel,
+}: {
+  criterion: JudgingLevelDefinition["exercises"][number]["criteria"][number];
+  exerciseLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const infoId = useId();
+
+  return (
+    <>
+      <button
+        type="button"
+        className="judge-info-button"
+        aria-label={`Bewertungshinweise für ${exerciseLabel}: ${criterion.label}`}
+        aria-expanded={open}
+        aria-controls={infoId}
+        onClick={() => setOpen((current) => !current)}
+      >
+        {open ? <X aria-hidden="true" /> : <Info aria-hidden="true" />}
+      </button>
+      {open ? (
+        <div className="judge-info-box" id={infoId} role="note">
+          <strong>{criterion.label}</strong>
+          {criterion.element || criterion.rule ? (
+            <div className="judge-info-meta">
+              {criterion.element ? <span>{criterion.element}</span> : null}
+              {criterion.rule ? <span>{criterion.rule}</span> : null}
+            </div>
+          ) : null}
+          <p>{criterion.description}</p>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -114,33 +152,45 @@ export function DigitalJudgeForm<TLevel extends string>({
             </div>
 
             <div className="judge-criteria">
-              {exercise.criteria.map((criterion) => (
-                <label className="judge-criterion" key={criterion.id}>
-                  <span>
-                    {criterion.label}
-                    {criterion.provisional ? (
-                      <small>Platzhalter</small>
-                    ) : null}
-                  </span>
-                  <div className="judge-fault-input">
-                    <LocaleNumberInput
-                      key={`${revision}-${level}-${criterion.id}`}
-                      value={faults[criterion.id] ?? null}
-                      max={criterion.maxFaults ?? exercise.maxPoints}
-                      maxFractionDigits={1}
-                      placeholder="0,0"
-                      ariaLabel={`Fehlerpunkte ${exercise.label} ${criterion.label}`}
-                      onValueChange={(value) =>
-                        setFaults((current) => ({
-                          ...current,
-                          [criterion.id]: value,
-                        }))
-                      }
-                    />
-                    <span>FP</span>
+              {exercise.criteria.map((criterion) => {
+                const inputId = `fault-${criterion.id}`;
+                return (
+                  <div className="judge-criterion" key={criterion.id}>
+                    <div className="judge-criterion-copy">
+                      <label htmlFor={inputId}>{criterion.label}</label>
+                      {criterion.element || criterion.rule ? (
+                        <small>
+                          {[criterion.element, criterion.rule]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </small>
+                      ) : null}
+                      <CriterionInfo
+                        criterion={criterion}
+                        exerciseLabel={exercise.label}
+                      />
+                    </div>
+                    <div className="judge-fault-input">
+                      <LocaleNumberInput
+                        key={`${revision}-${level}-${criterion.id}`}
+                        id={inputId}
+                        value={faults[criterion.id] ?? null}
+                        max={criterion.maxFaults ?? exercise.maxPoints}
+                        maxFractionDigits={1}
+                        placeholder="0,0"
+                        ariaLabel={`Fehlerpunkte ${exercise.label} ${criterion.label}`}
+                        onValueChange={(value) =>
+                          setFaults((current) => ({
+                            ...current,
+                            [criterion.id]: value,
+                          }))
+                        }
+                      />
+                      <span>FP</span>
+                    </div>
                   </div>
-                </label>
-              ))}
+                );
+              })}
             </div>
 
             <div className="judge-exercise-footer">

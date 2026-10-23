@@ -2,6 +2,7 @@ import { useState } from "react";
 import { parseGermanDecimalDraft } from "../domain/decimalInput";
 
 export function LocaleNumberInput({
+  id,
   value,
   onValueChange,
   placeholder,
@@ -9,6 +10,7 @@ export function LocaleNumberInput({
   maxFractionDigits,
   ariaLabel,
 }: {
+  id?: string;
   value: number | null;
   onValueChange: (value: number | null) => void;
   placeholder?: string;
@@ -22,6 +24,7 @@ export function LocaleNumberInput({
 
   return (
     <input
+      id={id}
       type="text"
       inputMode="decimal"
       enterKeyHint="next"

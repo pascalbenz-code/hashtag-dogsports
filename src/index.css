@@ -481,25 +481,84 @@ h3 {
 .judge-criterion {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 108px;
-  align-items: center;
+  align-items: start;
   gap: 1rem;
   min-height: 68px;
   border-bottom: 1px solid #e8eff2;
 }
-.judge-criterion > span {
+.judge-criterion-copy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  padding: 0.75rem 0;
+}
+.judge-criterion-copy > label {
   font-size: 0.84rem;
   font-weight: 650;
 }
-.judge-criterion small {
-  display: block;
-  margin-top: 0.2rem;
+.judge-criterion-copy small {
+  grid-column: 1;
   color: #7a7e80;
   font-size: 0.6rem;
   font-weight: 600;
   text-transform: uppercase;
 }
+.judge-info-button {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid #a2c0ce;
+  border-radius: 999px;
+  background: #edf9fe;
+  color: #1776a7;
+}
+.judge-info-button svg {
+  width: 17px;
+  height: 17px;
+}
+.judge-info-button:focus-visible {
+  outline: 3px solid #31abe426;
+  outline-offset: 2px;
+}
+.judge-info-box {
+  grid-column: 1 / -1;
+  margin-top: 0.4rem;
+  border-left: 3px solid #31abe4;
+  border-radius: 0 10px 10px 0;
+  background: #edf9fe;
+  padding: 0.75rem;
+  color: #303638;
+}
+.judge-info-box > strong {
+  font-size: 0.76rem;
+}
+.judge-info-box p {
+  margin: 0.45rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+.judge-info-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+.judge-info-meta span {
+  border-radius: 999px;
+  background: #d7f2fc;
+  padding: 0.2rem 0.4rem;
+  color: #11698f;
+  font-size: 0.56rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
 .judge-fault-input {
   position: relative;
+  margin-top: 0.75rem;
 }
 .judge-fault-input input {
   width: 100%;
@@ -589,6 +648,16 @@ tbody tr:hover {
   }
   .hero-card {
     border-radius: 1.15rem;
+  }
+  .judge-criterion {
+    grid-template-columns: minmax(0, 1fr) 88px;
+    gap: 0.65rem;
+  }
+  .judge-criteria {
+    padding: 0 0.9rem;
+  }
+  .judge-fault-input input {
+    padding-left: 0.45rem;
   }
 }
 
@@ -681,5 +750,15 @@ tbody tr:hover {
   }
   .judge-exercise-footer {
     background: #23282b;
+  }
+  .judge-info-button,
+  .judge-info-box {
+    border-color: #425b67;
+    background: #143648;
+    color: #dff6ff;
+  }
+  .judge-info-meta span {
+    background: #10232c;
+    color: #59d3f9;
   }
 }

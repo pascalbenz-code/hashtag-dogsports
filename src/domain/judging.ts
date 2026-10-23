@@ -99,6 +99,9 @@ export function calculateRating(
 export interface JudgingCriterion {
   id: string;
   label: string;
+  description?: string;
+  rule?: string;
+  element?: "Primär" | "Sekundär" | "Teilbudget" | "Sonderregel";
   maxFaults?: number;
   provisional?: boolean;
 }

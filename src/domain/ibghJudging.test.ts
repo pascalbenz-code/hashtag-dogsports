@@ -150,4 +150,96 @@ describe("FCI-IBGH judging", () => {
     expect(score.total).toBe(96);
     expect(score.rating).toBe("Vorzüglich");
   });
+
+  it.each(IBGH_LEVELS)(
+    "provides complete, uniquely addressable detail criteria for %s",
+    (level) => {
+      const definition = getIbghDefinition(level);
+      const criteria = definition.exercises.flatMap(
+        (exercise) => exercise.criteria,
+      );
+
+      expect(criteria.length).toBeGreaterThan(definition.exercises.length * 4);
+      expect(new Set(criteria.map(({ id }) => id)).size).toBe(criteria.length);
+      expect(
+        criteria.every(
+          ({ description, provisional }) =>
+            Boolean(description?.trim()) && provisional !== true,
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it("combines qualitative and fixed IBGH1 deductions correctly", () => {
+    const definition = getIbghDefinition("FCI-IBGH1");
+    const score = calculateJudgingScore(definition, {
+      "ibgh1-leinenfuehrigkeit-position": 1.5,
+      "ibgh1-absitzen-fehlposition": 7.5,
+    });
+
+    expect(score.exercises[0]).toMatchObject({
+      deductions: 1.5,
+      points: 28.5,
+      rating: "Sehr Gut",
+    });
+    expect(score.exercises[2]).toMatchObject({
+      deductions: 7.5,
+      points: 7.5,
+      rating: "Mangelhaft",
+    });
+    expect(score.total).toBe(91);
+    expect(score.rating).toBe("Sehr Gut");
+  });
+
+  it("adds several IBGH2 special-rule deductions with decimal precision", () => {
+    const definition = getIbghDefinition("FCI-IBGH2");
+    const score = calculateJudgingScore(definition, {
+      "ibgh2-bringen-ebene-beginn-ohne-hz": 2,
+      "ibgh2-voraussenden-hinlegen-zusatz-hz": 1.5,
+      "ibgh2-voraussenden-stoppen-zusatz-hz": 2.5,
+    });
+
+    expect(score.exercises[4].points).toBe(8);
+    expect(score.exercises[5].points).toBe(6);
+    expect(score.total).toBe(94);
+    expect(score.rating).toBe("Sehr Gut");
+  });
+
+  it("applies IBGH3 wall budgets and still caps an exercise at zero", () => {
+    const definition = getIbghDefinition("FCI-IBGH3", 3);
+    const wallIndex = definition.exercises.findIndex(
+      ({ id }) => id === "ibgh3-bringen-schraegwand",
+    );
+
+    const oneJumpMissing = calculateJudgingScore(definition, {
+      "ibgh3-bringen-schraegwand-ein-sprung-fehlt": 5,
+    });
+    expect(oneJumpMissing.exercises[wallIndex]).toMatchObject({
+      deductions: 5,
+      points: 10,
+    });
+    expect(oneJumpMissing.total).toBe(95);
+
+    const noPartialRating = calculateJudgingScore(definition, {
+      "ibgh3-bringen-schraegwand-keine-teilbewertung": 15,
+      "ibgh3-bringen-schraegwand-hinsprung": 3.5,
+    });
+    expect(noPartialRating.exercises[wallIndex]).toMatchObject({
+      deductions: 15,
+      points: 0,
+      rating: "Mangelhaft",
+    });
+    expect(noPartialRating.total).toBe(85);
+  });
+
+  it("reports deductions above a criterion-specific maximum", () => {
+    const definition = getIbghDefinition("FCI-IBGH2");
+    const score = calculateJudgingScore(definition, {
+      "ibgh2-voraussenden-hinlegen-zusatz-hz": 4,
+    });
+
+    expect(score.errors).toContain(
+      "Voraussenden mit Hinlegen: Zusatz-HZ zum Hinlegen darf höchstens 3.5 Fehlerpunkte enthalten",
+    );
+  });
 });

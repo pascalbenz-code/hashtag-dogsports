@@ -47,7 +47,7 @@ export function IbghJudgeForm() {
       note={
         level === "FCI-IBGH3"
           ? `Variante ${variant} legt die Reihenfolge der acht Unteraufgaben fest.`
-          : "Die Detailbewertungspunkte und ihre Höchstfehler werden in einem späteren Ausbauschritt fachlich ergänzt."
+          : "Die Detailbewertungen berücksichtigen primäre und sekundäre Elemente, Teilbudgets und stufenspezifische Sonderregeln."
       }
     />
   );
