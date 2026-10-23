@@ -60,6 +60,7 @@ h3 {
   box-shadow: 0 3px 20px #11121233;
 }
 .app-header button {
+  min-width: 0;
   text-align: left;
 }
 .brand {
@@ -71,10 +72,27 @@ h3 {
 }
 .crumb {
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.65rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0.72;
+}
+.module-chip {
+  display: inline-flex;
+  min-width: 48px;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #59d3f966;
+  border-radius: 999px;
+  background: #59d3f91f;
+  color: #59d3f9;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
 }
 .hero-card {
   overflow: hidden;
@@ -95,13 +113,88 @@ h3 {
   font-weight: 850;
   letter-spacing: 0.2em;
 }
-.module-menu {
-  position: fixed;
-  z-index: 30;
-  inset: 70px 0 0;
-  overflow: auto;
-  background: #edf7fcf7;
-  backdrop-filter: blur(14px);
+.module-selection {
+  display: grid;
+  gap: 1rem;
+}
+.module-choice {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid #a2c0ce66;
+  border-radius: 1.25rem;
+  background: #fff;
+  padding: 1.25rem;
+  color: #111212;
+  text-align: left;
+  box-shadow: 0 12px 36px #1776a714;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+.module-choice:hover,
+.module-choice:focus-visible {
+  border-color: #31abe4;
+  box-shadow: 0 16px 42px #1776a726;
+  outline: none;
+  transform: translateY(-2px);
+}
+.module-choice > svg {
+  width: 20px;
+  flex: none;
+  color: #1776a7;
+}
+.module-choice-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex: none;
+  place-items: center;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #1776a7, #59d3f9);
+  color: #fff;
+}
+.module-choice-icon svg {
+  width: 25px;
+}
+.module-choice-copy strong,
+.module-choice-copy > span,
+.module-choice-copy small {
+  display: block;
+}
+.module-choice-copy strong {
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+.module-choice-copy > span {
+  margin-top: 0.2rem;
+  color: #55585a;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.module-choice-copy small {
+  margin-top: 0.55rem;
+  color: #1776a7;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+}
+.module-dashboard-hero {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: linear-gradient(145deg, #ffffff, #edf9fe);
+}
+.module-placeholder {
+  display: flex;
+  min-height: 360px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
 }
 
 .bottom-nav {
@@ -122,13 +215,20 @@ h3 {
 }
 .bottom-nav button {
   display: flex;
-  min-width: 70px;
+  min-width: 0;
+  flex: 1;
   flex-direction: column;
   align-items: center;
   gap: 3px;
   color: #55585a;
   font-size: 0.62rem;
   font-weight: 700;
+}
+.bottom-nav button span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .bottom-nav svg {
   width: 20px;
@@ -485,7 +585,7 @@ tbody tr:hover {
 
 @media (max-width: 390px) {
   .bottom-nav button {
-    min-width: 62px;
+    font-size: 0.56rem;
   }
   .hero-card {
     border-radius: 1.15rem;
@@ -493,6 +593,9 @@ tbody tr:hover {
 }
 
 @media (min-width: 640px) {
+  .module-selection {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .judge-summary {
     grid-template-columns: minmax(0, 1fr) 260px;
     align-items: center;
@@ -510,9 +613,6 @@ tbody tr:hover {
   .bottom-nav {
     border-color: #425b67;
     background: #111212ef;
-  }
-  .module-menu {
-    background: #0b0c0df5;
   }
   .hero-card {
     border-color: #425b67;
@@ -551,6 +651,15 @@ tbody tr:hover {
   }
   .judge-summary {
     background: linear-gradient(145deg, #1b1e20, #10232c);
+  }
+  .module-choice,
+  .module-dashboard-hero {
+    border-color: #3a454a;
+    background: linear-gradient(145deg, #1b1e20, #10232c);
+    color: #f5f7f8;
+  }
+  .module-choice-copy > span {
+    color: #a2c0ce;
   }
   .judge-levels button {
     border-color: #425b67;

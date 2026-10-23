@@ -8,6 +8,7 @@ import {
   Home,
   Medal,
   Plus,
+  Scale,
   ShieldCheck,
   Trash2,
   Upload,
@@ -42,7 +43,15 @@ const IbghJudgeForm = lazy(() =>
     default: IbghJudgeForm,
   })),
 );
-type Tab = "dashboard" | "results" | "new" | "stats" | "judge" | "ibgh-judge";
+type SportModule = "ths" | "ibgh";
+type Tab = "dashboard" | "judge" | "results" | "new" | "stats";
+const tabTitles: Record<Tab, string> = {
+  dashboard: "Dashboard",
+  judge: "Digitaler Leistungsrichter",
+  results: "Ergebnisse",
+  new: "Neuer Eintrag",
+  stats: "Statistik",
+};
 const now = () => new Date().toISOString();
 const blank = (): CompetitionResult => ({
   id: crypto.randomUUID(),
@@ -89,9 +98,9 @@ const download = (body: string, name: string, type: string) => {
 };
 export default function App() {
   const results = useLiveQuery(() => db.results.toArray(), []) ?? [];
+  const [sportModule, setSportModule] = useState<SportModule | null>(null);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [editing, setEditing] = useState<CompetitionResult | null>(null);
-  const [modules, setModules] = useState(false);
   const open = (r?: CompetitionResult) => {
     setEditing(structuredClone(r ?? newForm()));
     setTab("new");
@@ -100,190 +109,253 @@ export default function App() {
     setEditing(null);
     setTab(next);
   };
+  const openModule = (nextModule: SportModule) => {
+    setSportModule(nextModule);
+    navigate("dashboard");
+  };
+  const goHome = () => {
+    setSportModule(null);
+    navigate("dashboard");
+  };
   return (
-    <div className="min-h-dvh pb-28">
+    <div className={`min-h-dvh ${sportModule ? "pb-28" : "pb-8"}`}>
       <header className="app-header">
-        <button onClick={() => setModules(!modules)}>
+        <button type="button" onClick={goHome} aria-label="Zur Startseite">
           <span className="brand">#Dogsports</span>
           <span className="crumb">
-            {tab === "dashboard"
-              ? "Dashboard"
-              : tab === "judge"
-                ? "Digitaler Leistungsrichter VDH-VK"
-                : tab === "ibgh-judge"
-                  ? "Digitaler Leistungsrichter FCI-IBGH"
-                  : "THS · Performance Tracker"}
+            {sportModule
+              ? `Modul ${sportModule.toUpperCase()} · ${tabTitles[tab]}`
+              : "Startseite · Modulauswahl"}
           </span>
         </button>
-        <ShieldCheck />
+        {sportModule ? (
+          <span className="module-chip">{sportModule.toUpperCase()}</span>
+        ) : (
+          <ShieldCheck aria-hidden="true" />
+        )}
       </header>
-      {modules && (
-        <ModuleMenu
-          close={() => setModules(false)}
-          openJudge={() => {
-            setModules(false);
-            navigate("judge");
-          }}
-          openIbghJudge={() => {
-            setModules(false);
-            navigate("ibgh-judge");
-          }}
-        />
-      )}
       <main className="mx-auto max-w-6xl space-y-5 px-4 py-5">
-        {tab === "dashboard" && (
-          <Dashboard
-            results={results}
-            open={open}
-            modules={() => setModules(true)}
-          />
-        )}{" "}
-        {tab === "results" && <Results results={results} open={open} />}{" "}
-        {tab === "new" && (
+        {!sportModule ? <StartPage openModule={openModule} /> : null}
+        {sportModule === "ths" && tab === "dashboard" ? (
+          <Dashboard results={results} open={open} />
+        ) : null}
+        {sportModule === "ths" && tab === "results" ? (
+          <Results results={results} open={open} />
+        ) : null}
+        {sportModule === "ths" && tab === "new" ? (
           <Editor
             key={editing?.id ?? "new"}
             initial={editing ?? newForm()}
             close={() => navigate("results")}
           />
-        )}{" "}
-        {tab === "stats" && <Statistics results={results} />}
-        {tab === "judge" && (
+        ) : null}
+        {sportModule === "ths" && tab === "stats" ? (
+          <Statistics results={results} />
+        ) : null}
+        {sportModule === "ths" && tab === "judge" ? (
           <Suspense fallback={<Hint text="Leistungsrichter wird geladen …" />}>
             <JudgeForm />
           </Suspense>
-        )}
-        {tab === "ibgh-judge" && (
+        ) : null}
+        {sportModule === "ibgh" && tab === "dashboard" ? (
+          <IbghDashboard openJudge={() => navigate("judge")} />
+        ) : null}
+        {sportModule === "ibgh" && tab === "judge" ? (
           <Suspense fallback={<Hint text="Leistungsrichter wird geladen …" />}>
             <IbghJudgeForm />
           </Suspense>
-        )}
+        ) : null}
+        {sportModule === "ibgh" && tab === "results" ? (
+          <ModulePlaceholder module="IBGH" title="Ergebnisse" />
+        ) : null}
+        {sportModule === "ibgh" && tab === "new" ? (
+          <ModulePlaceholder module="IBGH" title="Neuer Eintrag" />
+        ) : null}
+        {sportModule === "ibgh" && tab === "stats" ? (
+          <ModulePlaceholder module="IBGH" title="Statistik" />
+        ) : null}
       </main>
-      <nav className="bottom-nav">
-        <Nav
-          active={tab === "dashboard"}
-          icon={<Home />}
-          label="Dashboard"
-          onClick={() => navigate("dashboard")}
-        />
-        <Nav
-          active={tab === "results"}
-          icon={<ClipboardList />}
-          label="Ergebnisse"
-          onClick={() => navigate("results")}
-        />
-        <Nav
-          active={tab === "new"}
-          icon={<Plus />}
-          label="Neuer Eintrag"
-          onClick={() => open()}
-        />
-        <Nav
-          active={tab === "stats"}
-          icon={<BarChart3 />}
-          label="Statistik"
-          onClick={() => navigate("stats")}
-        />
-      </nav>
+      {sportModule ? (
+        <nav className="bottom-nav" aria-label={`Navigation ${sportModule.toUpperCase()}`}>
+          <Nav
+            active={tab === "dashboard"}
+            icon={<Home />}
+            label="Dashboard"
+            onClick={() => navigate("dashboard")}
+          />
+          <Nav
+            active={tab === "judge"}
+            icon={<Scale />}
+            label="Leistungsrichter"
+            onClick={() => navigate("judge")}
+          />
+          <Nav
+            active={tab === "results"}
+            icon={<ClipboardList />}
+            label="Ergebnisse"
+            onClick={() => navigate("results")}
+          />
+          <Nav
+            active={tab === "new"}
+            icon={<Plus />}
+            label="Neuer Eintrag"
+            onClick={() =>
+              sportModule === "ths" ? open() : navigate("new")
+            }
+          />
+          <Nav
+            active={tab === "stats"}
+            icon={<BarChart3 />}
+            label="Statistik"
+            onClick={() => navigate("stats")}
+          />
+        </nav>
+      ) : null}
     </div>
   );
-}
-interface ModuleItem {
-  label: string;
-  onClick?: () => void;
 }
 
-function ModuleMenu({
-  close,
-  openJudge,
-  openIbghJudge,
+function StartPage({
+  openModule,
 }: {
-  close: () => void;
-  openJudge: () => void;
-  openIbghJudge: () => void;
+  openModule: (sportModule: SportModule) => void;
 }) {
   return (
-    <div className="module-menu" onClick={close}>
-      <div
-        className="mx-auto grid max-w-6xl gap-4 px-4 py-5 md:grid-cols-2"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Module
-          title="THS"
-          active
-          items={[
-            { label: "Performance Tracker THS" },
-            {
-              label: "Digitaler Leistungsrichter VDH-VK",
-              onClick: openJudge,
-            },
-            { label: "Statistik THS" },
-          ]}
+    <>
+      <section className="hero-card" aria-label="#Dogsports">
+        <img
+          className="hero-banner"
+          src="/dogsports-banner.webp"
+          alt="#Dogsports mit schwarzem Sporthund"
         />
-        <Module
-          title="IBGH"
-          active
-          items={[
-            { label: "Performance Tracker IBGH · In Vorbereitung" },
-            {
-              label: "Digitaler Leistungsrichter FCI-IBGH",
-              onClick: openIbghJudge,
-            },
-            { label: "Statistik IBGH · In Vorbereitung" },
-          ]}
-        />
-        <Button className="md:col-span-2" onClick={close}>
-          Zurück zur App
-        </Button>
+      </section>
+      <div>
+        <p className="eyebrow text-teal">SPORTBEREICH AUSWÄHLEN</p>
+        <h1 className="text-2xl font-black">Welches Modul möchtest du öffnen?</h1>
+        <p className="mt-2 text-sm text-muted">
+          Alle Funktionen und Daten bleiben eindeutig ihrem Sportbereich
+          zugeordnet.
+        </p>
       </div>
-    </div>
+      <div className="module-selection">
+        <ModuleChoice
+          title="THS"
+          description="Turnierhundsport mit Performance Tracker und VDH-VK Leistungsrichter."
+          details="Performance Tracker aktiv · Leistungsrichter aktiv"
+          icon={<ShieldCheck aria-hidden="true" />}
+          onClick={() => openModule("ths")}
+        />
+        <ModuleChoice
+          title="IBGH"
+          description="Begleithundesport mit dem Digitalen Leistungsrichter FCI-IBGH."
+          details="Leistungsrichter aktiv · weitere Bereiche vorbereitet"
+          icon={<Medal aria-hidden="true" />}
+          onClick={() => openModule("ibgh")}
+        />
+      </div>
+    </>
   );
 }
-function Module({
+
+function ModuleChoice({
   title,
-  items,
-  active = false,
+  description,
+  details,
+  icon,
+  onClick,
 }: {
   title: string;
-  items: ModuleItem[];
-  active?: boolean;
+  description: string;
+  details: string;
+  icon: React.ReactNode;
+  onClick: () => void;
 }) {
   return (
-    <Card>
-      <div className="flex justify-between">
-        <h2>{title}</h2>
-        <span className={`badge ${active ? "q-green" : "draft"}`}>
-          {active ? "Aktiv" : "In Vorbereitung"}
+    <button type="button" className="module-choice" onClick={onClick}>
+      <span className="module-choice-icon">{icon}</span>
+      <span className="module-choice-copy min-w-0 flex-1">
+        <strong>{title}</strong>
+        <span>{description}</span>
+        <small>{details}</small>
+      </span>
+      <ChevronRight aria-hidden="true" />
+    </button>
+  );
+}
+
+function IbghDashboard({ openJudge }: { openJudge: () => void }) {
+  return (
+    <>
+      <Card className="module-dashboard-hero">
+        <span className="module-choice-icon">
+          <Medal aria-hidden="true" />
         </span>
+        <div>
+          <p className="eyebrow text-teal">MODUL IBGH</p>
+          <h2>Dashboard IBGH</h2>
+          <p className="mt-2 text-sm text-muted">
+            Der Digitale Leistungsrichter ist einsatzbereit. Weitere
+            IBGH-Bereiche werden schrittweise ergänzt.
+          </p>
+        </div>
+      </Card>
+      <Button className="w-full justify-between py-7" onClick={openJudge}>
+        <span className="flex gap-2">
+          <Scale />
+          Digitaler Leistungsrichter FCI-IBGH
+        </span>
+        <ChevronRight />
+      </Button>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <PreparedArea title="Ergebnisse" />
+        <PreparedArea title="Neuer Eintrag" />
+        <PreparedArea title="Statistik" />
       </div>
-      <ul className="mt-4 space-y-2">
-        {items.map((item) => (
-          <li className="rounded-xl bg-slate-50 text-sm" key={item.label}>
-            {item.onClick ? (
-              <button
-                type="button"
-                className="flex w-full items-center justify-between p-3 text-left font-semibold"
-                onClick={item.onClick}
-              >
-                {item.label}
-                <ChevronRight className="size-4" />
-              </button>
-            ) : (
-              <span className="block p-3">{item.label}</span>
-            )}
-          </li>
-        ))}
-      </ul>
+    </>
+  );
+}
+
+function PreparedArea({ title }: { title: string }) {
+  return (
+    <Card>
+      <span className="badge draft">In Vorbereitung</span>
+      <h3 className="mt-3">{title}</h3>
+      <p className="mt-2 text-sm text-muted">
+        Die Navigation ist vorbereitet; fachliche Funktionen folgen später.
+      </p>
     </Card>
   );
 }
+
+function ModulePlaceholder({
+  module,
+  title,
+}: {
+  module: "IBGH";
+  title: string;
+}) {
+  return (
+    <Card className="module-placeholder">
+      <span className="module-choice-icon">
+        <ClipboardList aria-hidden="true" />
+      </span>
+      <p className="eyebrow text-teal">MODUL {module}</p>
+      <h2>{title}</h2>
+      <span className="badge draft">In Vorbereitung</span>
+      <p className="text-sm text-muted">
+        Dieser Bereich ist strukturell angelegt, enthält aber noch keine
+        fachlichen Funktionen oder Datenspeicherung.
+      </p>
+    </Card>
+  );
+}
+
 function Dashboard({
   results,
   open,
-  modules,
 }: {
   results: CompetitionResult[];
   open: (r?: CompetitionResult) => void;
-  modules: () => void;
 }) {
   const complete = results.filter((r) => calculateScore(r).complete),
     drafts = results.length - complete.length,
@@ -381,30 +453,6 @@ function Dashboard({
           />
         </>
       )}
-      <Title text="Module" />
-      <div className="grid gap-3 md:grid-cols-2">
-        <button onClick={modules}>
-          <Module
-            title="THS"
-            active
-            items={[
-              { label: "Performance Tracker" },
-              { label: "Statistik" },
-              { label: "Digitaler Leistungsrichter VDH-VK · Entwurf" },
-            ]}
-          />
-        </button>
-        <button onClick={modules}>
-          <Module
-            title="IBGH"
-            active
-            items={[
-              { label: "Digitaler Leistungsrichter FCI-IBGH · Entwurf" },
-              { label: "Zwei weitere Anwendungen vorbereitet" },
-            ]}
-          />
-        </button>
-      </div>
     </>
   );
 }
