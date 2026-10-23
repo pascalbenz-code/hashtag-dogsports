@@ -20,7 +20,6 @@ import {
   toCsv,
 } from "./data/backup";
 import { calculateScore } from "./domain/scoring";
-import { parseGermanDecimalDraft } from "./domain/decimalInput";
 import { bestIds, filterAndSort, type ResultFilters } from "./domain/results";
 import { calculateStatistics, type Direction } from "./domain/statistics";
 import type {
@@ -30,9 +29,15 @@ import type {
 } from "./domain/types";
 import { Button } from "./components/ui/button";
 import { Card } from "./components/ui/card";
+import { LocaleNumberInput } from "./components/LocaleNumberInput";
 
 const PerformanceChart = lazy(() => import("./components/PerformanceChart"));
-type Tab = "dashboard" | "results" | "new" | "stats";
+const JudgeForm = lazy(() =>
+  import("./components/JudgeForm").then(({ JudgeForm }) => ({
+    default: JudgeForm,
+  })),
+);
+type Tab = "dashboard" | "results" | "new" | "stats" | "judge";
 const now = () => new Date().toISOString();
 const blank = (): CompetitionResult => ({
   id: crypto.randomUUID(),
@@ -96,12 +101,24 @@ export default function App() {
         <button onClick={() => setModules(!modules)}>
           <span className="brand">#Dogsports</span>
           <span className="crumb">
-            {tab === "dashboard" ? "Dashboard" : "THS · Performance Tracker"}
+            {tab === "dashboard"
+              ? "Dashboard"
+              : tab === "judge"
+                ? "Digitaler Leistungsrichter VDH-VK"
+                : "THS · Performance Tracker"}
           </span>
         </button>
         <ShieldCheck />
       </header>
-      {modules && <ModuleMenu close={() => setModules(false)} />}
+      {modules && (
+        <ModuleMenu
+          close={() => setModules(false)}
+          openJudge={() => {
+            setModules(false);
+            navigate("judge");
+          }}
+        />
+      )}
       <main className="mx-auto max-w-6xl space-y-5 px-4 py-5">
         {tab === "dashboard" && (
           <Dashboard
@@ -119,6 +136,11 @@ export default function App() {
           />
         )}{" "}
         {tab === "stats" && <Statistics results={results} />}
+        {tab === "judge" && (
+          <Suspense fallback={<Hint text="Leistungsrichter wird geladen …" />}>
+            <JudgeForm />
+          </Suspense>
+        )}
       </main>
       <nav className="bottom-nav">
         <Nav
@@ -149,7 +171,18 @@ export default function App() {
     </div>
   );
 }
-function ModuleMenu({ close }: { close: () => void }) {
+interface ModuleItem {
+  label: string;
+  onClick?: () => void;
+}
+
+function ModuleMenu({
+  close,
+  openJudge,
+}: {
+  close: () => void;
+  openJudge: () => void;
+}) {
   return (
     <div className="module-menu" onClick={close}>
       <div
@@ -160,17 +193,20 @@ function ModuleMenu({ close }: { close: () => void }) {
           title="THS"
           active
           items={[
-            "Performance Tracker THS",
-            "Digitaler Leistungsrichter VDH-VK · In Vorbereitung",
-            "Statistik THS",
+            { label: "Performance Tracker THS" },
+            {
+              label: "Digitaler Leistungsrichter VDH-VK",
+              onClick: openJudge,
+            },
+            { label: "Statistik THS" },
           ]}
         />
         <Module
           title="IBGH"
           items={[
-            "Performance Tracker IBGH · In Vorbereitung",
-            "Digitaler Leistungsrichter FCI-IBGH · In Vorbereitung",
-            "Statistik IBGH · In Vorbereitung",
+            { label: "Performance Tracker IBGH · In Vorbereitung" },
+            { label: "Digitaler Leistungsrichter FCI-IBGH · In Vorbereitung" },
+            { label: "Statistik IBGH · In Vorbereitung" },
           ]}
         />
         <Button className="md:col-span-2" onClick={close}>
@@ -186,7 +222,7 @@ function Module({
   active = false,
 }: {
   title: string;
-  items: string[];
+  items: ModuleItem[];
   active?: boolean;
 }) {
   return (
@@ -198,9 +234,20 @@ function Module({
         </span>
       </div>
       <ul className="mt-4 space-y-2">
-        {items.map((x) => (
-          <li className="rounded-xl bg-slate-50 p-3 text-sm" key={x}>
-            {x}
+        {items.map((item) => (
+          <li className="rounded-xl bg-slate-50 text-sm" key={item.label}>
+            {item.onClick ? (
+              <button
+                type="button"
+                className="flex w-full items-center justify-between p-3 text-left font-semibold"
+                onClick={item.onClick}
+              >
+                {item.label}
+                <ChevronRight className="size-4" />
+              </button>
+            ) : (
+              <span className="block p-3">{item.label}</span>
+            )}
           </li>
         ))}
       </ul>
@@ -319,14 +366,17 @@ function Dashboard({
             title="THS"
             active
             items={[
-              "Performance Tracker",
-              "Statistik",
-              "Leistungsrichter in Vorbereitung",
+              { label: "Performance Tracker" },
+              { label: "Statistik" },
+              { label: "Digitaler Leistungsrichter VDH-VK · Entwurf" },
             ]}
           />
         </button>
         <button onClick={modules}>
-          <Module title="IBGH" items={["Drei Anwendungen vorbereitet"]} />
+          <Module
+            title="IBGH"
+            items={[{ label: "Drei Anwendungen vorbereitet" }]}
+          />
         </button>
       </div>
     </>
@@ -1054,43 +1104,5 @@ function Field({
       <span>{label}</span>
       {children}
     </label>
-  );
-}
-
-function LocaleNumberInput({
-  value,
-  onValueChange,
-  placeholder,
-  max,
-  maxFractionDigits,
-}: {
-  value: number | null;
-  onValueChange: (value: number | null) => void;
-  placeholder?: string;
-  max?: number;
-  maxFractionDigits?: number;
-}) {
-  const [rawValue, setRawValue] = useState(
-    value === null ? "" : String(value).replace(".", ","),
-  );
-
-  return (
-    <input
-      type="text"
-      inputMode="decimal"
-      enterKeyHint="next"
-      autoComplete="off"
-      placeholder={placeholder}
-      value={rawValue}
-      onChange={(event) => {
-        const parsed = parseGermanDecimalDraft(event.target.value, {
-          max,
-          maxFractionDigits,
-        });
-        if (!parsed.valid) return;
-        setRawValue(parsed.normalized);
-        if (parsed.committable) onValueChange(parsed.value);
-      }}
-    />
   );
 }

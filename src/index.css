@@ -256,6 +256,155 @@ h3 {
   font-weight: 900;
 }
 
+.judge-summary {
+  display: grid;
+  gap: 1.25rem;
+  background: linear-gradient(145deg, #ffffff, #edf9fe);
+}
+.judge-total {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0 0.7rem;
+  border-radius: 18px;
+  background: #111212;
+  padding: 1rem;
+  color: #fff;
+}
+.judge-total svg {
+  grid-row: 1 / 3;
+  width: 32px;
+  height: 32px;
+  color: #59d3f9;
+}
+.judge-total strong {
+  color: #59d3f9;
+  font-size: 2rem;
+  line-height: 1;
+}
+.judge-total span {
+  font-size: 0.7rem;
+  opacity: 0.72;
+}
+.judge-levels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+.judge-levels button {
+  min-height: 46px;
+  border: 1px solid #a2c0ce;
+  border-radius: 12px;
+  background: #f6f9fb;
+  color: #55585a;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+.judge-levels button.active {
+  border-color: #31abe4;
+  background: #dff6ff;
+  color: #11698f;
+  box-shadow: 0 0 0 2px #31abe426;
+}
+.judge-exercise {
+  padding: 0;
+  overflow: hidden;
+}
+.judge-exercise-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.2rem;
+  border-bottom: 1px solid #dce9ef;
+}
+.judge-exercise-heading > div:first-child > span {
+  color: #1776a7;
+  font-size: 0.6rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.judge-exercise-score {
+  flex: none;
+  text-align: right;
+}
+.judge-exercise-score strong {
+  display: block;
+  color: #1776a7;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.judge-exercise-score span {
+  color: #55585a;
+  font-size: 0.68rem;
+}
+.judge-criteria {
+  padding: 0 1.2rem;
+}
+.judge-criterion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 108px;
+  align-items: center;
+  gap: 1rem;
+  min-height: 68px;
+  border-bottom: 1px solid #e8eff2;
+}
+.judge-criterion > span {
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+.judge-criterion small {
+  display: block;
+  margin-top: 0.2rem;
+  color: #7a7e80;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.judge-fault-input {
+  position: relative;
+}
+.judge-fault-input input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid #a2c0ce;
+  border-radius: 11px;
+  background: #fbfcfd;
+  padding: 0.6rem 2.15rem 0.6rem 0.65rem;
+  color: #111212;
+  font: inherit;
+  font-weight: 750;
+  text-align: right;
+  outline: none;
+}
+.judge-fault-input input:focus {
+  border-color: #31abe4;
+  box-shadow: 0 0 0 3px #31abe426;
+}
+.judge-fault-input > span {
+  position: absolute;
+  top: 50%;
+  right: 0.6rem;
+  color: #7a7e80;
+  font-size: 0.62rem;
+  font-weight: 800;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.judge-exercise-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 1.2rem;
+  background: #f6f9fb;
+  color: #55585a;
+  font-size: 0.72rem;
+}
+.judge-exercise-footer strong {
+  color: #b91c1c;
+}
+
 table {
   width: 100%;
   min-width: 1200px;
@@ -307,6 +456,13 @@ tbody tr:hover {
   }
 }
 
+@media (min-width: 640px) {
+  .judge-summary {
+    grid-template-columns: minmax(0, 1fr) 260px;
+    align-items: center;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   body {
     background: #0b0c0d;
@@ -329,7 +485,8 @@ tbody tr:hover {
   .control,
   .field input,
   .field select,
-  .field textarea {
+  .field textarea,
+  .judge-fault-input input {
     border-color: #425b67;
     background: #1b1e20;
     color: #f5f7f8;
@@ -355,5 +512,29 @@ tbody tr:hover {
   .best {
     background: #143648;
     color: #59d3f9;
+  }
+  .judge-summary {
+    background: linear-gradient(145deg, #1b1e20, #10232c);
+  }
+  .judge-levels button {
+    border-color: #425b67;
+    background: #23282b;
+    color: #d6e0e4;
+  }
+  .judge-levels button.active {
+    border-color: #31abe4;
+    background: #143648;
+    color: #59d3f9;
+  }
+  .judge-exercise-heading,
+  .judge-criterion {
+    border-color: #3a454a;
+  }
+  .judge-exercise-score span,
+  .judge-exercise-footer {
+    color: #a2c0ce;
+  }
+  .judge-exercise-footer {
+    background: #23282b;
   }
 }
