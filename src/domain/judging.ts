@@ -1,5 +1,5 @@
 export type JudgingLevel = "VDH-VK1" | "VDH-VK2" | "VDH-VK3";
-export type RatingBasePoints = 3 | 5 | 7 | 10 | 15 | 20 | 30 | 60;
+export type RatingBasePoints = 3 | 5 | 7 | 10 | 15 | 20 | 30 | 60 | 70 | 100;
 export type PerformanceRating =
   | "Vorzüglich"
   | "Sehr Gut"
@@ -69,6 +69,20 @@ export const RATING_MATRIX: Record<RatingBasePoints, RatingBand[]> = {
     { rating: "Befriedigend", minPoints: 42 },
     { rating: "Mangelhaft", minPoints: 0 },
   ],
+  70: [
+    { rating: "Vorzüglich", minPoints: 66.5 },
+    { rating: "Sehr Gut", minPoints: 63 },
+    { rating: "Gut", minPoints: 56 },
+    { rating: "Befriedigend", minPoints: 49 },
+    { rating: "Mangelhaft", minPoints: 0 },
+  ],
+  100: [
+    { rating: "Vorzüglich", minPoints: 96 },
+    { rating: "Sehr Gut", minPoints: 90 },
+    { rating: "Gut", minPoints: 80 },
+    { rating: "Befriedigend", minPoints: 70 },
+    { rating: "Mangelhaft", minPoints: 0 },
+  ],
 };
 
 export function calculateRating(
@@ -96,15 +110,17 @@ export interface JudgingExercise {
   criteria: JudgingCriterion[];
 }
 
-export interface JudgingLevelDefinition {
-  level: JudgingLevel;
+export interface JudgingLevelDefinition<TLevel extends string = string> {
+  level: TLevel;
   maxPoints: RatingBasePoints;
   exercises: JudgingExercise[];
 }
 
 export type JudgingFaults = Record<string, number | null>;
 
-const provisionalCriteria = (exerciseId: string): JudgingCriterion[] => [
+export const createProvisionalCriteria = (
+  exerciseId: string,
+): JudgingCriterion[] => [
   {
     id: `${exerciseId}-detail-1`,
     label: "Detailbewertung 1",
@@ -133,7 +149,7 @@ export const JUDGING_LEVELS: JudgingLevel[] = [
 
 export const JUDGING_DEFINITIONS: Record<
   JudgingLevel,
-  JudgingLevelDefinition
+  JudgingLevelDefinition<JudgingLevel>
 > = {
   "VDH-VK1": {
     level: "VDH-VK1",
@@ -149,19 +165,19 @@ export const JUDGING_DEFINITIONS: Record<
         id: "vk1-freifolge",
         label: "Freifolge",
         maxPoints: 20,
-        criteria: provisionalCriteria("vk1-freifolge"),
+        criteria: createProvisionalCriteria("vk1-freifolge"),
       },
       {
         id: "vk1-sitz-abholen",
         label: "Sitz mit Abholen",
         maxPoints: 10,
-        criteria: provisionalCriteria("vk1-sitz-abholen"),
+        criteria: createProvisionalCriteria("vk1-sitz-abholen"),
       },
       {
         id: "vk1-ablegen-herankommen",
         label: "Ablegen mit Herankommen",
         maxPoints: 15,
-        criteria: provisionalCriteria("vk1-ablegen-herankommen"),
+        criteria: createProvisionalCriteria("vk1-ablegen-herankommen"),
       },
     ],
   },
@@ -173,25 +189,25 @@ export const JUDGING_DEFINITIONS: Record<
         id: "vk2-freifolge",
         label: "Freifolge",
         maxPoints: 20,
-        criteria: provisionalCriteria("vk2-freifolge"),
+        criteria: createProvisionalCriteria("vk2-freifolge"),
       },
       {
         id: "vk2-sitz-abholen",
         label: "Sitz mit Abholen",
         maxPoints: 10,
-        criteria: provisionalCriteria("vk2-sitz-abholen"),
+        criteria: createProvisionalCriteria("vk2-sitz-abholen"),
       },
       {
         id: "vk2-ablegen-herankommen",
         label: "Ablegen mit Herankommen",
         maxPoints: 15,
-        criteria: provisionalCriteria("vk2-ablegen-herankommen"),
+        criteria: createProvisionalCriteria("vk2-ablegen-herankommen"),
       },
       {
         id: "vk2-steh-herankommen",
         label: "Steh mit Herankommen",
         maxPoints: 15,
-        criteria: provisionalCriteria("vk2-steh-herankommen"),
+        criteria: createProvisionalCriteria("vk2-steh-herankommen"),
       },
     ],
   },
@@ -203,25 +219,25 @@ export const JUDGING_DEFINITIONS: Record<
         id: "vk3-freifolge",
         label: "Freifolge",
         maxPoints: 20,
-        criteria: provisionalCriteria("vk3-freifolge"),
+        criteria: createProvisionalCriteria("vk3-freifolge"),
       },
       {
         id: "vk3-sitz-abholen",
         label: "Sitz mit Abholen",
         maxPoints: 10,
-        criteria: provisionalCriteria("vk3-sitz-abholen"),
+        criteria: createProvisionalCriteria("vk3-sitz-abholen"),
       },
       {
         id: "vk3-ablegen-herankommen",
         label: "Ablegen mit Herankommen",
         maxPoints: 15,
-        criteria: provisionalCriteria("vk3-ablegen-herankommen"),
+        criteria: createProvisionalCriteria("vk3-ablegen-herankommen"),
       },
       {
         id: "vk3-steh-herankommen",
         label: "Steh mit Herankommen",
         maxPoints: 15,
-        criteria: provisionalCriteria("vk3-steh-herankommen"),
+        criteria: createProvisionalCriteria("vk3-steh-herankommen"),
       },
     ],
   },

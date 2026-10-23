@@ -37,7 +37,12 @@ const JudgeForm = lazy(() =>
     default: JudgeForm,
   })),
 );
-type Tab = "dashboard" | "results" | "new" | "stats" | "judge";
+const IbghJudgeForm = lazy(() =>
+  import("./components/IbghJudgeForm").then(({ IbghJudgeForm }) => ({
+    default: IbghJudgeForm,
+  })),
+);
+type Tab = "dashboard" | "results" | "new" | "stats" | "judge" | "ibgh-judge";
 const now = () => new Date().toISOString();
 const blank = (): CompetitionResult => ({
   id: crypto.randomUUID(),
@@ -105,7 +110,9 @@ export default function App() {
               ? "Dashboard"
               : tab === "judge"
                 ? "Digitaler Leistungsrichter VDH-VK"
-                : "THS · Performance Tracker"}
+                : tab === "ibgh-judge"
+                  ? "Digitaler Leistungsrichter FCI-IBGH"
+                  : "THS · Performance Tracker"}
           </span>
         </button>
         <ShieldCheck />
@@ -116,6 +123,10 @@ export default function App() {
           openJudge={() => {
             setModules(false);
             navigate("judge");
+          }}
+          openIbghJudge={() => {
+            setModules(false);
+            navigate("ibgh-judge");
           }}
         />
       )}
@@ -139,6 +150,11 @@ export default function App() {
         {tab === "judge" && (
           <Suspense fallback={<Hint text="Leistungsrichter wird geladen …" />}>
             <JudgeForm />
+          </Suspense>
+        )}
+        {tab === "ibgh-judge" && (
+          <Suspense fallback={<Hint text="Leistungsrichter wird geladen …" />}>
+            <IbghJudgeForm />
           </Suspense>
         )}
       </main>
@@ -179,9 +195,11 @@ interface ModuleItem {
 function ModuleMenu({
   close,
   openJudge,
+  openIbghJudge,
 }: {
   close: () => void;
   openJudge: () => void;
+  openIbghJudge: () => void;
 }) {
   return (
     <div className="module-menu" onClick={close}>
@@ -203,9 +221,13 @@ function ModuleMenu({
         />
         <Module
           title="IBGH"
+          active
           items={[
             { label: "Performance Tracker IBGH · In Vorbereitung" },
-            { label: "Digitaler Leistungsrichter FCI-IBGH · In Vorbereitung" },
+            {
+              label: "Digitaler Leistungsrichter FCI-IBGH",
+              onClick: openIbghJudge,
+            },
             { label: "Statistik IBGH · In Vorbereitung" },
           ]}
         />
@@ -375,7 +397,11 @@ function Dashboard({
         <button onClick={modules}>
           <Module
             title="IBGH"
-            items={[{ label: "Drei Anwendungen vorbereitet" }]}
+            active
+            items={[
+              { label: "Digitaler Leistungsrichter FCI-IBGH · Entwurf" },
+              { label: "Zwei weitere Anwendungen vorbereitet" },
+            ]}
           />
         </button>
       </div>
