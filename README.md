@@ -51,7 +51,7 @@ src/
   App.tsx               App-Shell und modulare Ansichten
 ```
 
-Spätere Module können eigene Domänentypen, Datenbanken, Berechnungen und Views ergänzen, ohne die THS-Logik zu verändern. Vorbereitet, aber bewusst noch nicht fachlich implementiert: Performance Tracker IBGH, Digitaler Leistungsrichter FCI-IBGH, Statistik IBGH und Digitaler Leistungsrichter FCI-VK.
+Spätere Module können eigene Domänentypen, Datenbanken, Berechnungen und Views ergänzen, ohne die THS-Logik zu verändern. Vorbereitet, aber bewusst noch nicht fachlich implementiert: Performance Tracker IBGH, Digitaler Leistungsrichter FCI-IBGH, Statistik IBGH und Digitaler Leistungsrichter VDH-VK.
 
 ## Lokal starten und prüfen
 

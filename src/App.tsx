@@ -161,7 +161,7 @@ function ModuleMenu({ close }: { close: () => void }) {
           active
           items={[
             "Performance Tracker THS",
-            "Digitaler Leistungsrichter FCI-VK · In Vorbereitung",
+            "Digitaler Leistungsrichter VDH-VK · In Vorbereitung",
             "Statistik THS",
           ]}
         />
