@@ -158,7 +158,7 @@ export default function App() {
           </Suspense>
         ) : null}
         {sportModule === "ibgh" && tab === "dashboard" ? (
-          <IbghDashboard openJudge={() => navigate("judge")} />
+          <IbghDashboard />
         ) : null}
         {sportModule === "ibgh" && tab === "judge" ? (
           <Suspense fallback={<Hint text="Leistungsrichter wird geladen …" />}>
@@ -283,7 +283,7 @@ function ModuleChoice({
   );
 }
 
-function IbghDashboard({ openJudge }: { openJudge: () => void }) {
+function IbghDashboard() {
   return (
     <>
       <Card className="module-dashboard-hero">
@@ -299,13 +299,6 @@ function IbghDashboard({ openJudge }: { openJudge: () => void }) {
           </p>
         </div>
       </Card>
-      <Button className="w-full justify-between py-7" onClick={openJudge}>
-        <span className="flex gap-2">
-          <Scale />
-          Digitaler Leistungsrichter FCI-IBGH
-        </span>
-        <ChevronRight />
-      </Button>
       <div className="grid gap-3 sm:grid-cols-3">
         <PreparedArea title="Ergebnisse" />
         <PreparedArea title="Neuer Eintrag" />
@@ -395,13 +388,6 @@ function Dashboard({
         <Metric value={String(drafts)} label="Entwürfe" />
         <Metric value={String(q)} label="Qualifikationen" accent />
       </div>
-      <Button className="w-full justify-between py-7" onClick={() => open()}>
-        <span className="flex gap-2">
-          <Plus />
-          Neues THS-Ergebnis
-        </span>
-        <ChevronRight />
-      </Button>
       <section>
         <Title text="Persönliche Bestleistungen" />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
