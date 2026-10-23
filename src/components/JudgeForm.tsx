@@ -6,6 +6,7 @@ import {
   JUDGING_LEVELS,
   type JudgingFaults,
   type JudgingLevel,
+  type PerformanceRating,
 } from "../domain/judging";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -16,6 +17,20 @@ const points = (value: number) =>
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   });
+
+const ratingClasses: Record<PerformanceRating, string> = {
+  Vorzüglich: "excellent",
+  "Sehr Gut": "very-good",
+  Gut: "good",
+  Befriedigend: "satisfactory",
+  Mangelhaft: "deficient",
+};
+
+function RatingBadge({ rating }: { rating: PerformanceRating }) {
+  return (
+    <span className={`judge-rating ${ratingClasses[rating]}`}>{rating}</span>
+  );
+}
 
 export function JudgeForm() {
   const [level, setLevel] = useState<JudgingLevel>("VDH-VK1");
@@ -52,6 +67,7 @@ export function JudgeForm() {
           <Scale aria-hidden="true" />
           <strong>{points(score.total)}</strong>
           <span>von {points(definition.maxPoints)} Punkten</span>
+          <RatingBadge rating={score.rating} />
         </div>
       </Card>
 
@@ -90,6 +106,7 @@ export function JudgeForm() {
               <div className="judge-exercise-score">
                 <strong>{points(exerciseScore.points)}</strong>
                 <span>/ {points(exercise.maxPoints)}</span>
+                <RatingBadge rating={exerciseScore.rating} />
               </div>
             </div>
 

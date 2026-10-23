@@ -272,7 +272,7 @@ h3 {
   color: #fff;
 }
 .judge-total svg {
-  grid-row: 1 / 3;
+  grid-row: 1 / 4;
   width: 32px;
   height: 32px;
   color: #59d3f9;
@@ -285,6 +285,39 @@ h3 {
 .judge-total span {
   font-size: 0.7rem;
   opacity: 0.72;
+}
+.judge-rating {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 0.35rem;
+  border-radius: 999px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.58rem !important;
+  font-weight: 850;
+  letter-spacing: 0.035em;
+  line-height: 1;
+  text-transform: uppercase;
+  opacity: 1 !important;
+}
+.judge-rating.excellent {
+  background: #c7f3e1;
+  color: #075c42;
+}
+.judge-rating.very-good {
+  background: #dff6ff;
+  color: #11698f;
+}
+.judge-rating.good {
+  background: #e7efff;
+  color: #284f9d;
+}
+.judge-rating.satisfactory {
+  background: #fff0c7;
+  color: #845800;
+}
+.judge-rating.deficient {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 .judge-levels {
   display: grid;
@@ -338,6 +371,9 @@ h3 {
 .judge-exercise-score span {
   color: #55585a;
   font-size: 0.68rem;
+}
+.judge-exercise-score .judge-rating {
+  margin-left: auto;
 }
 .judge-criteria {
   padding: 0 1.2rem;
