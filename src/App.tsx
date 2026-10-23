@@ -643,10 +643,15 @@ function Editor({
       <Card>
         <h3>Leistungsdaten</h3>
         <Field label="Unterordnung · 0 bis 60 Punkte">
-          <input
-            inputMode="decimal"
-            value={form.obedience ?? ""}
-            onChange={(e) => setForm({ ...form, obedience: n(e.target.value) })}
+          <LocaleNumberInput
+            key={`${form.id}-obedience`}
+            value={form.obedience}
+            placeholder="0,0"
+            max={60}
+            maxFractionDigits={1}
+            onValueChange={(value) =>
+              setForm({ ...form, obedience: value })
+            }
           />
         </Field>
         {(
@@ -661,6 +666,7 @@ function Editor({
             <div className="grid grid-cols-2 gap-3">
               <Field label="Zeit · Sekunden">
                 <LocaleNumberInput
+                  key={`${form.id}-${key}-time`}
                   value={form[key].time}
                   placeholder="0,00"
                   onValueChange={(value) =>
@@ -1055,10 +1061,14 @@ function LocaleNumberInput({
   value,
   onValueChange,
   placeholder,
+  max,
+  maxFractionDigits,
 }: {
   value: number | null;
   onValueChange: (value: number | null) => void;
   placeholder?: string;
+  max?: number;
+  maxFractionDigits?: number;
 }) {
   const [rawValue, setRawValue] = useState(
     value === null ? "" : String(value).replace(".", ","),
@@ -1073,7 +1083,10 @@ function LocaleNumberInput({
       placeholder={placeholder}
       value={rawValue}
       onChange={(event) => {
-        const parsed = parseGermanDecimalDraft(event.target.value);
+        const parsed = parseGermanDecimalDraft(event.target.value, {
+          max,
+          maxFractionDigits,
+        });
         if (!parsed.valid) return;
         setRawValue(parsed.normalized);
         if (parsed.committable) onValueChange(parsed.value);

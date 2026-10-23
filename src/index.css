@@ -179,6 +179,11 @@ h3 {
   font: inherit;
   outline: none;
 }
+.field input[type="date"] {
+  inline-size: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+}
 .field input:focus,
 .field select:focus,
 .field textarea:focus,

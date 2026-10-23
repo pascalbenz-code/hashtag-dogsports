@@ -19,4 +19,15 @@ describe("German decimal input", () => {
   it("rejects non-numeric characters", () => {
     expect(parseGermanDecimalDraft("12,a").valid).toBe(false);
   });
+  it("parses an obedience score with one decimal place", () => {
+    const constraints = { max: 60, maxFractionDigits: 1 };
+    expect(parseGermanDecimalDraft("59,5", constraints)).toEqual({
+      valid: true,
+      normalized: "59,5",
+      value: 59.5,
+      committable: true,
+    });
+    expect(parseGermanDecimalDraft("59,55", constraints).valid).toBe(false);
+    expect(parseGermanDecimalDraft("60,1", constraints).valid).toBe(false);
+  });
 });
