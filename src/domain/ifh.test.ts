@@ -6,6 +6,7 @@ import {
   createIfhSession,
   duplicateIfhSession,
   generateIfhSuggestions,
+  getNotFoundArticleTreatment,
 } from "./ifh";
 import { IFH_RULES, validateIfhStructure } from "./ifhRules";
 import type { IfhAngle, IfhArticle, IfhCrossTrack, IfhLeg } from "./ifhTypes";
@@ -45,6 +46,7 @@ const article = (
   id: `article-${number}`,
   number,
   material: ["Holz", "Leder", "Textil"][number - 1] ?? `Material ${number}`,
+  ownership: "own",
   legId,
   positionSteps,
   dimensionsCm: { length: 10, width: 2.5, height: 0.7 },
@@ -169,6 +171,32 @@ describe("IFH domain", () => {
     expect(result.total).toBe(3);
   });
 
+  it("applies the verified fixed eight-point deduction", () => {
+    const result = calculateFixedDeductions([
+      {
+        id: "behaviour",
+        sourceEventKey: "behaviour-1",
+        code: "leaving-track-behaviour",
+        count: 1,
+        note: "",
+      },
+    ]);
+    expect(result.total).toBe(8);
+  });
+
+  it("keeps the stage-specific not-found article treatment separate", () => {
+    const missing = article(1, "leg-1", 100);
+    missing.evaluation.result = "not-found";
+    missing.evaluation.notFoundByTrackLayer = true;
+
+    expect(getNotFoundArticleTreatment("FCI-IFH2", missing)).toMatchObject({
+      status: "no-deduction",
+    });
+    expect(getNotFoundArticleTreatment("FCI-IFH1", missing)).toMatchObject({
+      status: "no-points",
+    });
+  });
+
   it("does not count the same rule event twice", () => {
     const result = calculateFixedDeductions([
       {
@@ -236,6 +264,35 @@ describe("IFH domain", () => {
       "disqualified",
     ] as const;
     expect(new Set(statuses).size).toBe(3);
+  });
+
+  it("marks every implemented IFH rule as source-verified with pages", () => {
+    expect(IFH_RULES.length).toBeGreaterThan(0);
+    expect(
+      IFH_RULES.every(
+        (rule) => rule.verification === "verified" && rule.pages.length > 0,
+      ),
+    ).toBe(true);
+  });
+
+  it("does not invent a numeric tolerance for the approximate IFH3 radius", () => {
+    const session = createIfhSession();
+    session.targetLevel = "FCI-IFH3";
+    session.plannedTrack.legs = Array.from({ length: 8 }, (_, index) =>
+      leg(index + 1, 225),
+    );
+    session.plannedTrack.legs[3] = {
+      ...session.plannedTrack.legs[3],
+      shape: "semicircle",
+      semicircleRadiusMeters: 31,
+      semicircleDirection: "left",
+    };
+
+    expect(
+      validateIfhStructure(session).find(
+        (item) => item.ruleId === "IFH3-SEMICIRCLE",
+      ),
+    ).toMatchObject({ status: "not-checkable" });
   });
 
   it("does not claim a robust suggestion below the sample threshold", () => {

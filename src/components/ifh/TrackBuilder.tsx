@@ -118,6 +118,7 @@ export function TrackBuilder({
       id: uid(),
       number: track.articles.length + 1,
       material: "",
+      ownership: "",
       legId: track.legs[0]?.id ?? "",
       positionSteps: null,
       dimensionsCm: { length: null, width: null, height: null },
@@ -472,6 +473,30 @@ export function TrackBuilder({
                       })
                     }
                   />
+                </label>
+                <label className="field">
+                  <span>Gegenstandsart</span>
+                  <select
+                    value={article.ownership ?? ""}
+                    onChange={(event) =>
+                      onChange({
+                        ...track,
+                        articles: track.articles.map((item) =>
+                          item.id === article.id
+                            ? {
+                                ...item,
+                                ownership: event.target
+                                  .value as IfhArticle["ownership"],
+                              }
+                            : item,
+                        ),
+                      })
+                    }
+                  >
+                    <option value="">Nicht angegeben</option>
+                    <option value="own">Eigener Gegenstand</option>
+                    <option value="foreign">Fremdgegenstand</option>
+                  </select>
                 </label>
                 <label className="field">
                   <span>Schenkel</span>

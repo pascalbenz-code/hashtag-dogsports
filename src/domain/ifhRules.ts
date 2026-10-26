@@ -12,7 +12,7 @@ const rule = (
   levels: IfhLevel[],
   description: string,
   type: IfhRuleMetadata["type"] = "requirement",
-  pages = "67–76",
+  pages = "67–73",
 ): IfhRuleMetadata => ({
   id,
   levels,
@@ -21,212 +21,314 @@ const rule = (
   source: "FCI-Prüfungsordnung 2025",
   pages,
   version: "FCI-PO-2025",
-  verification: "pending-original",
+  verification: "verified",
 });
 
 export const IFH_RULES: IfhRuleMetadata[] = [
-  rule("IFH1-OWN-TRACK", ["FCI-IFH1"], "FCI-IFH1 wird als Eigenfährte gelegt."),
+  rule("IFH1-OWN-TRACK", ["FCI-IFH1"], "FCI-IFH1 wird als Eigenfährte gelegt.", "requirement", "67–68"),
   rule(
     "IFH2-FOREIGN-TRACK",
     ["FCI-IFH2"],
     "FCI-IFH2 wird als Fremdfährte gelegt.",
+    "requirement",
+    "67–68",
   ),
   rule(
     "IFH3-FOREIGN-TRACK",
     ["FCI-IFH3"],
     "FCI-IFH3 wird als Fremdfährte gelegt.",
+    "requirement",
+    "67–68",
   ),
   rule(
     "IFH1-STRUCTURE",
     ["FCI-IFH1"],
     "Mindestens 800 Schritte, 5 Schenkel, 4 Winkel und 3 Gegenstände.",
+    "requirement",
+    "67",
   ),
   rule(
     "IFH2-STRUCTURE",
     ["FCI-IFH2"],
     "Mindestens 1.200 Schritte, 7 Schenkel, 6 Winkel und 4 Gegenstände.",
+    "requirement",
+    "67",
   ),
   rule(
     "IFH3-STRUCTURE",
     ["FCI-IFH3"],
     "Mindestens 1.800 Schritte, 8 Schenkel, 7 Winkel und 7 Gegenstände.",
+    "requirement",
+    "67",
   ),
   rule(
     "IFH3-SEMICIRCLE",
     ["FCI-IFH3"],
-    "Ein Schenkel ist ein Halbkreis mit ungefähr 30 m Radius.",
+    "Ein Schenkel ist ein Halbkreis mit ungefähr 30 m Radius; Ein- und Ausgang bilden ungefähr 90°-Winkel.",
+    "requirement",
+    "67",
   ),
-  rule("IFH1-ANGLES", ["FCI-IFH1"], "Vier Winkel mit etwa 90°."),
+  rule("IFH1-ANGLES", ["FCI-IFH1"], "Vier Winkel mit etwa 90°.", "requirement", "67"),
   rule(
     "IFH2-ANGLES",
     ["FCI-IFH2"],
     "Sechs Winkel: die ersten fünf etwa 90°, der letzte 30–60°.",
+    "requirement",
+    "67",
   ),
   rule(
     "IFH3-ANGLES",
     ["FCI-IFH3"],
     "Sieben Winkel, davon zwei mit 30–60°, die übrigen etwa 90°; Ein- und Ausgang des Halbkreises etwa 90°.",
+    "requirement",
+    "67",
   ),
   rule(
     "IFH1-ARTICLE-POINTS",
     ["FCI-IFH1"],
-    "Drei Gegenstände mit jeweils 7 Gegenstandspunkten.",
+    "Drei eigene Gegenstände mit jeweils 7 Gegenstandspunkten.",
+    "requirement",
+    "67, 70",
   ),
   rule(
     "IFH2-ARTICLE-POINTS",
     ["FCI-IFH2"],
-    "Vier Gegenstände: dreimal 5 und einmal 6 Gegenstandspunkte; der 6-Punkte-Gegenstand wird ohne eindeutigen Quellenbeleg keiner Position zugeordnet.",
+    "Vier Fremdgegenstände: dreimal 5 und einmal 6 Gegenstandspunkte. Die Quelle ordnet den 6-Punkte-Gegenstand keiner bestimmten Position zu.",
+    "requirement",
+    "67, 70",
   ),
   rule(
     "IFH3-ARTICLE-POINTS",
     ["FCI-IFH3"],
-    "Sieben Gegenstände mit jeweils 3 Gegenstandspunkten.",
+    "Sieben Fremdgegenstände mit jeweils 3 Gegenstandspunkten.",
+    "requirement",
+    "67, 70",
   ),
   rule(
     "IFH1-AGING",
     ["FCI-IFH1"],
-    "Mindestliegezeit 90 Minuten; maximale Ausarbeitungszeit 30 Minuten.",
+    "Mindestalter der Fährte 90 Minuten; maximale Ausarbeitungszeit 30 Minuten.",
+    "requirement",
+    "67",
   ),
   rule(
     "IFH2-AGING",
     ["FCI-IFH2"],
-    "Mindestliegezeit 120 Minuten; maximale Ausarbeitungszeit 30 Minuten.",
+    "Mindestalter der Fährte 120 Minuten; maximale Ausarbeitungszeit 30 Minuten.",
+    "requirement",
+    "67",
   ),
   rule(
     "IFH3-AGING",
     ["FCI-IFH3"],
-    "Mindestliegezeit 180 Minuten; maximale Ausarbeitungszeit 45 Minuten.",
+    "Mindestalter der Fährte 180 Minuten; maximale Ausarbeitungszeit 45 Minuten.",
+    "requirement",
+    "67",
   ),
-  rule("IFH-LINE", ALL, "Die Fährtenleine ist 10 Meter lang."),
+  rule("IFH-LINE", ALL, "Die Fährtenleine ist 10 Meter lang.", "requirement", "67, 70"),
   rule(
     "IFH-CROSS-TRACKS",
     ["FCI-IFH2", "FCI-IFH3"],
-    "Zwei Verleitungen durch eine zweite Person, etwa 30 Minuten vor dem Ansatz.",
+    "Die Fährte wird durch eine zweite Person zweimal gekreuzt; die Verleitungen werden 30 Minuten vor dem Ansatz gelegt.",
+    "requirement",
+    "67–68",
   ),
   rule(
     "IFH-CROSS-TRACK-TIME",
     ["FCI-IFH2", "FCI-IFH3"],
     "Die Verleitungen werden 30 Minuten vor dem Ansatz gelegt.",
+    "requirement",
+    "67",
   ),
   rule(
     "IFH-TIME-LIMIT",
     ALL,
     "Die maximale Ausarbeitungszeit beträgt in IFH1/2 30 Minuten und in IFH3 45 Minuten; die Sonderregel auf dem letzten Schenkel ist zu berücksichtigen.",
     "status",
+    "67, 72",
   ),
   rule(
     "IFH-ANGLE-SPACING",
     ALL,
     "Zwischen Winkeln liegen mindestens 50 Schritte.",
+    "requirement",
+    "67",
   ),
   rule(
     "IFH-FIRST-ARTICLE",
     ALL,
     "Der erste Gegenstand liegt frühestens nach 100 Schritten.",
+    "requirement",
+    "67",
   ),
   rule(
     "IFH-ARTICLE-ANGLE-DISTANCE",
     ALL,
     "Gegenstände liegen nicht innerhalb von 20 Schritten vor oder nach Winkeln.",
+    "requirement",
+    "68",
   ),
   rule(
     "IFH-LAST-ARTICLE",
     ALL,
     "Der letzte Gegenstand liegt am Ende; danach geht der Fährtenleger mindestens 10 Schritte gerade weiter.",
+    "requirement",
+    "67–69",
   ),
-  rule("IFH-ARTICLE-DIMENSIONS", ALL, "Gegenstandsmaße: 10 × 2–3 × 0,5–1 cm."),
+  rule("IFH-ARTICLE-DIMENSIONS", ALL, "Gegenstandsmaße: 10 × 2–3 × 0,5–1 cm.", "requirement", "67"),
   rule(
     "IFH-ARTICLE-MATERIALS",
     ALL,
     "Innerhalb einer Fährte werden unterschiedliche Gegenstandsmaterialien verwendet.",
+    "requirement",
+    "69",
   ),
   rule(
     "IFH-ARTICLE-CARRIED",
     ALL,
     "Gegenstände wurden mindestens 30 Minuten vom zuständigen Fährtenleger getragen.",
+    "requirement",
+    "69",
   ),
   rule(
     "IFH-CROSS-TRACK-POSITION",
     ["FCI-IFH2", "FCI-IFH3"],
-    "Verleitungen liegen nicht auf erstem oder letztem Schenkel, nicht zweimal auf demselben Schenkel und mindestens 40 Schritte von Winkeln entfernt.",
+    "Verleitungen liegen nicht auf erstem oder letztem Schenkel, nicht zweimal auf demselben Schenkel und mindestens 40 Schritte vor oder nach Winkeln.",
+    "requirement",
+    "68",
   ),
   rule(
     "IFH-CROSS-TRACK-ANGLE",
     ["FCI-IFH2", "FCI-IFH3"],
     "Der Kreuzungswinkel einer Verleitung beträgt mindestens 60°.",
+    "requirement",
+    "68",
   ),
   rule(
     "IFH-DEDUCT-EXTRA-START",
     ALL,
-    "Zusätzliches Such-HZ am ersten Ansatz: je −1,5 Punkte, höchstens zwei Zusatz-HZ.",
+    "Zusätzliches Such-HZ am ersten Ansatz: je −1,5 Punkte vom ersten Schenkel, höchstens zwei Zusatz-HZ.",
     "fixed-deduction",
+    "71",
   ),
   rule(
     "IFH-DEDUCT-RESTART",
     ALL,
-    "Erneuter Ansatz nach Rückruf unter den beschriebenen Voraussetzungen: −4 Punkte.",
+    "Einmaliger erneuter Ansatz nach Rückruf, solange der Fährtenabgang noch nicht verlassen wurde: −4 Punkte.",
     "fixed-deduction",
+    "71",
   ),
   rule(
     "IFH-DEDUCT-COMMAND",
     ALL,
     "Such-HZ vor dem Abgangsschild oder fehlendes HZ: −1 Punkt.",
     "fixed-deduction",
+    "73",
   ),
   rule(
     "IFH-DEDUCT-FALSE-INDICATION",
     ALL,
     "Fehlanzeige: −1 Punkt am Leinenende mit zusätzlichem HZ; −2 Punkte beim Herantreten.",
     "fixed-deduction",
+    "73",
   ),
   rule(
     "IFH-DEDUCT-VISUAL-AID",
     ALL,
     "Sichtzeichen zum Aufnehmen der Fährte: −2 Punkte.",
     "fixed-deduction",
+    "73",
+  ),
+  rule(
+    "IFH-DEDUCT-LEAVING-TRACK-BEHAVIOUR",
+    ALL,
+    "Faseln, Urinieren oder Stuhlgang: −8 Punkte.",
+    "fixed-deduction",
+    "73",
   ),
   rule(
     "IFH-QUALITATIVE-SEARCH",
     ALL,
-    "Suchintensität, Selbstvertrauen, Konzentration, Nasenarbeit, Gleichmäßigkeit, Selbstständigkeit und Zusammenarbeit werden qualitativ bewertet.",
+    "Intensität, Selbstvertrauen, Konzentration und direktes überzeugendes Verweisen sind primäre Elemente. Abstand HF–Hund und Geschwindigkeit des Ablegens beim Verweisen sind sekundäre Elemente; weitere Kriterien werden qualitativ im Gesamtkontext bewertet.",
     "qualitative",
+    "71–73",
   ),
   rule(
     "IFH-ANGLE-CONTROL",
     ALL,
     "Kontrolle am Winkel ohne Verlassen der Fährte wird nicht automatisch als Fehler gewertet.",
     "qualitative",
+    "71",
   ),
   rule(
     "IFH-CROSS-TRACK-CONTROL",
     ALL,
     "Prüfen einer Verleitung bei Verbleib auf der Fährte wird nicht automatisch als Fehler gewertet.",
     "qualitative",
+    "68",
   ),
   rule(
     "IFH-ARTICLE-INDICATION",
     ALL,
     "Wechsel der Verweisposition, Zurückschauen bei gehaltener Position und bis 30° schräges Verweisen sind nicht automatisch fehlerhaft; stark unterstütztes Verweisen gilt als überlaufen.",
     "qualitative",
+    "69",
   ),
   rule(
     "IFH-ARTICLE-NOT-FOUND",
     ALL,
-    "Nicht auffindbare Gegenstände werden separat dokumentiert und benötigen die stufenspezifische Sonderbehandlung der Originalquelle; sie werden nicht pauschal dem Hund zugerechnet.",
+    "Kann ein nicht angezeigter Gegenstand auch vom Fährtenleger nicht gefunden werden, erfolgt grundsätzlich keine Entwertung. Bei mehreren solchen Gegenständen wird eine neue Fährte angeboten; bei Ablehnung zählen nur gefundene Gegenstände. Für FCI-IFH1 gilt diese Ausnahme nicht: Nicht gefundene Gegenstände erhalten keine Punkte.",
     "status",
+    "69",
   ),
   rule(
     "IFH-PAGE70-GUIDE",
     ALL,
-    "Skizze und Positionstabellen sind Orientierungshilfen unter Berücksichtigung von Wind, Hundegröße und Verweisposition; keine verbindliche automatische Fotobewertung.",
+    "Die Verweisskizze ist eine grobe Orientierung unter Berücksichtigung von Wind, Hundegröße und Verweisposition. Die Positions- und Punktetabelle wird nicht als verbindliche automatische Fotobewertung verwendet.",
     "qualitative",
-    "70",
+    "69–70",
   ),
   rule(
     "IFH-STATUS",
     ALL,
-    "Abbruch nach PO und Disqualifikation sind getrennte Ergebnisstatus.",
+    "Beim Abbruch bleiben die bis dahin erreichten Punkte bestehen; bei Disqualifikation werden alle Punkte und Wertungen gestrichen.",
     "status",
+    "72",
+  ),
+  rule(
+    "IFH-ARTICLE-POSITIONS",
+    ALL,
+    "Zwischengegenstände werden auf Richteranweisung gelegt; der letzte liegt am Ende. Höchstens zwei Gegenstände dürfen auf einem Schenkel liegen.",
+    "requirement",
+    "67",
+  ),
+  rule(
+    "IFH-PAUSE-TIME",
+    ALL,
+    "Eine vom Leistungsrichter genehmigte kurze Pause wegen körperlicher Verfassung oder Witterung zählt zur Ausarbeitungszeit.",
+    "status",
+    "68",
+  ),
+  rule(
+    "IFH-ABORT-START",
+    ALL,
+    "Nimmt der Hund die Fährte nach insgesamt drei Hörzeichen am Ansatz nicht an, erfolgt Abbruch mit 0 Punkten.",
+    "status",
+    "71–72",
+  ),
+  rule(
+    "IFH-ABORT-CROSS-TRACK",
+    ["FCI-IFH2", "FCI-IFH3"],
+    "Folgt der Hund einer Verleitung mehr als eine Leinenlänge beziehungsweise 10 Meter, ist die Fährte abzubrechen.",
+    "status",
+    "68, 72",
+  ),
+  rule(
+    "IFH-TRACK-FORMS",
+    ALL,
+    "Die dargestellten Fährtenformen sind Beispiele; Fährtenformen sollen möglichst variieren.",
+    "qualitative",
+    "68, 74–76",
   ),
 ];
 
@@ -391,6 +493,27 @@ export function validateIfhStructure(session: IfhSession): IfhRuleCheck[] {
       `Zielprofil: mindestens ${profile.steps} Schritte, ${profile.legs} Schenkel, ${profile.angles} Winkel und ${profile.articles} Gegenstände.`,
     ),
   );
+  const expectedArticleOwnership =
+    level === "FCI-IFH1" ? "own" : "foreign";
+  result.push(
+    check(
+      `${level.replace("FCI-", "")}-ARTICLE-POINTS`,
+      "Gegenstandsart",
+      track.articles.length !== profile.articles ||
+        track.articles.some((article) => !article.ownership)
+        ? null
+        : track.articles.every(
+            (article) => article.ownership === expectedArticleOwnership,
+          ),
+      expectedArticleOwnership === "own"
+        ? "Eigene Gegenstände erfasst."
+        : "Fremdgegenstände erfasst.",
+      expectedArticleOwnership === "own"
+        ? "Für FCI-IFH1 sind eigene Gegenstände vorgesehen."
+        : "Für diese Stufe sind Fremdgegenstände vorgesehen.",
+      "Für alle Gegenstände muss angegeben werden, ob es eigene oder fremde Gegenstände sind.",
+    ),
+  );
   result.push({
     ruleId: "IFH-TIME-LIMIT",
     label: "Ausarbeitungszeit",
@@ -409,19 +532,22 @@ export function validateIfhStructure(session: IfhSession): IfhRuleCheck[] {
   });
   if (level === "FCI-IFH3") {
     const semicircles = track.legs.filter((leg) => leg.shape === "semicircle");
-    result.push(
-      check(
-        "IFH3-SEMICIRCLE",
-        "Halbkreis",
-        track.legs.length
-          ? semicircles.length === 1 &&
-              semicircles[0].semicircleRadiusMeters !== null &&
-              semicircles[0].semicircleRadiusMeters === 30
-          : null,
-        "Ein Halbkreis mit ungefähr 30 m Radius ist erfasst.",
-        "Erforderlich ist ein Halbkreis-Schenkel mit ungefähr 30 m Radius.",
-      ),
-    );
+    result.push({
+      ruleId: "IFH3-SEMICIRCLE",
+      label: "Halbkreis",
+      status:
+        !track.legs.length || semicircles.length === 1
+          ? "not-checkable"
+          : "deviation",
+      detail:
+        !track.legs.length
+          ? "Schenkeldaten fehlen."
+          : semicircles.length !== 1
+            ? "Erforderlich ist genau ein Halbkreis-Schenkel."
+            : semicircles[0].semicircleRadiusMeters === null
+              ? "Der Radius des Halbkreises fehlt."
+              : `Halbkreis mit ${semicircles[0].semicircleRadiusMeters.toLocaleString("de-DE")} m Radius erfasst. Ob dies „etwa 30 m“ entspricht, bleibt eine manuelle Beurteilung; die PO definiert keine feste Toleranz.`,
+    });
   }
   result.push(
     check(
@@ -432,7 +558,7 @@ export function validateIfhStructure(session: IfhSession): IfhRuleCheck[] {
         : timing.agingMinutes >= profile.aging,
       `Liegezeit ${Math.round(timing.agingMinutes ?? 0)} Minuten.`,
       `Mindestens ${profile.aging} Minuten vorgesehen; erfasst sind ${Math.round(timing.agingMinutes ?? 0)} Minuten.`,
-      "Legeende und tatsächlicher Ansatz werden benötigt. Berechnungskonvention: Legeende bis Ansatz; die Originalquelle ist hierzu noch visuell zu prüfen.",
+      "Legeende und tatsächlicher Ansatz werden benötigt. Produktkonvention: Legeende bis Ansatz; die PO nennt das Mindestalter, legt in diesem Abschnitt aber keinen eindeutigen rechnerischen Bezugspunkt fest.",
     ),
     check(
       "IFH-LINE",
@@ -521,6 +647,25 @@ export function validateIfhStructure(session: IfhSession): IfhRuleCheck[] {
           ),
       "Alle Gegenstände liegen mehr als 20 Schritte von Winkeln entfernt.",
       "Mindestens ein Gegenstand liegt innerhalb von 20 Schritten vor oder nach einem Winkel.",
+    ),
+  );
+  const articleCountsByLeg = track.articles.reduce<Record<string, number>>(
+    (counts, article) => {
+      counts[article.legId] = (counts[article.legId] ?? 0) + 1;
+      return counts;
+    },
+    {},
+  );
+  result.push(
+    check(
+      "IFH-ARTICLE-POSITIONS",
+      "Gegenstände je Schenkel",
+      track.articles.length === 0 ||
+        track.articles.some((article) => !article.legId)
+        ? null
+        : Object.values(articleCountsByLeg).every((count) => count <= 2),
+      "Auf keinem Schenkel liegen mehr als zwei Gegenstände.",
+      "Auf mindestens einem Schenkel liegen mehr als zwei Gegenstände.",
     ),
   );
   const lastLeg = [...track.legs].sort((a, b) => a.order - b.order).at(-1);

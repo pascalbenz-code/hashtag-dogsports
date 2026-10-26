@@ -14,6 +14,7 @@ import { saveIfhSession } from "../../data/db";
 import {
   calculateFixedDeductions,
   calculateTiming,
+  getNotFoundArticleTreatment,
   trackSummary,
 } from "../../domain/ifh";
 import { validateIfhStructure } from "../../domain/ifhRules";
@@ -65,6 +66,10 @@ const RULE_EVENT_OPTIONS: Array<{ value: IfhRuleEventCode; label: string }> = [
     label: "Fehlanzeige – HF tritt heran",
   },
   { value: "visual-aid-resume", label: "Sichtzeichen zum Wiederaufnehmen" },
+  {
+    value: "leaving-track-behaviour",
+    label: "Faseln, Urinieren oder Stuhlgang",
+  },
 ];
 type EditorStep = "base" | "plan" | "actual" | "evaluate";
 
@@ -344,13 +349,24 @@ function EvaluationEditor({
         ),
       },
     });
+  const missingAndNotFoundCount = actual.articles.filter(
+    (item) =>
+      item.evaluation.result === "not-found" &&
+      item.evaluation.notFoundByTrackLayer === true,
+  ).length;
   return (
     <div className="space-y-4">
       <Card>
         <h3>Gegenstände einzeln bewerten</h3>
         {actual.articles.length ? (
-          actual.articles.map((article) => (
-            <details className="ifh-details" key={article.id}>
+          actual.articles.map((article) => {
+            const treatment = getNotFoundArticleTreatment(
+              session.targetLevel,
+              article,
+              missingAndNotFoundCount,
+            );
+            return (
+              <details className="ifh-details" key={article.id}>
               <summary>
                 Gegenstand {article.number} ·{" "}
                 {article.material || "Material offen"}
@@ -389,6 +405,29 @@ function EvaluationEditor({
                     <option value="retrieve">Apportieren</option>
                   </select>
                 </Field>
+                {article.evaluation.result === "not-found" ? (
+                  <Field label="Auch vom Fährtenleger nicht gefunden">
+                    <select
+                      value={
+                        article.evaluation.notFoundByTrackLayer == null
+                          ? ""
+                          : String(article.evaluation.notFoundByTrackLayer)
+                      }
+                      onChange={(event) =>
+                        updateArticle(article.id, {
+                          notFoundByTrackLayer:
+                            event.target.value === ""
+                              ? null
+                              : event.target.value === "true",
+                        })
+                      }
+                    >
+                      <option value="">Nicht geklärt</option>
+                      <option value="true">Ja</option>
+                      <option value="false">Nein</option>
+                    </select>
+                  </Field>
+                ) : null}
                 <Field label="Verweisposition">
                   <select
                     value={article.evaluation.pointPosition}
@@ -474,6 +513,9 @@ function EvaluationEditor({
                   </select>
                 </Field>
               </div>
+              {treatment ? (
+                <p className="ifh-rule-note">{treatment.message}</p>
+              ) : null}
               <p className="ifh-rule-note">
                 Positionswechsel, Zurückschauen bei gehaltener Position und bis
                 30° schräges Verweisen sind nicht automatisch fehlerhaft. Stark
@@ -505,8 +547,9 @@ function EvaluationEditor({
                   }
                 />
               </Field>
-            </details>
-          ))
+              </details>
+            );
+          })
         ) : (
           <p className="ifh-empty compact">
             Noch keine tatsächlichen Gegenstände erfasst.

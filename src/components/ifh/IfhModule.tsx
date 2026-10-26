@@ -641,11 +641,12 @@ function IfhRulebook() {
       <div className="ifh-warning">
         <Lightbulb />
         <div>
-          <strong>Fachliche Verifikation ausstehend</strong>
+          <strong>Mit der Originalquelle abgeglichen</strong>
           <span>
-            Die angegebene PDF war nicht verfügbar. Alle Regeln sind anhand des
-            Auftrags implementiert und müssen mit der Originalquelle visuell
-            geprüft werden.
+            Die Regeln wurden anhand der FCI-Prüfungsordnung 2025, Seiten
+            67–76, einschließlich Tabellen und Abbildungen visuell geprüft.
+            Qualitative Vorgaben werden nicht in erfundene feste Abzüge
+            umgewandelt.
           </span>
         </div>
       </div>
@@ -667,7 +668,9 @@ function IfhRulebook() {
           <p className="mt-2 text-sm">{rule.description}</p>
           <p className="mt-3 text-xs text-muted">
             {rule.source}, S. {rule.pages} · Version {rule.version} ·
-            Originalquelle noch zu prüfen
+            {rule.verification === "verified"
+              ? " Originalquelle geprüft"
+              : " Originalquelle noch zu prüfen"}
           </p>
         </Card>
       ))}

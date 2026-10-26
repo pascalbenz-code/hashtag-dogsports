@@ -57,7 +57,7 @@ Die Digitalen Leistungsrichter VDH-VK und FCI-IBGH liegen als interaktive Entwü
 
 Das Modul IFH bietet Übersicht, Trainingsplanung, gespeicherte Einheiten, Fortschrittsauswertung und ein versioniertes Regelwerk. Plan und tatsächlich gelegte Fährte werden getrennt gespeichert. Entwürfe, Timer-Zeitstempel, Einzelbewertungen, schematische Vorschau, Aufbauhinweise und regelbasierte Trainingsvorschläge funktionieren vollständig lokal. Vorhandene Hundenamen aus THS dienen als Auswahlhilfe; es wird keine parallele Profilverwaltung geführt.
 
-Die IFH-Regeln enthalten Regel-ID, Stufe, Regelart, Quelle, Version und Verifikationsstatus. Da die FCI-Prüfungsordnung 2025, Seiten 67–76, bei der Implementierung nicht als PDF verfügbar war, lautet der Status derzeit **„Originalquelle noch zu prüfen“**. Die Abbildung und Tabellenlogik auf Seite 70 wird deshalb nicht als automatische Foto- oder Positionsbewertung ausgegeben.
+Die IFH-Regeln enthalten Regel-ID, Stufe, Regelart, Quelle, Version und Verifikationsstatus. Die Regeln wurden visuell mit der **FCI-Prüfungsordnung 2025, Seiten 67–76**, einschließlich Gegenstandstabelle und Abbildungen abgeglichen. Qualitative Kriterien werden nicht ohne Quellenbeleg in feste Punktabzüge umgewandelt; die Verweisskizze bleibt eine Orientierungshilfe und erzeugt keine automatische Foto- oder Positionsbewertung. Für das Mindestalter verwendet die App transparent die Produktkonvention „Legeende bis tatsächlicher Ansatz“, weil der geprüfte Abschnitt keinen eindeutigen rechnerischen Bezugspunkt festlegt.
 
 ## Lokale Datenmigration
 

@@ -38,12 +38,15 @@ export interface IfhArticleEvaluation {
   restart: "direct" | "hesitant" | "extra-command" | "no-restart" | "unrated";
   mediaReference: string;
   note: string;
+  /** Nur für den PO-Sonderfall: auch durch den Fährtenleger nicht auffindbar. */
+  notFoundByTrackLayer?: boolean | null;
 }
 
 export interface IfhArticle {
   id: string;
   number: number;
   material: string;
+  ownership?: "own" | "foreign" | "";
   legId: string;
   positionSteps: number | null;
   dimensionsCm: {
@@ -188,7 +191,8 @@ export type IfhRuleEventCode =
   | "missing-search-command"
   | "false-indication-line-end"
   | "false-indication-handler-approach"
-  | "visual-aid-resume";
+  | "visual-aid-resume"
+  | "leaving-track-behaviour";
 
 export interface IfhRuleEvent {
   id: string;

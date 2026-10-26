@@ -2,6 +2,8 @@ import type {
   Assessment5,
   IfhConditions,
   IfhHandlerAssessment,
+  IfhArticle,
+  IfhLevel,
   IfhRuleEvent,
   IfhSearchQuality,
   IfhSession,
@@ -207,6 +209,10 @@ const DEDUCTIONS: Record<
     label: "Sichtzeichen zum Aufnehmen der Fährte",
     points: () => 2,
   },
+  "leaving-track-behaviour": {
+    label: "Faseln, Urinieren oder Stuhlgang",
+    points: () => 8,
+  },
 };
 
 export function calculateFixedDeductions(events: IfhRuleEvent[]) {
@@ -226,6 +232,43 @@ export function calculateFixedDeductions(events: IfhRuleEvent[]) {
     items,
     total: items.reduce((sum, item) => sum + item.points, 0),
     duplicatesIgnored: events.length - items.length,
+  };
+}
+
+export function getNotFoundArticleTreatment(
+  level: IfhLevel | null,
+  article: IfhArticle,
+  missingAndNotFoundCount = 1,
+) {
+  if (article.evaluation.result !== "not-found") return null;
+  if (!level) {
+    return {
+      status: "unresolved" as const,
+      message: "Ohne Zielstufe ist keine PO-Sonderbehandlung ableitbar.",
+    };
+  }
+  if (level === "FCI-IFH1") {
+    return {
+      status: "no-points" as const,
+      message:
+        "FCI-IFH1: Für den nicht gefundenen Gegenstand werden keine Punkte vergeben, da die Fährte selbst gelegt wird.",
+    };
+  }
+  if (article.evaluation.notFoundByTrackLayer === true) {
+    return {
+      status: "no-deduction" as const,
+      message:
+        missingAndNotFoundCount > 1
+          ? "Auch vom Fährtenleger nicht gefunden: keine Entwertung; bei mehreren solchen Gegenständen wird eine neue Fährte angeboten. Bei Ablehnung werden nur gefundene Gegenstände gewertet."
+          : "Auch vom Fährtenleger nicht gefunden: Nach PO erfolgt keine Entwertung.",
+    };
+  }
+  return {
+    status: "unresolved" as const,
+    message:
+      article.evaluation.notFoundByTrackLayer === false
+        ? "Der Gegenstand wurde vom Fährtenleger gefunden; die Ausnahme für nicht auffindbare Gegenstände greift nicht. Die Prüfungsbewertung bleibt manuell."
+        : "Noch klären, ob auch der Fährtenleger den Gegenstand nicht finden konnte.",
   };
 }
 
