@@ -1,12 +1,12 @@
 # #Dogsports
 
-Installierbare, offlinefähige Hundesport-PWA. Vollständig umgesetzt ist **THS → Performance Tracker THS**; IBGH und die digitalen Leistungsrichter sind als klar markierte, erweiterbare Module vorbereitet.
+Installierbare, offlinefähige Hundesport-PWA mit THS, IBGH und dem integrierten Modul **IFH** für Planung, Dokumentation und Auswertung von Fährtentraining.
 
 Das visuelle System basiert auf dem #Dogsports-Banner in `public/dogsports-banner.webp`: Schwarz/Anthrazit (`#111212`), Weiß (`#FEFEFE`), Stahlblau (`#1776A7`), Hauptblau (`#31ABE4`), Cyan (`#59D3F9`) und kühles Neutralblau (`#A2C0CE`).
 
 ## Implementiert
 
-- modulares Dashboard mit THS/IBGH-Modulübersicht und iPhone-Bottom-Navigation
+- modulares Dashboard mit THS/IBGH/IFH-Modulübersicht und iPhone-Bottom-Navigation
 - CRUD für vollständige Ergebnisse und Entwürfe, eindeutige UUIDs und Zeitstempel
 - automatische Formular-Zwischenspeicherung sowie dauerhafte IndexedDB-Persistenz mit Dexie
 - exakte FCI-VK1/2/3-Gesamtpunkteberechnung und kumulative Qualifikationen
@@ -54,6 +54,14 @@ src/
 Die Startseite trennt die Sportbereiche THS und IBGH. Nach der Modulauswahl stehen in beiden Bereichen dieselben fünf Navigationsziele bereit: Dashboard, Digitaler Leistungsrichter, Ergebnisse, Neuer Eintrag und Statistik. Der aktive Modulbereich bleibt in der Kopfzeile sichtbar. Die bestehenden THS-Funktionen bleiben unverändert; Ergebnisse, neuer Eintrag und Statistik sind im Modul IBGH zunächst klar gekennzeichnete Platzhalter ohne Datenspeicherung.
 
 Die Digitalen Leistungsrichter VDH-VK und FCI-IBGH liegen als interaktive Entwürfe mit konfigurierbaren Unteraufgaben, Detailabzügen und automatischen Wertungen vor. FCI-IBGH3 unterstützt zusätzlich fünf vorgeschriebene Übungsreihenfolgen.
+
+Das Modul IFH bietet Übersicht, Trainingsplanung, gespeicherte Einheiten, Fortschrittsauswertung und ein versioniertes Regelwerk. Plan und tatsächlich gelegte Fährte werden getrennt gespeichert. Entwürfe, Timer-Zeitstempel, Einzelbewertungen, schematische Vorschau, Aufbauhinweise und regelbasierte Trainingsvorschläge funktionieren vollständig lokal. Vorhandene Hundenamen aus THS dienen als Auswahlhilfe; es wird keine parallele Profilverwaltung geführt.
+
+Die IFH-Regeln enthalten Regel-ID, Stufe, Regelart, Quelle, Version und Verifikationsstatus. Da die FCI-Prüfungsordnung 2025, Seiten 67–76, bei der Implementierung nicht als PDF verfügbar war, lautet der Status derzeit **„Originalquelle noch zu prüfen“**. Die Abbildung und Tabellenlogik auf Seite 70 wird deshalb nicht als automatische Foto- oder Positionsbewertung ausgegeben.
+
+## Lokale Datenmigration
+
+Dexie aktualisiert die bestehende Datenbank beim ersten Start additiv von Version 1 auf Version 2 und ergänzt `ifhSessions`. Die vorhandene Tabelle `results` und alle THS-Daten bleiben unverändert. Eine manuelle Migration oder Serverkonfiguration ist nicht erforderlich.
 
 ## Lokal starten und prüfen
 

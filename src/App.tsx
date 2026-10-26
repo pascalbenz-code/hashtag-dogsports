@@ -2,17 +2,20 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   BarChart3,
+  BookOpen,
   ChevronRight,
   ClipboardList,
   Download,
   Home,
   Medal,
+  MapPinned,
   Plus,
   Scale,
   ShieldCheck,
   Trash2,
   Upload,
 } from "lucide-react";
+import type { IfhView } from "./components/ifh/IfhModule";
 import { db, deleteResult, saveResult } from "./data/db";
 import {
   mergeImport,
@@ -43,7 +46,12 @@ const IbghJudgeForm = lazy(() =>
     default: IbghJudgeForm,
   })),
 );
-type SportModule = "ths" | "ibgh";
+const IfhModule = lazy(() =>
+  import("./components/ifh/IfhModule").then(({ IfhModule }) => ({
+    default: IfhModule,
+  })),
+);
+type SportModule = "ths" | "ibgh" | "ifh";
 type Tab = "dashboard" | "judge" | "results" | "new" | "stats";
 const tabTitles: Record<Tab, string> = {
   dashboard: "Dashboard",
@@ -100,6 +108,9 @@ export default function App() {
   const results = useLiveQuery(() => db.results.toArray(), []) ?? [];
   const [sportModule, setSportModule] = useState<SportModule | null>(null);
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [ifhView, setIfhView] = useState<IfhView>("overview");
+  const [ifhPlanRevision, setIfhPlanRevision] = useState(0);
+  const [ifhDirty, setIfhDirty] = useState(false);
   const [editing, setEditing] = useState<CompetitionResult | null>(null);
   const open = (r?: CompetitionResult) => {
     setEditing(structuredClone(r ?? newForm()));
@@ -111,11 +122,30 @@ export default function App() {
   };
   const openModule = (nextModule: SportModule) => {
     setSportModule(nextModule);
+    if (nextModule === "ifh") setIfhView("overview");
     navigate("dashboard");
   };
   const goHome = () => {
+    if (
+      sportModule === "ifh" &&
+      ifhDirty &&
+      !confirm("Ungespeicherte IFH-Änderungen verwerfen?")
+    )
+      return;
+    setIfhDirty(false);
     setSportModule(null);
     navigate("dashboard");
+  };
+  const navigateIfh = (next: IfhView, newPlan = false) => {
+    if (
+      ifhView === "plan" &&
+      ifhDirty &&
+      !confirm("Ungespeicherte IFH-Änderungen verwerfen?")
+    )
+      return;
+    setIfhDirty(false);
+    if (newPlan) setIfhPlanRevision((current) => current + 1);
+    setIfhView(next);
   };
   return (
     <div className={`min-h-dvh ${sportModule ? "pb-28" : "pb-8"}`}>
@@ -124,7 +154,17 @@ export default function App() {
           <span className="brand">#Dogsports</span>
           <span className="crumb">
             {sportModule
-              ? `Modul ${sportModule.toUpperCase()} · ${tabTitles[tab]}`
+              ? `Modul ${sportModule.toUpperCase()} · ${
+                  sportModule === "ifh"
+                    ? {
+                        overview: "Übersicht",
+                        plan: "Training planen",
+                        sessions: "Trainingseinheiten",
+                        progress: "Fortschritt",
+                        rules: "Regelwerk",
+                      }[ifhView]
+                    : tabTitles[tab]
+                }`
               : "Startseite · Modulauswahl"}
           </span>
         </button>
@@ -174,9 +214,27 @@ export default function App() {
         {sportModule === "ibgh" && tab === "stats" ? (
           <ModulePlaceholder module="IBGH" title="Statistik" />
         ) : null}
+        {sportModule === "ifh" ? (
+          <Suspense fallback={<Hint text="IFH-Modul wird geladen …" />}>
+            <IfhModule
+              key={`ifh-${ifhPlanRevision}`}
+              view={ifhView}
+              dogs={[
+                ...new Set(
+                  results.map((result) => result.dog.trim()).filter(Boolean),
+                ),
+              ].sort((a, b) => a.localeCompare(b, "de"))}
+              onNavigate={setIfhView}
+              onDirtyChange={setIfhDirty}
+            />
+          </Suspense>
+        ) : null}
       </main>
-      {sportModule ? (
-        <nav className="bottom-nav" aria-label={`Navigation ${sportModule.toUpperCase()}`}>
+      {sportModule && sportModule !== "ifh" ? (
+        <nav
+          className="bottom-nav"
+          aria-label={`Navigation ${sportModule.toUpperCase()}`}
+        >
           <Nav
             active={tab === "dashboard"}
             icon={<Home />}
@@ -199,15 +257,47 @@ export default function App() {
             active={tab === "new"}
             icon={<Plus />}
             label="Neuer Eintrag"
-            onClick={() =>
-              sportModule === "ths" ? open() : navigate("new")
-            }
+            onClick={() => (sportModule === "ths" ? open() : navigate("new"))}
           />
           <Nav
             active={tab === "stats"}
             icon={<BarChart3 />}
             label="Statistik"
             onClick={() => navigate("stats")}
+          />
+        </nav>
+      ) : null}
+      {sportModule === "ifh" ? (
+        <nav className="bottom-nav" aria-label="Navigation IFH">
+          <Nav
+            active={ifhView === "overview"}
+            icon={<Home />}
+            label="Übersicht"
+            onClick={() => navigateIfh("overview")}
+          />
+          <Nav
+            active={ifhView === "plan"}
+            icon={<Plus />}
+            label="Planen"
+            onClick={() => navigateIfh("plan", true)}
+          />
+          <Nav
+            active={ifhView === "sessions"}
+            icon={<ClipboardList />}
+            label="Einheiten"
+            onClick={() => navigateIfh("sessions")}
+          />
+          <Nav
+            active={ifhView === "progress"}
+            icon={<BarChart3 />}
+            label="Fortschritt"
+            onClick={() => navigateIfh("progress")}
+          />
+          <Nav
+            active={ifhView === "rules"}
+            icon={<BookOpen />}
+            label="Regelwerk"
+            onClick={() => navigateIfh("rules")}
           />
         </nav>
       ) : null}
@@ -231,7 +321,9 @@ function StartPage({
       </section>
       <div>
         <p className="eyebrow text-teal">SPORTBEREICH AUSWÄHLEN</p>
-        <h1 className="text-2xl font-black">Welches Modul möchtest du öffnen?</h1>
+        <h1 className="text-2xl font-black">
+          Welches Modul möchtest du öffnen?
+        </h1>
         <p className="mt-2 text-sm text-muted">
           Alle Funktionen und Daten bleiben eindeutig ihrem Sportbereich
           zugeordnet.
@@ -251,6 +343,13 @@ function StartPage({
           details="Leistungsrichter aktiv · weitere Bereiche vorbereitet"
           icon={<Medal aria-hidden="true" />}
           onClick={() => openModule("ibgh")}
+        />
+        <ModuleChoice
+          title="IFH"
+          description="Fährtentraining planen, dokumentieren, auswerten und simulieren."
+          details="Planung · Einheiten · Fortschritt · Regelwerk"
+          icon={<MapPinned aria-hidden="true" />}
+          onClick={() => openModule("ifh")}
         />
       </div>
     </>
@@ -759,9 +858,7 @@ function Editor({
             placeholder="0,0"
             max={60}
             maxFractionDigits={1}
-            onValueChange={(value) =>
-              setForm({ ...form, obedience: value })
-            }
+            onValueChange={(value) => setForm({ ...form, obedience: value })}
           />
         </Field>
         {(

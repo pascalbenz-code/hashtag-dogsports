@@ -8,6 +8,7 @@ export interface DecimalDraft {
 interface DecimalConstraints {
   max?: number;
   maxFractionDigits?: number;
+  allowNegative?: boolean;
 }
 
 export function parseGermanDecimalDraft(
@@ -15,7 +16,10 @@ export function parseGermanDecimalDraft(
   constraints: DecimalConstraints = {},
 ): DecimalDraft {
   const normalized = input.replace(".", ",");
-  if (!/^\d*(?:,\d*)?$/.test(normalized)) {
+  const pattern = constraints.allowNegative
+    ? /^-?\d*(?:,\d*)?$/
+    : /^\d*(?:,\d*)?$/;
+  if (!pattern.test(normalized)) {
     return { valid: false, normalized, value: null, committable: false };
   }
   const fraction = normalized.split(",")[1];
@@ -29,7 +33,7 @@ export function parseGermanDecimalDraft(
   if (normalized === "") {
     return { valid: true, normalized, value: null, committable: true };
   }
-  if (normalized.endsWith(",")) {
+  if (normalized === "-" || normalized.endsWith(",")) {
     return { valid: true, normalized, value: null, committable: false };
   }
   const value = Number(normalized.replace(",", "."));

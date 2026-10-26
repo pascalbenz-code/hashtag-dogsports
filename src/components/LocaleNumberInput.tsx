@@ -8,6 +8,7 @@ export function LocaleNumberInput({
   placeholder,
   max,
   maxFractionDigits,
+  allowNegative,
   ariaLabel,
 }: {
   id?: string;
@@ -16,6 +17,7 @@ export function LocaleNumberInput({
   placeholder?: string;
   max?: number;
   maxFractionDigits?: number;
+  allowNegative?: boolean;
   ariaLabel?: string;
 }) {
   const [rawValue, setRawValue] = useState(
@@ -36,6 +38,7 @@ export function LocaleNumberInput({
         const parsed = parseGermanDecimalDraft(event.target.value, {
           max,
           maxFractionDigits,
+          allowNegative,
         });
         if (!parsed.valid) return;
         setRawValue(parsed.normalized);
