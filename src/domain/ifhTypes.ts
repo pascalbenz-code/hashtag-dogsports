@@ -9,6 +9,38 @@ export type IfhOutcomeStatus =
   | "incomplete";
 export type GoalResult = "achieved" | "partial" | "not-achieved" | "unrated";
 export type Assessment5 = 1 | 2 | 3 | 4 | 5 | null;
+export type IfhRating =
+  | "excellent"
+  | "very-good"
+  | "good"
+  | "satisfactory"
+  | "insufficient"
+  | "unrated";
+export type IfhLngLat = [longitude: number, latitude: number];
+
+export interface IfhMapGeneratorSettings {
+  desiredSteps: number;
+  legCount: number;
+  articleCount: number;
+  acuteAngleCount: number;
+  edgeClearanceMeters: number;
+  seed: number;
+}
+
+export interface IfhMapPlan {
+  coordinateSystem: "WGS84";
+  center: IfhLngLat | null;
+  zoom: number;
+  mapStyle: "streets" | "satellite";
+  boundary: IfhLngLat[] | null;
+  generatedRoute: IfhLngLat[] | null;
+  editedRoute: IfhLngLat[] | null;
+  routeSource: "generated" | "manual" | null;
+  generatorSettings: IfhMapGeneratorSettings;
+  generationWarnings: string[];
+  generatorVersion: "IFH-GEO-1";
+  updatedAt: string | null;
+}
 
 export type TrainingFocus =
   | "Ansatz"
@@ -38,6 +70,7 @@ export interface IfhArticleEvaluation {
   restart: "direct" | "hesitant" | "extra-command" | "no-restart" | "unrated";
   mediaReference: string;
   note: string;
+  rating?: IfhRating;
   /** Nur für den PO-Sonderfall: auch durch den Fährtenleger nicht auffindbar. */
   notFoundByTrackLayer?: boolean | null;
 }
@@ -70,6 +103,7 @@ export interface IfhAngle {
     result: "safe" | "controlled" | "circled" | "lost" | "helped" | "unrated";
     intensityAfter: "steady" | "reduced" | "unrated";
     note: string;
+    rating?: IfhRating;
   };
 }
 
@@ -89,6 +123,7 @@ export interface IfhCrossTrack {
       | "helped"
       | "unrated";
     note: string;
+    rating?: IfhRating;
   };
 }
 
@@ -112,6 +147,16 @@ export interface IfhLeg {
   semicircleRadiusMeters: number | null;
   semicircleDirection: "left" | "right" | null;
   notes: string;
+  evaluation?: {
+    rating: IfhRating;
+    intensity: Assessment5;
+    concentration: Assessment5;
+    independence: Assessment5;
+    deepNose: Assessment5;
+    consistency: Assessment5;
+    help: string;
+    note: string;
+  };
 }
 
 export interface IfhTrack {
@@ -231,6 +276,7 @@ export interface IfhSession {
   manualExamScore: number | null;
   manualAssessmentComplete: boolean;
   rulebookVersion: "FCI-PO-2025";
+  mapPlan?: IfhMapPlan;
   createdAt: string;
   updatedAt: string;
 }

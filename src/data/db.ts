@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from "dexie";
+import { emptyMapPlan } from "../domain/ifh";
 import type { IfhSession } from "../domain/ifhTypes";
 import type { CompetitionResult } from "../domain/types";
 
@@ -16,6 +17,20 @@ export class THSDatabase extends Dexie {
       ifhSessions:
         "id,dog,date,status,mode,targetLevel,trackOwnership,createdAt,updatedAt,*focuses",
     });
+    this.version(3)
+      .stores({
+        results: "id,date,className,createdAt,updatedAt",
+        ifhSessions:
+          "id,dog,date,status,mode,targetLevel,trackOwnership,createdAt,updatedAt,*focuses",
+      })
+      .upgrade((transaction) =>
+        transaction
+          .table<IfhSession, string>("ifhSessions")
+          .toCollection()
+          .modify((session) => {
+            session.mapPlan ??= emptyMapPlan();
+          }),
+      );
   }
 }
 

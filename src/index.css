@@ -987,6 +987,76 @@ h3 {
   box-shadow: 0 5px 25px #11121222;
   backdrop-filter: blur(12px);
 }
+.ifh-save-bar.is-static {
+  position: static;
+}
+.ifh-map-card {
+  overflow: hidden;
+}
+.ifh-map-toolbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+.ifh-map-toolbar .btn {
+  min-height: 46px;
+  padding-inline: 0.65rem;
+}
+.ifh-map-style {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid #a2c0ce;
+  border-radius: 10px;
+}
+.ifh-map-style button {
+  min-height: 40px;
+  background: #fff;
+  color: #374151;
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+.ifh-map-style button.active {
+  background: #143648;
+  color: #fff;
+}
+.ifh-map {
+  position: relative;
+  width: 100%;
+  height: min(62vh, 520px);
+  min-height: 360px;
+  overflow: hidden;
+  border: 1px solid #a2c0ce;
+  border-radius: 14px;
+  background: #dce9ef;
+  touch-action: none;
+}
+.ifh-map .maplibregl-ctrl-attrib {
+  font-size: 9px;
+}
+.ifh-map-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+.ifh-map-facts div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+  border-radius: 10px;
+  background: #edf9fe;
+  padding: 0.65rem;
+}
+.ifh-map-facts span {
+  color: #55585a;
+  font-size: 0.62rem;
+}
+.ifh-map-facts strong {
+  overflow: hidden;
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+}
 
 table {
   width: 100%;
@@ -1052,6 +1122,12 @@ tbody tr:hover {
   }
   .ifh-save-bar .btn {
     padding-inline: 0.65rem;
+  }
+  .ifh-map-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ifh-map {
+    min-height: 330px;
   }
 }
 
@@ -1182,5 +1258,26 @@ tbody tr:hover {
     border-color: #425b67;
     background: #23282b;
     color: #f5f7f8;
+  }
+  .ifh-map-style {
+    border-color: #425b67;
+  }
+  .ifh-map-style button {
+    background: #23282b;
+    color: #d6e0e4;
+  }
+  .ifh-map-style button.active {
+    background: #143648;
+    color: #59d3f9;
+  }
+  .ifh-map {
+    border-color: #425b67;
+    background: #10232c;
+  }
+  .ifh-map-facts div {
+    background: #143648;
+  }
+  .ifh-map-facts span {
+    color: #a2c0ce;
   }
 }

@@ -79,6 +79,33 @@ describe("Dexie persistence", () => {
     const session = createIfhSession();
     await migrated.ifhSessions.put(session);
     expect(await migrated.ifhSessions.get(session.id)).toEqual(session);
+    expect((await migrated.ifhSessions.get(session.id))?.mapPlan?.coordinateSystem).toBe(
+      "WGS84",
+    );
+    migrated.close();
+  });
+
+  it("adds an empty map plan to existing version-2 IFH sessions", async () => {
+    const name = `test-${crypto.randomUUID()}`;
+    names.push(name);
+    const legacy = new Dexie(name);
+    legacy.version(1).stores({
+      results: "id,date,className,createdAt,updatedAt",
+    });
+    legacy.version(2).stores({
+      results: "id,date,className,createdAt,updatedAt",
+      ifhSessions:
+        "id,dog,date,status,mode,targetLevel,trackOwnership,createdAt,updatedAt,*focuses",
+    });
+    const session = createIfhSession();
+    delete session.mapPlan;
+    await legacy.table("ifhSessions").put(session);
+    legacy.close();
+
+    const migrated = new THSDatabase(name);
+    const restored = await migrated.ifhSessions.get(session.id);
+    expect(restored?.mapPlan?.coordinateSystem).toBe("WGS84");
+    expect(restored?.mapPlan?.boundary).toBeNull();
     migrated.close();
   });
 });

@@ -4,6 +4,7 @@ import type {
   IfhHandlerAssessment,
   IfhArticle,
   IfhLevel,
+  IfhMapPlan,
   IfhRuleEvent,
   IfhSearchQuality,
   IfhSession,
@@ -56,6 +57,31 @@ export const emptyTiming = (): IfhTiming => ({
   pauses: [],
   agingReference: "laying-ended-to-start",
 });
+
+export const emptyMapPlan = (): IfhMapPlan => ({
+  coordinateSystem: "WGS84",
+  center: null,
+  zoom: 16,
+  mapStyle: "streets",
+  boundary: null,
+  generatedRoute: null,
+  editedRoute: null,
+  routeSource: null,
+  generatorSettings: {
+    desiredSteps: 800,
+    legCount: 5,
+    articleCount: 3,
+    acuteAngleCount: 0,
+    edgeClearanceMeters: 8,
+    seed: 1,
+  },
+  generationWarnings: [],
+  generatorVersion: "IFH-GEO-1",
+  updatedAt: null,
+});
+
+export const getMapPlan = (session: Pick<IfhSession, "mapPlan">) =>
+  session.mapPlan ?? emptyMapPlan();
 
 const emptyQuality = (): IfhSearchQuality => ({
   intensity: null,
@@ -113,6 +139,7 @@ export function createIfhSession(): IfhSession {
     manualExamScore: null,
     manualAssessmentComplete: false,
     rulebookVersion: "FCI-PO-2025",
+    mapPlan: emptyMapPlan(),
     createdAt: now,
     updatedAt: now,
   };
@@ -286,6 +313,18 @@ export function duplicateIfhSession(source: IfhSession): IfhSession {
     focuses: [...source.focuses],
     goal: source.goal,
     plannedTrack: structuredClone(source.plannedTrack),
+    mapPlan: source.mapPlan
+      ? {
+          ...structuredClone(source.mapPlan),
+          generatedRoute: source.mapPlan.generatedRoute
+            ? structuredClone(source.mapPlan.generatedRoute)
+            : null,
+          editedRoute: source.mapPlan.editedRoute
+            ? structuredClone(source.mapPlan.editedRoute)
+            : null,
+          updatedAt: null,
+        }
+      : emptyMapPlan(),
   };
 }
 

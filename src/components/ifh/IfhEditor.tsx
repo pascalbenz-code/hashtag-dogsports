@@ -15,6 +15,7 @@ import {
   calculateFixedDeductions,
   calculateTiming,
   getNotFoundArticleTreatment,
+  getMapPlan,
   trackSummary,
 } from "../../domain/ifh";
 import { validateIfhStructure } from "../../domain/ifhRules";
@@ -24,6 +25,8 @@ import type {
   IfhArticle,
   IfhCrossTrack,
   IfhLevel,
+  IfhLeg,
+  IfhRating,
   IfhRuleEventCode,
   IfhSession,
   TrainingFocus,
@@ -132,6 +135,53 @@ function QualitySelect({
     </Field>
   );
 }
+
+const RATING_LABELS: Record<IfhRating, string> = {
+  excellent: "Vorzüglich",
+  "very-good": "Sehr gut",
+  good: "Gut",
+  satisfactory: "Befriedigend",
+  insufficient: "Mangelhaft",
+  unrated: "Nicht bewertet",
+};
+
+function RatingSelect({
+  label = "Zusammenfassende Wertung",
+  value,
+  onChange,
+}: {
+  label?: string;
+  value: IfhRating | undefined;
+  onChange: (value: IfhRating) => void;
+}) {
+  return (
+    <Field label={label}>
+      <select
+        value={value ?? "unrated"}
+        onChange={(event) => onChange(event.target.value as IfhRating)}
+      >
+        {(Object.entries(RATING_LABELS) as Array<[IfhRating, string]>).map(
+          ([rating, text]) => (
+            <option value={rating} key={rating}>
+              {text}
+            </option>
+          ),
+        )}
+      </select>
+    </Field>
+  );
+}
+
+const emptyLegEvaluation = (): NonNullable<IfhLeg["evaluation"]> => ({
+  rating: "unrated",
+  intensity: null,
+  concentration: null,
+  independence: null,
+  deepNose: null,
+  consistency: null,
+  help: "",
+  note: "",
+});
 
 function TimingEditor({
   session,
@@ -335,6 +385,27 @@ function EvaluationEditor({
         ),
       },
     });
+  const updateLegEvaluation = (
+    id: string,
+    patch: Partial<NonNullable<IfhLeg["evaluation"]>>,
+  ) =>
+    update({
+      actualTrack: {
+        ...actual,
+        legs: actual.legs.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                evaluation: {
+                  ...emptyLegEvaluation(),
+                  ...item.evaluation,
+                  ...patch,
+                },
+              }
+            : item,
+        ),
+      },
+    });
   const updateCross = (
     id: string,
     patch: Partial<IfhCrossTrack["evaluation"]>,
@@ -356,6 +427,87 @@ function EvaluationEditor({
   ).length;
   return (
     <div className="space-y-4">
+      <Card>
+        <h3>Schenkel einzeln bewerten</h3>
+        <p className="text-xs text-muted">
+          Diese Trainingswertung ist keine offizielle FCI-Punkteskala.
+        </p>
+        {actual.legs.length ? (
+          actual.legs.map((leg) => {
+            const evaluation = { ...emptyLegEvaluation(), ...leg.evaluation };
+            return (
+              <details className="ifh-details" key={leg.id}>
+                <summary>
+                  Schenkel {leg.order} · {leg.lengthSteps ?? "–"} Schritte
+                </summary>
+                <div className="grid grid-cols-2 gap-2">
+                  <RatingSelect
+                    value={evaluation.rating}
+                    onChange={(rating) =>
+                      updateLegEvaluation(leg.id, { rating })
+                    }
+                  />
+                  <QualitySelect
+                    label="Suchintensität"
+                    value={evaluation.intensity}
+                    onChange={(intensity) =>
+                      updateLegEvaluation(leg.id, { intensity })
+                    }
+                  />
+                  <QualitySelect
+                    label="Konzentration"
+                    value={evaluation.concentration}
+                    onChange={(concentration) =>
+                      updateLegEvaluation(leg.id, { concentration })
+                    }
+                  />
+                  <QualitySelect
+                    label="Selbstständigkeit"
+                    value={evaluation.independence}
+                    onChange={(independence) =>
+                      updateLegEvaluation(leg.id, { independence })
+                    }
+                  />
+                  <QualitySelect
+                    label="Tiefe Nase"
+                    value={evaluation.deepNose}
+                    onChange={(deepNose) =>
+                      updateLegEvaluation(leg.id, { deepNose })
+                    }
+                  />
+                  <QualitySelect
+                    label="Gleichmäßigkeit"
+                    value={evaluation.consistency}
+                    onChange={(consistency) =>
+                      updateLegEvaluation(leg.id, { consistency })
+                    }
+                  />
+                </div>
+                <Field label="Hilfen">
+                  <textarea
+                    value={evaluation.help}
+                    onChange={(event) =>
+                      updateLegEvaluation(leg.id, { help: event.target.value })
+                    }
+                  />
+                </Field>
+                <Field label="Beobachtungsnotiz">
+                  <textarea
+                    value={evaluation.note}
+                    onChange={(event) =>
+                      updateLegEvaluation(leg.id, { note: event.target.value })
+                    }
+                  />
+                </Field>
+              </details>
+            );
+          })
+        ) : (
+          <p className="ifh-empty compact">
+            Noch keine tatsächlichen Schenkel erfasst.
+          </p>
+        )}
+      </Card>
       <Card>
         <h3>Gegenstände einzeln bewerten</h3>
         {actual.articles.length ? (
@@ -405,6 +557,12 @@ function EvaluationEditor({
                     <option value="retrieve">Apportieren</option>
                   </select>
                 </Field>
+                <RatingSelect
+                  value={article.evaluation.rating}
+                  onChange={(rating) =>
+                    updateArticle(article.id, { rating })
+                  }
+                />
                 {article.evaluation.result === "not-found" ? (
                   <Field label="Auch vom Fährtenleger nicht gefunden">
                     <select
@@ -597,6 +755,23 @@ function EvaluationEditor({
                 <option value="steady">Gleichbleibend</option>
                 <option value="reduced">Abgefallen</option>
               </select>
+              <select
+                aria-label={`Wertung Winkel ${index + 1}`}
+                value={angle.evaluation.rating ?? "unrated"}
+                onChange={(event) =>
+                  updateAngle(angle.id, {
+                    rating: event.target.value as IfhRating,
+                  })
+                }
+              >
+                {(Object.entries(RATING_LABELS) as Array<[IfhRating, string]>).map(
+                  ([rating, text]) => (
+                    <option value={rating} key={rating}>
+                      {text}
+                    </option>
+                  ),
+                )}
+              </select>
             </div>
           ))
         ) : (
@@ -628,6 +803,23 @@ function EvaluationEditor({
                 <option value="switched">Gewechselt</option>
                 <option value="followed">Verfolgt</option>
                 <option value="helped">Hilfe benötigt</option>
+              </select>
+              <select
+                aria-label={`Wertung Verleitung ${index + 1}`}
+                value={crossing.evaluation.rating ?? "unrated"}
+                onChange={(event) =>
+                  updateCross(crossing.id, {
+                    rating: event.target.value as IfhRating,
+                  })
+                }
+              >
+                {(Object.entries(RATING_LABELS) as Array<[IfhRating, string]>).map(
+                  ([rating, text]) => (
+                    <option value={rating} key={rating}>
+                      {text}
+                    </option>
+                  ),
+                )}
               </select>
             </div>
           ))
@@ -737,6 +929,14 @@ export function IfhEditor({
             <button
               type="button"
               role="tab"
+              aria-label={
+                {
+                  base: "Grunddaten",
+                  plan: "Planen",
+                  actual: "Legen und Suchen",
+                  evaluate: "Auswerten",
+                }[item]
+              }
               aria-selected={step === item}
               className={step === item ? "active" : ""}
               onClick={() => setStep(item)}
@@ -912,6 +1112,10 @@ export function IfhEditor({
             title="Geplante Fährte"
             track={session.plannedTrack}
             onChange={(plannedTrack) => update({ plannedTrack })}
+            mapPlan={getMapPlan(session)}
+            targetLevel={session.targetLevel}
+            trackOwnership={session.trackOwnership}
+            onMapPlanChange={(mapPlan) => update({ mapPlan })}
           />
         </Card>
       ) : null}
@@ -1367,8 +1571,8 @@ export function IfhEditor({
             <Card>
               <h3>Aufbauprüfung {session.targetLevel}</h3>
               <p className="text-xs text-muted">
-                Hinweise verhindern das Speichern nicht. Regeln sind bis zur
-                Prüfung der Original-PDF fachlich vorläufig.
+                Hinweise verhindern das Speichern nicht. Die Regeln wurden mit
+                der FCI-Prüfungsordnung 2025, Seiten 67–76, abgeglichen.
               </p>
               <div className="space-y-2">
                 {checks.map((item) => (
@@ -1462,7 +1666,7 @@ export function IfhEditor({
           </Card>
         </>
       ) : null}
-      <div className="ifh-save-bar">
+      <div className={`ifh-save-bar ${step === "plan" ? "is-static" : ""}`}>
         <Button
           type="button"
           variant="ghost"

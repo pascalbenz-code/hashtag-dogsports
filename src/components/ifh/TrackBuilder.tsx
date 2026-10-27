@@ -1,15 +1,24 @@
+import { lazy, Suspense } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import type {
   IfhAngle,
   IfhArticle,
   IfhCrossTrack,
+  IfhLevel,
   IfhLeg,
+  IfhMapPlan,
   IfhTrack,
   IfhTrackEvent,
 } from "../../domain/ifhTypes";
 import { LocaleNumberInput } from "../LocaleNumberInput";
 import { Button } from "../ui/button";
 import { TrackPreview } from "./TrackPreview";
+
+const IfhMapPlanner = lazy(() =>
+  import("./IfhMapPlanner").then((module) => ({
+    default: module.IfhMapPlanner,
+  })),
+);
 
 const uid = () => crypto.randomUUID();
 const articleEvaluation = (): IfhArticle["evaluation"] => ({
@@ -56,10 +65,18 @@ export function TrackBuilder({
   title,
   track,
   onChange,
+  mapPlan,
+  targetLevel,
+  trackOwnership,
+  onMapPlanChange,
 }: {
   title: string;
   track: IfhTrack;
   onChange: (track: IfhTrack) => void;
+  mapPlan?: IfhMapPlan;
+  targetLevel?: IfhLevel | null;
+  trackOwnership?: "own" | "foreign" | "";
+  onMapPlanChange?: (plan: IfhMapPlan) => void;
 }) {
   const updateLeg = (id: string, patch: Partial<IfhLeg>) =>
     onChange({
@@ -182,6 +199,20 @@ export function TrackBuilder({
         Meter und Schritte bleiben getrennte Messwerte. Eine Umrechnung wird nur
         als Schätzung mit der oben hinterlegten Schrittlänge angezeigt.
       </p>
+      {mapPlan && onMapPlanChange ? (
+        <Suspense
+          fallback={<div className="ifh-empty compact">Karte wird geladen …</div>}
+        >
+          <IfhMapPlanner
+            plan={mapPlan}
+            track={track}
+            targetLevel={targetLevel ?? null}
+            trackOwnership={trackOwnership ?? ""}
+            onPlanChange={onMapPlanChange}
+            onTrackChange={onChange}
+          />
+        </Suspense>
+      ) : null}
 
       <details open className="ifh-details">
         <summary>Schenkel ({track.legs.length})</summary>
