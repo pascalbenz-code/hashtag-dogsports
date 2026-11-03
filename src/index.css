@@ -556,9 +556,13 @@ h3 {
   font-weight: 800;
   text-transform: uppercase;
 }
+.judge-rule-control {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
 .judge-fault-input {
   position: relative;
-  margin-top: 0.75rem;
 }
 .judge-fault-input input {
   width: 100%;
@@ -587,6 +591,35 @@ h3 {
   font-weight: 800;
   transform: translateY(-50%);
   pointer-events: none;
+}
+.judge-rule-toggle {
+  display: grid;
+  min-height: 42px;
+  cursor: pointer;
+  place-items: center;
+  border: 1px solid #a2c0ce;
+  border-radius: 11px;
+  background: #fbfcfd;
+  color: #55585a;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: center;
+}
+.judge-rule-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+.judge-rule-toggle:has(input:focus-visible) {
+  border-color: #31abe4;
+  box-shadow: 0 0 0 3px #31abe426;
+}
+.judge-rule-toggle.active {
+  border-color: #1776a7;
+  background: #d7f2fc;
+  color: #11698f;
 }
 .judge-exercise-footer {
   display: flex;
@@ -1229,6 +1262,16 @@ tbody tr:hover {
   }
   .judge-info-meta span {
     background: #10232c;
+    color: #59d3f9;
+  }
+  .judge-rule-toggle {
+    border-color: #425b67;
+    background: #23282b;
+    color: #d6e0e4;
+  }
+  .judge-rule-toggle.active {
+    border-color: #31abe4;
+    background: #143648;
     color: #59d3f9;
   }
   .ifh-step-nav button,

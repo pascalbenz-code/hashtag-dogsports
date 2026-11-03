@@ -15,7 +15,7 @@ export function JudgeForm() {
       levels={JUDGING_LEVELS}
       definition={JUDGING_DEFINITIONS[level]}
       onLevelChange={setLevel}
-      note="Die Detailbewertungspunkte und ihre Höchstfehler werden im nächsten Ausbauschritt fachlich vervollständigt."
+      note="Qualitative Fehlerpunkte werden manuell erfasst. Feste Abzüge, Nullbewertungen und mangelhafte Teilbewertungen werden über die gekennzeichneten Regeln aktiviert."
     />
   );
 }

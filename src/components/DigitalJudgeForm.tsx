@@ -4,6 +4,7 @@ import {
   calculateJudgingScore,
   type JudgingFaults,
   type JudgingLevelDefinition,
+  type JudgingTriggers,
   type PerformanceRating,
 } from "../domain/judging";
 import { LocaleNumberInput } from "./LocaleNumberInput";
@@ -84,14 +85,16 @@ export function DigitalJudgeForm<TLevel extends string>({
   note: string;
 }) {
   const [faults, setFaults] = useState<JudgingFaults>({});
+  const [triggers, setTriggers] = useState<JudgingTriggers>({});
   const [revision, setRevision] = useState(0);
-  const score = calculateJudgingScore(definition, faults);
+  const score = calculateJudgingScore(definition, faults, triggers);
   const exerciseScores = new Map(
     score.exercises.map((exercise) => [exercise.exerciseId, exercise]),
   );
 
   const reset = () => {
     setFaults({});
+    setTriggers({});
     setRevision((current) => current + 1);
   };
 
@@ -154,10 +157,17 @@ export function DigitalJudgeForm<TLevel extends string>({
             <div className="judge-criteria">
               {exercise.criteria.map((criterion) => {
                 const inputId = `fault-${criterion.id}`;
+                const triggerId = `rule-${criterion.id}`;
+                const inputKind = criterion.inputKind ?? "manual";
+                const showFaultInput =
+                  inputKind === "manual" || inputKind === "rating-cap";
+                const showTrigger = inputKind !== "manual";
                 return (
                   <div className="judge-criterion" key={criterion.id}>
                     <div className="judge-criterion-copy">
-                      <label htmlFor={inputId}>{criterion.label}</label>
+                      <label htmlFor={showFaultInput ? inputId : triggerId}>
+                        {criterion.label}
+                      </label>
                       {criterion.element || criterion.rule ? (
                         <small>
                           {[criterion.element, criterion.rule]
@@ -170,23 +180,52 @@ export function DigitalJudgeForm<TLevel extends string>({
                         exerciseLabel={exercise.label}
                       />
                     </div>
-                    <div className="judge-fault-input">
-                      <LocaleNumberInput
-                        key={`${revision}-${level}-${criterion.id}`}
-                        id={inputId}
-                        value={faults[criterion.id] ?? null}
-                        max={criterion.maxFaults ?? exercise.maxPoints}
-                        maxFractionDigits={1}
-                        placeholder="0,0"
-                        ariaLabel={`Fehlerpunkte ${exercise.label} ${criterion.label}`}
-                        onValueChange={(value) =>
-                          setFaults((current) => ({
-                            ...current,
-                            [criterion.id]: value,
-                          }))
-                        }
-                      />
-                      <span>FP</span>
+                    <div className="judge-rule-control">
+                      {showFaultInput ? (
+                        <div className="judge-fault-input">
+                          <LocaleNumberInput
+                            key={`${revision}-${level}-${criterion.id}`}
+                            id={inputId}
+                            value={faults[criterion.id] ?? null}
+                            max={criterion.maxFaults ?? exercise.maxPoints}
+                            maxFractionDigits={1}
+                            placeholder="0,0"
+                            ariaLabel={`Fehlerpunkte ${exercise.label} ${criterion.label}`}
+                            onValueChange={(value) =>
+                              setFaults((current) => ({
+                                ...current,
+                                [criterion.id]: value,
+                              }))
+                            }
+                          />
+                          <span>FP</span>
+                        </div>
+                      ) : null}
+                      {showTrigger ? (
+                        <label
+                          className={`judge-rule-toggle ${triggers[criterion.id] ? "active" : ""}`}
+                          htmlFor={triggerId}
+                        >
+                          <input
+                            id={triggerId}
+                            type="checkbox"
+                            checked={triggers[criterion.id] ?? false}
+                            onChange={(event) =>
+                              setTriggers((current) => ({
+                                ...current,
+                                [criterion.id]: event.target.checked,
+                              }))
+                            }
+                          />
+                          <span>
+                            {inputKind === "fixed"
+                              ? `−${points(criterion.fixedDeduction ?? 0)}`
+                              : inputKind === "exercise-zero"
+                                ? "0 Punkte"
+                                : "Mangelhaft"}
+                          </span>
+                        </label>
+                      ) : null}
                     </div>
                   </div>
                 );

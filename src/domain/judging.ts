@@ -104,6 +104,9 @@ export interface JudgingCriterion {
   element?: "Primär" | "Sekundär" | "Teilbudget" | "Sonderregel";
   maxFaults?: number;
   provisional?: boolean;
+  inputKind?: "manual" | "fixed" | "exercise-zero" | "rating-cap";
+  fixedDeduction?: number;
+  ratingCap?: PerformanceRating;
 }
 
 export interface JudgingExercise {
@@ -120,6 +123,7 @@ export interface JudgingLevelDefinition<TLevel extends string = string> {
 }
 
 export type JudgingFaults = Record<string, number | null>;
+export type JudgingTriggers = Record<string, boolean>;
 
 export const createProvisionalCriteria = (
   exerciseId: string,
@@ -136,13 +140,158 @@ export const createProvisionalCriteria = (
   },
 ];
 
-const heelworkCriteria = (exerciseId: string): JudgingCriterion[] =>
-  ["Entwicklung", "Kehrtwendung", "Winkel", "Grundstellung"].map(
-    (label) => ({
-      id: `${exerciseId}-${label.toLocaleLowerCase("de-DE")}`,
-      label,
-    }),
-  );
+const qualitative = (
+  exerciseId: string,
+  id: string,
+  label: string,
+  description: string,
+): JudgingCriterion => ({
+  id: `${exerciseId}-${id}`,
+  label,
+  description,
+  rule: "Qualitativ",
+  inputKind: "manual",
+});
+
+const fixed = (
+  exerciseId: string,
+  id: string,
+  label: string,
+  description: string,
+  deduction: number,
+): JudgingCriterion => ({
+  id: `${exerciseId}-${id}`,
+  label,
+  description,
+  element: "Sonderregel",
+  rule: `fest −${deduction.toLocaleString("de-DE")} P.`,
+  inputKind: "fixed",
+  fixedDeduction: deduction,
+  maxFaults: deduction,
+});
+
+const exerciseZero = (
+  exerciseId: string,
+  id: string,
+  label: string,
+  description: string,
+): JudgingCriterion => ({
+  id: `${exerciseId}-${id}`,
+  label,
+  description,
+  element: "Sonderregel",
+  rule: "Gesamtübung 0 P.",
+  inputKind: "exercise-zero",
+});
+
+const ratingCap = (
+  exerciseId: string,
+  id: string,
+  label: string,
+  description: string,
+): JudgingCriterion => ({
+  id: `${exerciseId}-${id}`,
+  label,
+  description,
+  element: "Sonderregel",
+  rule: "Teilbewertung · höchstens Mangelhaft",
+  inputKind: "rating-cap",
+  ratingCap: "Mangelhaft",
+});
+
+const positionSpecialRules = (
+  exerciseId: string,
+  position: "Sitz" | "Platz" | "Steh",
+  wrongPositions: string,
+  fixedDeduction: number,
+  before: "Rückkehrbeginn" | "Abruf",
+): JudgingCriterion[] => [
+  fixed(
+    exerciseId,
+    "falsche-position",
+    `Hund ${wrongPositions} nach ${position}-HZ`,
+    "Weitere Ausführungsfehler werden zusätzlich berücksichtigt.",
+    fixedDeduction,
+  ),
+  exerciseZero(
+    exerciseId,
+    "sofortiges-nachlaufen",
+    "Sofortiges Nachlaufen ohne Ausführung des HZ",
+    "Die Unteraufgabe wird vollständig mit 0 Punkten bewertet.",
+  ),
+  ratingCap(
+    exerciseId,
+    "position-verlassen",
+    `Korrekte Position, danach Verlassen vor ${before}`,
+    "Die Prüfungsregel nennt eine mangelhafte Teilbewertung, aber keine feste verbleibende Punktzahl. Der konkrete Abzug bleibt eine manuelle Richterbewertung.",
+  ),
+  ratingCap(
+    exerciseId,
+    "nachlaufen-ueber-zehn",
+    `Mehr als 10 Schritte Nachlaufen, danach korrektes ${position}`,
+    "Die korrekte Position wird noch vor dem Umdrehen des Hundeführers eingenommen. Es gilt eine mangelhafte Teilbewertung, kein automatischer vollständiger Punkteverlust.",
+  ),
+  exerciseZero(
+    exerciseId,
+    "abbruch-hundefuehrer",
+    "Eigenständiger Übungsabbruch durch den HF",
+    `Der Hundeführer bleibt nach dem ${position}-HZ stehen, wirkt stark ein oder geht zum Hund zurück, um die Übung abzubrechen.`,
+  ),
+];
+
+const sitCriteria = (exerciseId: string): JudgingCriterion[] => [
+  qualitative(exerciseId, "anfangsgrundstellung", "Anfangsgrundstellung", "Gerade Ausgangsposition; Angehen mit „Fuß“."),
+  qualitative(exerciseId, "entwicklung", "Entwicklung", "10–15 Schritte im Normalschritt; korrekt und aufmerksam bei Fuß."),
+  qualitative(exerciseId, "sitz-hz", "Ausführung des Sitz-HZ", "Sofort und in Laufrichtung setzen; der HF geht ohne Gangartänderung oder Körperhilfe weiter."),
+  qualitative(exerciseId, "positionshaltung", "Positionshaltung", "Ruhig, gerade und aufmerksam sitzen; der HF entfernt sich weitere mindestens 15 Schritte."),
+  qualitative(exerciseId, "abholen-endgrundstellung", "Abholen und Endgrundstellung", "Rückkehr auf Richteranweisung; der HF tritt rechts neben den Hund. Herantreten von vorne oder hinten ist erlaubt."),
+  ...positionSpecialRules(exerciseId, "Sitz", "steht oder liegt", 5, "Rückkehrbeginn"),
+];
+
+const downCriteria = (
+  exerciseId: string,
+  running: boolean,
+): JudgingCriterion[] => [
+  qualitative(exerciseId, "anfangsgrundstellung", "Anfangsgrundstellung", "Gerade Ausgangsposition."),
+  ...(running
+    ? [
+        qualitative(exerciseId, "entwicklung-normal", "Entwicklung im Normalschritt", "Zunächst 10–15 Schritte im Normalschritt gehen."),
+        qualitative(exerciseId, "entwicklung-lauf", "Entwicklung im Laufschritt", "Auf ein weiteres „Fuß“ 10–15 Schritte laufen; korrektes und aufmerksames Folgen."),
+      ]
+    : [qualitative(exerciseId, "entwicklung", "Entwicklung", "10–15 Schritte im Normalschritt; korrektes und aufmerksames Folgen.")]),
+  qualitative(exerciseId, "platz-hz", "Ausführung des Platz-HZ", running ? "Sofort aus dem Laufen und in Laufrichtung ablegen; der HF verändert den Laufschritt nicht und gibt keine Körperhilfe." : "Sofort und in Laufrichtung ablegen; der HF verändert seine Gangart nicht und gibt keine Körperhilfe."),
+  qualitative(exerciseId, "positionshaltung", "Positionshaltung", `Ruhig, gerade und aufmerksam liegen; der HF entfernt sich weitere mindestens 30 Schritte${running ? " im Laufschritt" : ""}.`),
+  qualitative(exerciseId, "herankommen", "Herankommen", "Auf Richteranweisung freudig, schnell und direkt ohne Tempoveränderung herankommen."),
+  qualitative(exerciseId, "vorsitz", "Vorsitz", "Dicht und gerade; eine Grätschstellung des HF ist fehlerhaft."),
+  qualitative(exerciseId, "endgrundstellung", "Endgrundstellung", "Auf „Fuß“ schnell und gerade links neben dem HF sitzen, Schulterblatt auf Kniehöhe."),
+  ...positionSpecialRules(exerciseId, "Platz", "sitzt oder steht", 7, "Abruf"),
+];
+
+const standCriteria = (
+  exerciseId: string,
+  running: boolean,
+): JudgingCriterion[] => [
+  qualitative(exerciseId, "anfangsgrundstellung", "Anfangsgrundstellung", "Gerade Ausgangsposition."),
+  qualitative(exerciseId, "entwicklung", "Entwicklung", running ? "Direkt aus der Grundstellung 10–15 Schritte im Laufschritt; keine vorgeschaltete Normalschrittphase." : "10–15 Schritte im Normalschritt; korrektes und aufmerksames Folgen."),
+  qualitative(exerciseId, "steh-hz", "Ausführung des Steh-HZ", `Sofort und in Laufrichtung stehen bleiben; der HF ${running ? "läuft" : "geht"} ohne Gangartänderung und Körperhilfe weiter.`),
+  qualitative(exerciseId, "positionshaltung", "Positionshaltung", `Ruhig, gerade und aufmerksam stehen; der HF entfernt sich weitere mindestens 30 Schritte${running ? " im Laufschritt" : ""}.`),
+  qualitative(exerciseId, "herankommen", "Herankommen", "Auf Richteranweisung freudig, schnell und direkt ohne Tempoveränderung herankommen."),
+  qualitative(exerciseId, "vorsitz", "Vorsitz", "Dicht und gerade; eine Grätschstellung des HF ist fehlerhaft."),
+  qualitative(exerciseId, "endgrundstellung", "Endgrundstellung", "Auf „Fuß“ schnell und gerade links neben dem HF sitzen."),
+  ...positionSpecialRules(exerciseId, "Steh", "sitzt oder liegt", 7, "Abruf"),
+];
+
+const freeHeelworkCriteria = (
+  exerciseId: string,
+  level: 1 | 2 | 3,
+): JudgingCriterion[] => [
+  qualitative(exerciseId, "anfangsgrundstellung", "Anfangsgrundstellung", "Gerade und aufmerksam links neben dem HF; der Hund arbeitet frei."),
+  qualitative(exerciseId, "position", "Position während der Arbeit", "Schulterblatt auf Kniehöhe; kein Vordrängen, Zurückbleiben, Nachhängen oder seitliches Abweichen."),
+  qualitative(exerciseId, "aufmerksamkeit", "Aufmerksamkeit und Ausdruck", "Freudige, schnelle und konzentrierte Arbeit; Unaufmerksamkeit oder Gedrücktheit sind fehlerhaft."),
+  qualitative(exerciseId, "gangarten", "Gangarten", level === 1 ? "VK-1-Schema mit Normal- und Laufschritt; kein langsamer Schritt vorgeschrieben." : "Normal-, Lauf- und langsamer Schritt mit deutlich verschiedenen Geschwindigkeiten; Wechsel vom Lauf- zum langsamen Schritt ohne Zwischenschritte."),
+  ...(level === 1 ? [] : [qualitative(exerciseId, "wendungen", "Wendungen", "Vorgegebenes Laufschema; insbesondere kein zögerndes Verharren des HF.")]),
+  qualitative(exerciseId, "endgrundstellung", level === 1 ? "Abschlussgrundstellung" : "Halte und Endgrundstellung", "Nach der abschließenden Kehrtwendung beziehungsweise beim Halt selbstständig, schnell und gerade sitzen; kein Sitz-HZ."),
+];
 
 export const JUDGING_LEVELS: JudgingLevel[] = [
   "VDH-VK1",
@@ -162,25 +311,32 @@ export const JUDGING_DEFINITIONS: Record<
         id: "vk1-leinenfuehrigkeit",
         label: "Leinenführigkeit",
         maxPoints: 15,
-        criteria: heelworkCriteria("vk1-leinenfuehrigkeit"),
+        criteria: [
+          qualitative("vk1-leinenfuehrigkeit", "anfangsgrundstellung", "Anfangsgrundstellung", "Gerade und aufmerksam links neben dem HF."),
+          qualitative("vk1-leinenfuehrigkeit", "position", "Position während des Führens", "Schulterblatt auf Kniehöhe; kein Vordrängen, Zurückbleiben, Nachhängen oder seitliches Abweichen."),
+          qualitative("vk1-leinenfuehrigkeit", "aufmerksamkeit", "Aufmerksamkeit und Ausdruck", "Aufmerksam, freudig, schnell und konzentriert; Gedrücktheit ist fehlerhaft."),
+          qualitative("vk1-leinenfuehrigkeit", "gangarten-wendungen", "Gangartwechsel und Wendungen", "Vorgegebenes Schema; Unaufmerksamkeit sowie zögerndes Verharren des HF bei Wendungen sind fehlerhaft."),
+          qualitative("vk1-leinenfuehrigkeit", "leinenfuehrung", "Leinenführung", "Leine in der linken Hand, frei durchhängend."),
+          qualitative("vk1-leinenfuehrigkeit", "halte-endgrundstellung", "Halte und Endgrundstellung", "Der Hund setzt sich selbstständig, schnell und gerade; kein Sitz-HZ oder Herantreten des HF an den Hund."),
+        ],
       },
       {
         id: "vk1-freifolge",
         label: "Freifolge",
         maxPoints: 20,
-        criteria: createProvisionalCriteria("vk1-freifolge"),
+        criteria: freeHeelworkCriteria("vk1-freifolge", 1),
       },
       {
         id: "vk1-sitz-abholen",
         label: "Sitz mit Abholen",
         maxPoints: 10,
-        criteria: createProvisionalCriteria("vk1-sitz-abholen"),
+        criteria: sitCriteria("vk1-sitz-abholen"),
       },
       {
         id: "vk1-ablegen-herankommen",
         label: "Ablegen mit Herankommen",
         maxPoints: 15,
-        criteria: createProvisionalCriteria("vk1-ablegen-herankommen"),
+        criteria: downCriteria("vk1-ablegen-herankommen", false),
       },
     ],
   },
@@ -192,25 +348,25 @@ export const JUDGING_DEFINITIONS: Record<
         id: "vk2-freifolge",
         label: "Freifolge",
         maxPoints: 20,
-        criteria: createProvisionalCriteria("vk2-freifolge"),
+        criteria: freeHeelworkCriteria("vk2-freifolge", 2),
       },
       {
         id: "vk2-sitz-abholen",
         label: "Sitz mit Abholen",
         maxPoints: 10,
-        criteria: createProvisionalCriteria("vk2-sitz-abholen"),
+        criteria: sitCriteria("vk2-sitz-abholen"),
       },
       {
         id: "vk2-ablegen-herankommen",
         label: "Ablegen mit Herankommen",
         maxPoints: 15,
-        criteria: createProvisionalCriteria("vk2-ablegen-herankommen"),
+        criteria: downCriteria("vk2-ablegen-herankommen", false),
       },
       {
         id: "vk2-steh-herankommen",
         label: "Steh mit Herankommen",
         maxPoints: 15,
-        criteria: createProvisionalCriteria("vk2-steh-herankommen"),
+        criteria: standCriteria("vk2-steh-herankommen", false),
       },
     ],
   },
@@ -222,25 +378,25 @@ export const JUDGING_DEFINITIONS: Record<
         id: "vk3-freifolge",
         label: "Freifolge",
         maxPoints: 20,
-        criteria: createProvisionalCriteria("vk3-freifolge"),
+        criteria: freeHeelworkCriteria("vk3-freifolge", 3),
       },
       {
         id: "vk3-sitz-abholen",
         label: "Sitz mit Abholen",
         maxPoints: 10,
-        criteria: createProvisionalCriteria("vk3-sitz-abholen"),
+        criteria: sitCriteria("vk3-sitz-abholen"),
       },
       {
         id: "vk3-ablegen-herankommen",
-        label: "Ablegen mit Herankommen",
+        label: "Ablegen aus dem Laufschritt mit Herankommen",
         maxPoints: 15,
-        criteria: createProvisionalCriteria("vk3-ablegen-herankommen"),
+        criteria: downCriteria("vk3-ablegen-herankommen", true),
       },
       {
         id: "vk3-steh-herankommen",
-        label: "Steh mit Herankommen",
+        label: "Steh aus dem Laufschritt mit Herankommen",
         maxPoints: 15,
-        criteria: createProvisionalCriteria("vk3-steh-herankommen"),
+        criteria: standCriteria("vk3-steh-herankommen", true),
       },
     ],
   },
@@ -264,10 +420,17 @@ export interface JudgingScore {
 export function calculateJudgingScore(
   definition: JudgingLevelDefinition,
   faults: JudgingFaults,
+  triggers: JudgingTriggers = {},
 ): JudgingScore {
   const errors: string[] = [];
   const exercises = definition.exercises.map((exercise) => {
     const enteredFaults = exercise.criteria.reduce((sum, criterion) => {
+      if (criterion.inputKind === "fixed") {
+        return sum + (triggers[criterion.id] ? criterion.fixedDeduction ?? 0 : 0);
+      }
+      if (criterion.inputKind === "exercise-zero") {
+        return sum + (triggers[criterion.id] ? exercise.maxPoints : 0);
+      }
       const value = faults[criterion.id] ?? 0;
       if (!Number.isFinite(value) || value < 0) {
         errors.push(`${exercise.label}: ${criterion.label} ist ungültig`);
@@ -281,14 +444,18 @@ export function calculateJudgingScore(
       return sum + value;
     }, 0);
     const deductions = Math.min(exercise.maxPoints, enteredFaults);
+    const points = Math.max(0, exercise.maxPoints - deductions);
+    const cappedAtMangelhaft = exercise.criteria.some(
+      (criterion) =>
+        criterion.inputKind === "rating-cap" && triggers[criterion.id],
+    );
     return {
       exerciseId: exercise.id,
       deductions,
-      points: Math.max(0, exercise.maxPoints - deductions),
-      rating: calculateRating(
-        exercise.maxPoints,
-        Math.max(0, exercise.maxPoints - deductions),
-      ),
+      points,
+      rating: cappedAtMangelhaft
+        ? ("Mangelhaft" as const)
+        : calculateRating(exercise.maxPoints, points),
     };
   });
   const total = exercises.reduce((sum, exercise) => sum + exercise.points, 0);

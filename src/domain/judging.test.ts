@@ -81,27 +81,52 @@ describe("VDH-VK judging", () => {
         ["Ablegen mit Herankommen", 15],
       ]);
     expect(definition.exercises[0].criteria.map(({ label }) => label)).toEqual([
-      "Entwicklung",
-      "Kehrtwendung",
-      "Winkel",
-      "Grundstellung",
+      "Anfangsgrundstellung",
+      "Position während des Führens",
+      "Aufmerksamkeit und Ausdruck",
+      "Gangartwechsel und Wendungen",
+      "Leinenführung",
+      "Halte und Endgrundstellung",
     ]);
   });
 
-  it.each(["VDH-VK2", "VDH-VK3"] as const)(
-    "defines the requested exercises for %s",
+  it("defines the requested VK2 exercises", () => {
+    expect(
+      JUDGING_DEFINITIONS["VDH-VK2"].exercises.map(
+        ({ label, maxPoints }) => [label, maxPoints],
+      ),
+    ).toEqual([
+      ["Freifolge", 20],
+      ["Sitz mit Abholen", 10],
+      ["Ablegen mit Herankommen", 15],
+      ["Steh mit Herankommen", 15],
+    ]);
+  });
+
+  it("defines the requested VK3 running exercises", () => {
+    expect(
+      JUDGING_DEFINITIONS["VDH-VK3"].exercises.map(
+        ({ label, maxPoints }) => [label, maxPoints],
+      ),
+    ).toEqual([
+      ["Freifolge", 20],
+      ["Sitz mit Abholen", 10],
+      ["Ablegen aus dem Laufschritt mit Herankommen", 15],
+      ["Steh aus dem Laufschritt mit Herankommen", 15],
+    ]);
+  });
+
+  it.each(JUDGING_LEVELS)(
+    "contains only complete, uniquely addressable criteria for %s",
     (level) => {
-      expect(
-        JUDGING_DEFINITIONS[level].exercises.map(({ label, maxPoints }) => [
-          label,
-          maxPoints,
-        ]),
-      ).toEqual([
-        ["Freifolge", 20],
-        ["Sitz mit Abholen", 10],
-        ["Ablegen mit Herankommen", 15],
-        ["Steh mit Herankommen", 15],
-      ]);
+      const criteria = JUDGING_DEFINITIONS[level].exercises.flatMap(
+        (exercise) => exercise.criteria,
+      );
+      expect(criteria.some((criterion) => criterion.provisional)).toBe(false);
+      expect(criteria.every((criterion) => criterion.description)).toBe(true);
+      expect(new Set(criteria.map((criterion) => criterion.id)).size).toBe(
+        criteria.length,
+      );
     },
   );
 
@@ -129,5 +154,73 @@ describe("VDH-VK judging", () => {
     expect(floored.exercises[0].deductions).toBe(15);
     expect(floored.total).toBe(45);
     expect(floored.rating).toBe("Befriedigend");
+  });
+
+  it("applies fixed position deductions exactly and adds qualitative faults", () => {
+    const definition = JUDGING_DEFINITIONS["VDH-VK1"];
+    const sit = definition.exercises[2];
+    const manualCriterion = sit.criteria.find(
+      (criterion) => criterion.inputKind === "manual",
+    )!;
+    const fixedCriterion = sit.criteria.find(
+      (criterion) => criterion.inputKind === "fixed",
+    )!;
+    const score = calculateJudgingScore(
+      definition,
+      {
+        [manualCriterion.id]: 1,
+        // A stale numeric value must not duplicate the triggered fixed rule.
+        [fixedCriterion.id]: 5,
+      },
+      { [fixedCriterion.id]: true },
+    );
+
+    expect(score.exercises[2]).toMatchObject({
+      deductions: 6,
+      points: 4,
+      rating: "Mangelhaft",
+    });
+    expect(score.total).toBe(54);
+  });
+
+  it("sets the complete exercise to zero when a zero rule is triggered", () => {
+    const definition = JUDGING_DEFINITIONS["VDH-VK3"];
+    const down = definition.exercises[2];
+    const zeroCriterion = down.criteria.find(
+      (criterion) => criterion.inputKind === "exercise-zero",
+    )!;
+    const score = calculateJudgingScore(
+      definition,
+      {},
+      { [zeroCriterion.id]: true },
+    );
+
+    expect(score.exercises[2]).toMatchObject({
+      deductions: 15,
+      points: 0,
+      rating: "Mangelhaft",
+    });
+    expect(score.total).toBe(45);
+  });
+
+  it("caps a partial assessment at Mangelhaft without inventing a deduction", () => {
+    const definition = JUDGING_DEFINITIONS["VDH-VK2"];
+    const stand = definition.exercises[3];
+    const cappedCriterion = stand.criteria.find(
+      (criterion) => criterion.inputKind === "rating-cap",
+    )!;
+    const score = calculateJudgingScore(
+      definition,
+      {},
+      { [cappedCriterion.id]: true },
+    );
+
+    expect(score.exercises[3]).toMatchObject({
+      deductions: 0,
+      points: 15,
+      rating: "Mangelhaft",
+    });
+    expect(score.total).toBe(60);
+    expect(score.rating).toBe("Vorzüglich");
   });
 });
