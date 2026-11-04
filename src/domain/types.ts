@@ -46,6 +46,8 @@ export interface CompetitionResult {
   date: string;
   competitionType: CompetitionType;
   event: string;
+  handlerId?: string;
+  dogId?: string;
   dog: string;
   handler: string;
   className: "FCI-VK1" | "FCI-VK2" | "FCI-VK3";

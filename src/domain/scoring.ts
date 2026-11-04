@@ -84,6 +84,9 @@ export function validateResult(result: CompetitionResult): string[] {
   const errors: string[] = [];
   if (!result.date) errors.push("Datum fehlt");
   if (!result.event.trim()) errors.push("Turnier / Verein fehlt");
+  if (!result.handlerId || !result.handler.trim())
+    errors.push("Hundeführer fehlt");
+  if (!result.dogId || !result.dog.trim()) errors.push("Hund fehlt");
   if (!finite(result.obedience)) errors.push("Unterordnung fehlt");
   else if (result.obedience! < 0 || result.obedience! > 60)
     errors.push("Unterordnung muss zwischen 0 und 60 liegen");

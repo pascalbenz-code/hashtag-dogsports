@@ -6,6 +6,8 @@ export const makeResult = (
   date: "2026-05-10",
   competitionType: "Vereinsprüfung",
   event: "HSV Test",
+  handlerId: "handler-1",
+  dogId: "dog-1",
   dog: "Fiete",
   handler: "Alex",
   className: "FCI-VK3",

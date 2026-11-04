@@ -1,23 +1,40 @@
 import type { CompetitionResult } from "../domain/types";
 import { validateResult } from "../domain/scoring";
 import {
+  isDogProfile,
+  isHandlerProfile,
+  type DogProfile,
+  type HandlerProfile,
+} from "../domain/profiles";
+import {
   formatHurdleFaultDetail,
   isValidHurdleFaultDetail,
 } from "../domain/hurdleFaults";
 export interface Backup {
   app: "#Dogsports";
-  version: 1;
+  version: 2;
   exportedAt: string;
   results: CompetitionResult[];
+  handlers: HandlerProfile[];
+  dogs: DogProfile[];
 }
-export const createBackup = (results: CompetitionResult[]): Backup => ({
+export const createBackup = (
+  results: CompetitionResult[],
+  handlers: HandlerProfile[] = [],
+  dogs: DogProfile[] = [],
+): Backup => ({
   app: "#Dogsports",
-  version: 1,
+  version: 2,
   exportedAt: new Date().toISOString(),
   results,
+  handlers,
+  dogs,
 });
-export const serializeBackup = (results: CompetitionResult[]) =>
-  JSON.stringify(createBackup(results), null, 2);
+export const serializeBackup = (
+  results: CompetitionResult[],
+  handlers: HandlerProfile[] = [],
+  dogs: DogProfile[] = [],
+) => JSON.stringify(createBackup(results, handlers, dogs), null, 2);
 const isRun = (x: unknown): boolean =>
   !!x && typeof x === "object" && "time" in x && "faults" in x;
 export function parseBackup(text: string): Backup {
@@ -37,7 +54,13 @@ export function parseBackup(text: string): Backup {
     !Array.isArray((data as Backup).results)
   )
     throw new Error("Die Datei ist kein gültiges #Dogsports-Backup.");
-  for (const r of (data as Backup).results) {
+  const raw = data as Partial<Backup> & { results: CompetitionResult[] };
+  const handlers = Array.isArray(raw.handlers) ? raw.handlers : [];
+  const dogs = Array.isArray(raw.dogs) ? raw.dogs : [];
+  if (!handlers.every(isHandlerProfile) || !dogs.every(isDogProfile))
+    throw new Error("Mindestens ein Profil hat ein ungültiges Schema.");
+  const now = new Date().toISOString();
+  for (const r of raw.results) {
     if (
       !r ||
       typeof r !== "object" ||
@@ -61,13 +84,35 @@ export function parseBackup(text: string): Backup {
         "Mindestens ein Datensatz enthält ungültige Hürden-Detailangaben.",
       );
     r.competitionType ??= "Vereinsprüfung";
+    if (!r.handlerId && r.handler.trim()) {
+      let profile = handlers.find(
+        (item) => item.name.toLocaleLowerCase("de-DE") === r.handler.trim().toLocaleLowerCase("de-DE"),
+      );
+      if (!profile) {
+        profile = { id: crypto.randomUUID(), name: r.handler.trim(), birthDate: "", gender: "", club: "", membershipNumber: "", createdAt: now, updatedAt: now };
+        handlers.push(profile);
+      }
+      r.handlerId = profile.id;
+    }
+    if (!r.dogId && r.dog.trim()) {
+      let profile = dogs.find(
+        (item) => item.callName.toLocaleLowerCase("de-DE") === r.dog.trim().toLocaleLowerCase("de-DE"),
+      );
+      if (!profile) {
+        profile = { id: crypto.randomUUID(), callName: r.dog.trim(), kennelName: "", breed: "", birthDate: "", gender: "", performanceRecordId: "", chipNumber: "", studbookNumber: "", createdAt: now, updatedAt: now };
+        dogs.push(profile);
+      }
+      r.dogId = profile.id;
+    }
   }
-  return { ...(data as Backup), app: "#Dogsports" };
+  return { app: "#Dogsports", version: 2, exportedAt: raw.exportedAt ?? now, results: raw.results, handlers, dogs };
 }
 export function toCsv(results: CompetitionResult[]) {
   const headers = [
     "ID",
     "Datum",
+    "Hundeführer",
+    "Hund",
     "Turnierart",
     "Turnier / Verein",
     "Prüfungsstufe",
@@ -99,6 +144,8 @@ export function toCsv(results: CompetitionResult[]) {
         [
           r.id,
           r.date,
+          r.handler,
+          r.dog,
           r.competitionType,
           r.event,
           r.className,
@@ -122,9 +169,9 @@ export function toCsv(results: CompetitionResult[]) {
     ].join("\r\n")
   );
 }
-export function mergeImport(
-  existing: CompetitionResult[],
-  incoming: CompetitionResult[],
+export function mergeImport<T extends { id: string }>(
+  existing: T[],
+  incoming: T[],
   replace = false,
 ) {
   const map = new Map(existing.map((r) => [r.id, r]));

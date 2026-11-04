@@ -2,7 +2,14 @@ import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 import { makeResult } from "../test/factory";
-import { THSDatabase } from "./db";
+import type { DogProfile, HandlerProfile } from "../domain/profiles";
+import {
+  deleteDogProfile,
+  deleteHandlerProfile,
+  saveDogProfile,
+  saveHandlerProfile,
+  THSDatabase,
+} from "./db";
 
 describe("Dexie persistence", () => {
   const names: string[] = [];
@@ -34,12 +41,22 @@ describe("Dexie persistence", () => {
       results: "id,date,className,createdAt,updatedAt",
     });
     const result = makeResult();
-    await legacy.table("results").put(result);
+    const legacyResult = { ...result, handlerId: undefined, dogId: undefined };
+    await legacy.table("results").put(legacyResult);
     legacy.close();
 
     const migrated = new THSDatabase(name);
-    expect(await migrated.results.get(result.id)).toEqual(result);
-    expect(migrated.tables.map((table) => table.name)).toEqual(["results"]);
+    const stored = await migrated.results.get(result.id);
+    expect(stored).toMatchObject({ handler: "Alex", dog: "Fiete" });
+    expect(stored?.handlerId).toBeTruthy();
+    expect(stored?.dogId).toBeTruthy();
+    expect((await migrated.handlers.get(stored!.handlerId!))?.name).toBe("Alex");
+    expect((await migrated.dogs.get(stored!.dogId!))?.callName).toBe("Fiete");
+    expect(migrated.tables.map((table) => table.name).sort()).toEqual([
+      "dogs",
+      "handlers",
+      "results",
+    ]);
     migrated.close();
   });
 
@@ -67,7 +84,61 @@ describe("Dexie persistence", () => {
 
     const migrated = new THSDatabase(name);
     expect(await migrated.results.get(result.id)).toEqual(result);
-    expect(migrated.tables.map((table) => table.name)).toEqual(["results"]);
+    expect(migrated.tables.map((table) => table.name).sort()).toEqual([
+      "dogs",
+      "handlers",
+      "results",
+    ]);
     migrated.close();
+  });
+
+  it("updates result name snapshots and protects profiles in use", async () => {
+    const name = `test-${crypto.randomUUID()}`;
+    names.push(name);
+    const database = new THSDatabase(name);
+    const metadata = {
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    const handler: HandlerProfile = {
+      id: "handler-1",
+      name: "Alex Alt",
+      birthDate: "1990-05-10",
+      gender: "male",
+      club: "HSV Test",
+      membershipNumber: "123",
+      ...metadata,
+    };
+    const dog: DogProfile = {
+      id: "dog-1",
+      callName: "Fiete Alt",
+      kennelName: "",
+      breed: "Border Collie",
+      birthDate: "2021-03-12",
+      gender: "male",
+      performanceRecordId: "LU-1",
+      chipNumber: "",
+      studbookNumber: "",
+      ...metadata,
+    };
+    await saveHandlerProfile(handler, database);
+    await saveDogProfile(dog, database);
+    await database.results.put(
+      makeResult({ handler: handler.name, dog: dog.callName }),
+    );
+
+    await saveHandlerProfile({ ...handler, name: "Alex Neu" }, database);
+    await saveDogProfile({ ...dog, callName: "Fiete Neu" }, database);
+    expect(await database.results.get("1")).toMatchObject({
+      handler: "Alex Neu",
+      dog: "Fiete Neu",
+    });
+    await expect(deleteHandlerProfile(handler.id, database)).rejects.toThrow(
+      "bereits in Ergebnissen verwendet",
+    );
+    await expect(deleteDogProfile(dog.id, database)).rejects.toThrow(
+      "bereits in Ergebnissen verwendet",
+    );
+    database.close();
   });
 });

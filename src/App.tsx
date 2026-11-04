@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Trash2,
   Upload,
+  UsersRound,
 } from "lucide-react";
 import { db, deleteResult, saveResult } from "./data/db";
 import {
@@ -32,6 +33,8 @@ import { Button } from "./components/ui/button";
 import { Card } from "./components/ui/card";
 import { LocaleNumberInput } from "./components/LocaleNumberInput";
 import { HurdleFaultDetails } from "./components/HurdleFaultDetails";
+import { ProfilesManager } from "./components/ProfilesManager";
+import type { DogProfile, HandlerProfile } from "./domain/profiles";
 import {
   formatHurdleFaultDetail,
   hurdleFaultsTotal,
@@ -64,6 +67,8 @@ const blank = (): CompetitionResult => ({
   date: new Date().toISOString().slice(0, 10),
   competitionType: "Vereinsprüfung",
   event: "",
+  handlerId: "",
+  dogId: "",
   dog: "",
   handler: "",
   className: "FCI-VK1",
@@ -104,7 +109,10 @@ const download = (body: string, name: string, type: string) => {
 };
 export default function App() {
   const results = useLiveQuery(() => db.results.toArray(), []) ?? [];
+  const handlers = useLiveQuery(() => db.handlers.orderBy("name").toArray(), []) ?? [];
+  const dogs = useLiveQuery(() => db.dogs.orderBy("callName").toArray(), []) ?? [];
   const [sportModule, setSportModule] = useState<SportModule | null>(null);
+  const [showProfiles, setShowProfiles] = useState(false);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [editing, setEditing] = useState<CompetitionResult | null>(null);
   const open = (r?: CompetitionResult) => {
@@ -116,10 +124,12 @@ export default function App() {
     setTab(next);
   };
   const openModule = (nextModule: SportModule) => {
+    setShowProfiles(false);
     setSportModule(nextModule);
     navigate("dashboard");
   };
   const goHome = () => {
+    setShowProfiles(false);
     setSportModule(null);
     navigate("dashboard");
   };
@@ -129,59 +139,69 @@ export default function App() {
         <button type="button" onClick={goHome} aria-label="Zur Startseite">
           <span className="brand">#Dogsports</span>
           <span className="crumb">
-            {sportModule
+            {showProfiles
+              ? "Globale Profile · alle Module"
+              : sportModule
               ? `Modul ${sportModule.toUpperCase()} · ${tabTitles[tab]}`
               : "Startseite · Modulauswahl"}
           </span>
         </button>
-        {sportModule ? (
-          <span className="module-chip">{sportModule.toUpperCase()}</span>
-        ) : (
-          <ShieldCheck aria-hidden="true" />
-        )}
+        <button
+          type="button"
+          className={`header-profile-button ${showProfiles ? "active" : ""}`}
+          onClick={() => setShowProfiles((current) => !current)}
+          aria-label="Hundeführer und Hunde verwalten"
+        >
+          <UsersRound aria-hidden="true" />
+          <span>Profile</span>
+        </button>
       </header>
       <main className="mx-auto max-w-6xl space-y-5 px-4 py-5">
-        {!sportModule ? <StartPage openModule={openModule} /> : null}
-        {sportModule === "ths" && tab === "dashboard" ? (
+        {showProfiles ? <ProfilesManager handlers={handlers} dogs={dogs} /> : null}
+        {!showProfiles && !sportModule ? <StartPage openModule={openModule} /> : null}
+        {!showProfiles && sportModule === "ths" && tab === "dashboard" ? (
           <Dashboard results={results} open={open} />
         ) : null}
-        {sportModule === "ths" && tab === "results" ? (
-          <Results results={results} open={open} />
+        {!showProfiles && sportModule === "ths" && tab === "results" ? (
+          <Results results={results} handlers={handlers} dogs={dogs} open={open} />
         ) : null}
-        {sportModule === "ths" && tab === "new" ? (
+        {!showProfiles && sportModule === "ths" && tab === "new" ? (
           <Editor
             key={editing?.id ?? "new"}
             initial={editing ?? newForm()}
             close={() => navigate("results")}
+            handlers={handlers}
+            dogs={dogs}
+            manageProfiles={() => setShowProfiles(true)}
           />
         ) : null}
-        {sportModule === "ths" && tab === "stats" ? (
+        {!showProfiles && sportModule === "ths" && tab === "stats" ? (
           <Statistics results={results} />
         ) : null}
-        {sportModule === "ths" && tab === "judge" ? (
+        {!showProfiles && sportModule === "ths" && tab === "judge" ? (
           <Suspense fallback={<Hint text="Leistungsrichter wird geladen …" />}>
             <JudgeForm />
           </Suspense>
         ) : null}
-        {sportModule === "ibgh" && tab === "dashboard" ? (
+        {!showProfiles && sportModule === "ibgh" && tab === "dashboard" ? (
           <IbghDashboard />
         ) : null}
-        {sportModule === "ibgh" && tab === "judge" ? (
+        {!showProfiles && sportModule === "ibgh" && tab === "judge" ? (
           <Suspense fallback={<Hint text="Leistungsrichter wird geladen …" />}>
             <IbghJudgeForm />
           </Suspense>
         ) : null}
-        {sportModule === "ibgh" && tab === "results" ? (
+        {!showProfiles && sportModule === "ibgh" && tab === "results" ? (
           <ModulePlaceholder module="IBGH" title="Ergebnisse" />
         ) : null}
-        {sportModule === "ibgh" && tab === "new" ? (
+        {!showProfiles && sportModule === "ibgh" && tab === "new" ? (
           <ModulePlaceholder module="IBGH" title="Neuer Eintrag" />
         ) : null}
-        {sportModule === "ibgh" && tab === "stats" ? (
+        {!showProfiles && sportModule === "ibgh" && tab === "stats" ? (
           <ModulePlaceholder module="IBGH" title="Statistik" />
         ) : null}
       </main>
-      {sportModule ? (
+      {sportModule && !showProfiles ? (
         <nav
           className="bottom-nav"
           aria-label={`Navigation ${sportModule.toUpperCase()}`}
@@ -453,9 +473,13 @@ function Dashboard({
 }
 function Results({
   results,
+  handlers,
+  dogs,
   open,
 }: {
   results: CompetitionResult[];
+  handlers: HandlerProfile[];
+  dogs: DogProfile[];
   open: (r: CompetitionResult) => void;
 }) {
   const [f, setF] = useState<ResultFilters>({
@@ -473,21 +497,28 @@ function Results({
     if (!input) return;
     try {
       const incoming = parseBackup(await input.text()),
-        dupes = incoming.results.filter((r) =>
-          results.some((x) => x.id === r.id),
-        ).length,
+        dupes =
+          incoming.results.filter((r) => results.some((x) => x.id === r.id)).length +
+          incoming.handlers.filter((r) => handlers.some((x) => x.id === r.id)).length +
+          incoming.dogs.filter((r) => dogs.some((x) => x.id === r.id)).length,
         replace = dupes
           ? confirm(
               `${dupes} ID-Konflikt(e) gefunden. Bestehende Datensätze ersetzen?\nAbbrechen = Konflikte überspringen.`,
             )
           : false,
-        merged = mergeImport(results, incoming.results, replace);
-      await db.transaction("rw", db.results, async () => {
+        merged = mergeImport(results, incoming.results, replace),
+        mergedHandlers = mergeImport(handlers, incoming.handlers, replace),
+        mergedDogs = mergeImport(dogs, incoming.dogs, replace);
+      await db.transaction("rw", db.results, db.handlers, db.dogs, async () => {
         await db.results.clear();
+        await db.handlers.clear();
+        await db.dogs.clear();
         await db.results.bulkPut(merged.results);
+        await db.handlers.bulkPut(mergedHandlers.results);
+        await db.dogs.bulkPut(mergedDogs.results);
       });
       alert(
-        `Import abgeschlossen: ${merged.added} neu, ${merged.replaced} ersetzt, ${merged.skipped} übersprungen.`,
+        `Import abgeschlossen: ${merged.added + mergedHandlers.added + mergedDogs.added} neu, ${merged.replaced + mergedHandlers.replaced + mergedDogs.replaced} ersetzt, ${merged.skipped + mergedHandlers.skipped + mergedDogs.skipped} übersprungen.`,
       );
     } catch (err) {
       alert(err instanceof Error ? err.message : "Import fehlgeschlagen.");
@@ -501,7 +532,7 @@ function Results({
       <Card className="space-y-3">
         <input
           className="control"
-          placeholder="Turnier oder Verein suchen"
+          placeholder="Turnier, Hundeführer oder Hund suchen"
           value={f.query}
           onChange={(e) => setF({ ...f, query: e.target.value })}
         />
@@ -563,7 +594,7 @@ function Results({
           <Button
             onClick={() =>
               download(
-                serializeBackup(results),
+                serializeBackup(results, handlers, dogs),
                 `dogsports-backup-${new Date().toISOString().slice(0, 10)}.json`,
                 "application/json",
               )
@@ -615,6 +646,7 @@ function Results({
             <tr>
               {[
                 "Datum",
+                "Hundeführer / Hund",
                 "Turnier / Verein",
                 "Stufe",
                 "UO",
@@ -638,6 +670,7 @@ function Results({
               return (
                 <tr key={r.id} onClick={() => open(r)}>
                   <td>{dFmt(r.date)}</td>
+                  <td>{r.handler} / {r.dog}</td>
                   <td>{r.event}</td>
                   <td>{r.className}</td>
                   <td className={bests.obedience.has(r.id) ? "best" : ""}>
@@ -684,9 +717,15 @@ function Results({
 function Editor({
   initial,
   close,
+  handlers,
+  dogs,
+  manageProfiles,
 }: {
   initial: CompetitionResult;
   close: () => void;
+  handlers: HandlerProfile[];
+  dogs: DogProfile[];
+  manageProfiles: () => void;
 }) {
   const [form, setForm] = useState(initial),
     score = calculateScore(form),
@@ -720,6 +759,45 @@ function Editor({
         </div>
         <Button>Speichern</Button>
       </div>
+      <Card>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h3>Zuordnung</h3>
+          <Button type="button" variant="ghost" onClick={manageProfiles}>
+            <UsersRound /> Profile verwalten
+          </Button>
+        </div>
+        {!handlers.length || !dogs.length ? (
+          <Hint text="Lege zuerst mindestens einen Hundeführer und einen Hund in den globalen Profilen an." />
+        ) : null}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Hundeführer">
+            <select
+              required
+              value={form.handlerId ?? ""}
+              onChange={(e) => {
+                const selected = handlers.find((item) => item.id === e.target.value);
+                setForm({ ...form, handlerId: selected?.id ?? "", handler: selected?.name ?? "" });
+              }}
+            >
+              <option value="">Bitte auswählen</option>
+              {handlers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Hund">
+            <select
+              required
+              value={form.dogId ?? ""}
+              onChange={(e) => {
+                const selected = dogs.find((item) => item.id === e.target.value);
+                setForm({ ...form, dogId: selected?.id ?? "", dog: selected?.callName ?? "" });
+              }}
+            >
+              <option value="">Bitte auswählen</option>
+              {dogs.map((item) => <option key={item.id} value={item.id}>{item.callName}</option>)}
+            </select>
+          </Field>
+        </div>
+      </Card>
       <Card>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Datum">
@@ -1126,6 +1204,9 @@ function ResultCard({
           </div>
           <p className="text-sm text-muted">
             {dFmt(result.date)} · {result.className}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            {result.handler || "Kein Hundeführer"} · {result.dog || "Kein Hund"}
           </p>
           {result.hurdles.faultDetails?.length ? (
             <p className="mt-1 text-xs text-muted">

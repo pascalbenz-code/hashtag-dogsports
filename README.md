@@ -8,6 +8,7 @@ Das visuelle System basiert auf dem #Dogsports-Banner in `public/dogsports-banne
 
 - modulares Dashboard mit THS-/IBGH-Modulübersicht und iPhone-Bottom-Navigation
 - CRUD für vollständige Ergebnisse und Entwürfe, eindeutige UUIDs und Zeitstempel
+- globale Hundeführer- und Hundeprofile mit Stammdaten, automatisch berechnetem Alter und geschützter Ergebniszuordnung
 - automatische Formular-Zwischenspeicherung sowie dauerhafte IndexedDB-Persistenz mit Dexie
 - exakte FCI-VK1/2/3-Gesamtpunkteberechnung und kumulative Qualifikationen
 - optionale Hürdenfehler-Details für FCI-VK1/2/3 mit stufenspezifischem interaktivem Schaubild, festen Einzelabzügen und automatischer Summierung
@@ -41,10 +42,11 @@ Statistiklogik befindet sich in `src/domain/statistics.ts`. Die Standardabweichu
 src/
   components/ui/       gemeinsame shadcn/ui-Primitiven
   data/
-    db.ts               Dexie-Datenbank und CRUD
+    db.ts               Dexie-Datenbank, Profil-/Ergebnis-CRUD und Migrationen
     backup.ts           JSON-Validierung/-Import und JSON-/CSV-Export
   domain/
     types.ts            THS-Domänenmodell
+    profiles.ts         globale Hundeführer-/Hundemodelle und Alterslogik
     scoring.ts          Validierung, Gesamtpunkte, Qualifikationen
     statistics.ts       Kennwerte, Regression, Trend, Prognose
     results.ts          Filter, Sortierung, Bestleistungen
@@ -58,7 +60,9 @@ Die Digitalen Leistungsrichter VDH-VK und FCI-IBGH liegen als interaktive Entwü
 
 ## Lokale Datenmigration
 
-Dexie aktualisiert bestehende Datenbanken beim ersten Start auf Version 4. Dabei wird die nicht mehr verwendete IFH-Tabelle entfernt; die Tabelle `results` und alle THS-Daten bleiben unverändert. Eine manuelle Migration oder Serverkonfiguration ist nicht erforderlich.
+Dexie aktualisiert bestehende Datenbanken beim ersten Start auf Version 5. Dabei werden globale Tabellen für Hundeführer und Hunde ergänzt. Namen aus vorhandenen THS-Ergebnissen werden ohne Änderung der Leistungsdaten in gemeinsame Profile überführt und die Ergebnisse über stabile IDs verknüpft. Unbekannte Stammdaten werden sichtbar als noch zu ergänzen markiert. Eine manuelle Migration oder Serverkonfiguration ist nicht erforderlich.
+
+Profile werden über **Profile** in der globalen Kopfzeile verwaltet und stehen unabhängig vom geöffneten Modul zur Verfügung. Bereits in Ergebnissen verwendete Profile können bearbeitet, aber nicht versehentlich gelöscht werden. JSON-Backups ab Version 2 enthalten Ergebnisse und beide Profilarten; ältere Backups werden beim Import automatisch in die neue Struktur überführt.
 
 ## Lokal starten und prüfen
 

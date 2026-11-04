@@ -94,6 +94,45 @@ h3 {
   font-weight: 900;
   letter-spacing: 0.08em;
 }
+.header-profile-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 38px;
+  border: 1px solid #59d3f966;
+  border-radius: 999px;
+  padding: 0.45rem 0.7rem;
+  color: #59d3f9;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.header-profile-button.active { background: #59d3f933; }
+.header-profile-button svg { width: 1rem; height: 1rem; }
+.profile-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  background: #eaf1f5;
+  padding: 0.3rem;
+}
+.profile-tabs button {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 0.75rem;
+  color: #55585a;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+.profile-tabs button.active { background: white; color: #1776a7; box-shadow: 0 2px 8px #11121214; }
+.profile-tabs svg { width: 1.1rem; height: 1.1rem; }
+.profile-row { display: flex; align-items: center; gap: 0.5rem; }
+.profile-message { border-radius: 0.8rem; background: #dff5ff; padding: 0.8rem; color: #145d7d; font-size: 0.84rem; }
+.age-display { border-radius: 0.75rem; background: #f1f6f8; padding: 0.75rem; font-size: 0.78rem; color: #55585a; }
 .hero-card {
   overflow: hidden;
   border: 1px solid #a2c0ce66;
