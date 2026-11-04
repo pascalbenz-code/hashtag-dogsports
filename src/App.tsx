@@ -33,6 +33,7 @@ import { Button } from "./components/ui/button";
 import { Card } from "./components/ui/card";
 import { LocaleNumberInput } from "./components/LocaleNumberInput";
 import { HurdleFaultDetails } from "./components/HurdleFaultDetails";
+import { SlalomFaultDetails } from "./components/SlalomFaultDetails";
 import { ProfilesManager } from "./components/ProfilesManager";
 import type { DogProfile, HandlerProfile } from "./domain/profiles";
 import {
@@ -40,6 +41,10 @@ import {
   hurdleFaultsTotal,
   isValidHurdleFaultDetail,
 } from "./domain/hurdleFaults";
+import {
+  formatSlalomFaultDetail,
+  slalomFaultsTotal,
+} from "./domain/slalomFaults";
 
 const PerformanceChart = lazy(() => import("./components/PerformanceChart"));
 const JudgeForm = lazy(() =>
@@ -74,7 +79,7 @@ const blank = (): CompetitionResult => ({
   className: "FCI-VK1",
   obedience: null,
   hurdles: { time: null, faults: null, faultDetails: [] },
-  slalom: { time: null, faults: null },
+  slalom: { time: null, faults: null, faultDetails: [] },
   obstacle: { time: null, faults: null },
   notes: "",
   createdAt: now(),
@@ -692,7 +697,16 @@ function Results({
                   <td className={bests.slalom.has(r.id) ? "best" : ""}>
                     {fmt(r.slalom.time)}
                   </td>
-                  <td>{fmt(r.slalom.faults)}</td>
+                  <td
+                    title={(r.slalom.faultDetails ?? [])
+                      .map(formatSlalomFaultDetail)
+                      .join("\n")}
+                  >
+                    {fmt(r.slalom.faults)}
+                    {r.slalom.faultDetails?.length
+                      ? ` · ${r.slalom.faultDetails.length} Details`
+                      : ""}
+                  </td>
                   <td className={bests.obstacle.has(r.id) ? "best" : ""}>
                     {fmt(r.obstacle.time)}
                   </td>
@@ -736,6 +750,7 @@ function Editor({
       v: string,
     ) => setForm({ ...form, [key]: { ...form[key], [part]: n(v) } });
   const hurdleDetails = form.hurdles.faultDetails ?? [];
+  const slalomDetails = form.slalom.faultDetails ?? [];
   const persisted = useLiveQuery(() => db.results.get(form.id), [form.id]);
   useEffect(() => {
     const timer = setTimeout(
@@ -902,10 +917,15 @@ function Editor({
                 <input
                   inputMode="decimal"
                   value={form[key].faults ?? ""}
-                  readOnly={key === "hurdles" && hurdleDetails.length > 0}
+                  readOnly={
+                    (key === "hurdles" && hurdleDetails.length > 0) ||
+                    (key === "slalom" && slalomDetails.length > 0)
+                  }
                   aria-describedby={
                     key === "hurdles" && hurdleDetails.length > 0
                       ? "hurdle-faults-calculated"
+                      : key === "slalom" && slalomDetails.length > 0
+                        ? "slalom-faults-calculated"
                       : undefined
                   }
                   onChange={(e) => setRun(key, "faults", e.target.value)}
@@ -914,6 +934,11 @@ function Editor({
             </div>
             {key === "hurdles" && hurdleDetails.length > 0 ? (
               <p id="hurdle-faults-calculated" className="mt-2 text-xs text-muted">
+                Die Fehlerpunkte werden aus den Detailangaben berechnet.
+              </p>
+            ) : null}
+            {key === "slalom" && slalomDetails.length > 0 ? (
+              <p id="slalom-faults-calculated" className="mt-2 text-xs text-muted">
                 Die Fehlerpunkte werden aus den Detailangaben berechnet.
               </p>
             ) : null}
@@ -929,6 +954,24 @@ function Editor({
                       ...form.hurdles,
                       faults: faultDetails.length
                         ? hurdleFaultsTotal(faultDetails)
+                        : null,
+                      faultDetails,
+                    },
+                  })
+                }
+              />
+            ) : null}
+            {key === "slalom" ? (
+              <SlalomFaultDetails
+                className={form.className}
+                details={slalomDetails}
+                onChange={(faultDetails) =>
+                  setForm({
+                    ...form,
+                    slalom: {
+                      ...form.slalom,
+                      faults: faultDetails.length
+                        ? slalomFaultsTotal(faultDetails)
                         : null,
                       faultDetails,
                     },
@@ -1212,6 +1255,12 @@ function ResultCard({
             <p className="mt-1 text-xs text-muted">
               Hürden: {result.hurdles.faultDetails.length} Detailangaben · {" "}
               {hurdleFaultsTotal(result.hurdles.faultDetails)} FP
+            </p>
+          ) : null}
+          {result.slalom.faultDetails?.length ? (
+            <p className="mt-1 text-xs text-muted">
+              Slalom: {result.slalom.faultDetails.length} Detailangaben ·{" "}
+              {slalomFaultsTotal(result.slalom.faultDetails)} FP
             </p>
           ) : null}
           <div className="mt-2">

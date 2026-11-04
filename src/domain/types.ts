@@ -41,6 +41,26 @@ export interface HurdleRunInput extends RunInput {
   faultDetails?: HurdleFaultDetail[];
 }
 
+export type SlalomFaultPosition =
+  | "gate-1"
+  | "gate-2"
+  | "gate-3"
+  | "gate-4"
+  | "position-independent";
+
+export type SlalomFaultCode = "gate-omitted" | "held-after-start";
+
+export interface SlalomFaultDetail {
+  id: string;
+  position: SlalomFaultPosition;
+  code: SlalomFaultCode;
+  points: 2 | 4;
+}
+
+export interface SlalomRunInput extends RunInput {
+  faultDetails?: SlalomFaultDetail[];
+}
+
 export interface CompetitionResult {
   id: string;
   date: string;
@@ -53,7 +73,7 @@ export interface CompetitionResult {
   className: "FCI-VK1" | "FCI-VK2" | "FCI-VK3";
   obedience: number | null;
   hurdles: HurdleRunInput;
-  slalom: RunInput;
+  slalom: SlalomRunInput;
   obstacle: RunInput;
   notes: string;
   createdAt: string;

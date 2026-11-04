@@ -16,6 +16,18 @@ const withHurdleDetails = makeResult({
       },
     ],
   },
+  slalom: {
+    time: 14.2,
+    faults: 4,
+    faultDetails: [
+      {
+        id: "gate-2",
+        position: "gate-2",
+        code: "gate-omitted",
+        points: 4,
+      },
+    ],
+  },
 });
 
 describe("backup", () => {
@@ -34,6 +46,9 @@ describe("backup", () => {
     expect(restored.id).toBe("1");
     expect(restored.hurdles.faultDetails).toEqual(
       withHurdleDetails.hurdles.faultDetails,
+    );
+    expect(restored.slalom.faultDetails).toEqual(
+      withHurdleDetails.slalom.faultDetails,
     );
   });
 
@@ -66,6 +81,14 @@ describe("backup", () => {
     );
   });
 
+  it("rejects invalid slalom detail schemas", () => {
+    const invalid = JSON.parse(serializeBackup([withHurdleDetails]));
+    invalid.results[0].slalom.faultDetails[0].points = 8;
+    expect(() => parseBackup(JSON.stringify(invalid))).toThrow(
+      "ungültige Slalom-Detailangaben",
+    );
+  });
+
   it("skips or replaces duplicates explicitly", () => {
     const old = makeResult();
     const fresh = makeResult({ event: "Neu" });
@@ -78,6 +101,7 @@ describe("backup", () => {
     expect(csv.startsWith("\uFEFF")).toBe(true);
     expect(csv).toContain("12,03");
     expect(csv).toContain("Hürde 2: Stange abgeworfen (−2 FP)");
+    expect(csv).toContain("Slalomtor 2: Streckentor nicht durchlaufen (−4 FP)");
     expect(csv).toContain("Alex");
     expect(csv).toContain("Fiete");
     expect(csv).toContain(";");

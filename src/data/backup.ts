@@ -10,6 +10,10 @@ import {
   formatHurdleFaultDetail,
   isValidHurdleFaultDetail,
 } from "../domain/hurdleFaults";
+import {
+  areValidSlalomFaultDetails,
+  formatSlalomFaultDetail,
+} from "../domain/slalomFaults";
 export interface Backup {
   app: "#Dogsports";
   version: 2;
@@ -83,6 +87,14 @@ export function parseBackup(text: string): Backup {
       throw new Error(
         "Mindestens ein Datensatz enthält ungültige Hürden-Detailangaben.",
       );
+    if (
+      r.slalom.faultDetails !== undefined &&
+      (!Array.isArray(r.slalom.faultDetails) ||
+        !areValidSlalomFaultDetails(r.slalom.faultDetails))
+    )
+      throw new Error(
+        "Mindestens ein Datensatz enthält ungültige Slalom-Detailangaben.",
+      );
     r.competitionType ??= "Vereinsprüfung";
     if (!r.handlerId && r.handler.trim()) {
       let profile = handlers.find(
@@ -122,6 +134,7 @@ export function toCsv(results: CompetitionResult[]) {
     "Hürdenfehler Details",
     "Slalomzeit",
     "Slalomfehler",
+    "Slalomfehler Details",
     "Hinderniszeit",
     "Hindernisfehler",
     "Status",
@@ -157,6 +170,9 @@ export function toCsv(results: CompetitionResult[]) {
             .join(" | "),
           num(r.slalom.time),
           num(r.slalom.faults),
+          (r.slalom.faultDetails ?? [])
+            .map(formatSlalomFaultDetail)
+            .join(" | "),
           num(r.obstacle.time),
           num(r.obstacle.faults),
           validateResult(r).length ? "Entwurf" : "Vollständig",

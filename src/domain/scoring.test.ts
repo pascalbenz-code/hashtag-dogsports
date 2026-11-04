@@ -166,6 +166,54 @@ describe("FCI scoring and qualifications", () => {
     );
   });
 
+  it("uses the detailed slalom sum exactly once in the existing total", () => {
+    const score = calculateScore(
+      makeResult({
+        slalom: {
+          time: 14.2,
+          faults: 6,
+          faultDetails: [
+            {
+              id: "gate-2",
+              position: "gate-2",
+              code: "gate-omitted",
+              points: 4,
+            },
+            {
+              id: "help",
+              position: "position-independent",
+              code: "held-after-start",
+              points: 2,
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(score.complete).toBe(true);
+    expect(score.total).toBe(276.33);
+  });
+
+  it("rejects invalid or mismatched slalom detail points", () => {
+    const result = makeResult({
+      slalom: {
+        time: 14.2,
+        faults: 2,
+        faultDetails: [
+          {
+            id: "gate-2",
+            position: "gate-2",
+            code: "gate-omitted",
+            points: 4,
+          },
+        ],
+      },
+    });
+    expect(validateResult(result)).toContain(
+      "Slalom: Fehlerpunkte stimmen nicht mit den Detailangaben überein",
+    );
+  });
+
   it("accepts VK3 details on hurdles 5 and 6", () => {
     const result = makeResult({
       className: "FCI-VK3",

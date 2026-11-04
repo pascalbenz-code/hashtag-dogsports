@@ -8,6 +8,10 @@ import {
   hurdleFaultsTotal,
   isValidHurdleFaultDetail,
 } from "./hurdleFaults";
+import {
+  areValidSlalomFaultDetails,
+  slalomFaultsTotal,
+} from "./slalomFaults";
 
 export const BASE_POINTS: Record<CompetitionResult["className"], number> = {
   "FCI-VK1": 250,
@@ -118,6 +122,18 @@ export function validateResult(result: CompetitionResult): string[] {
     )
       errors.push(
         "Hürden: Fehlerpunkte stimmen nicht mit den Detailangaben überein",
+      );
+  }
+  const slalomDetails = result.slalom.faultDetails ?? [];
+  if (slalomDetails.length) {
+    if (!areValidSlalomFaultDetails(slalomDetails))
+      errors.push("Slalom: Mindestens eine Detailangabe ist ungültig");
+    if (
+      finite(result.slalom.faults) &&
+      slalomFaultsTotal(slalomDetails) !== result.slalom.faults
+    )
+      errors.push(
+        "Slalom: Fehlerpunkte stimmen nicht mit den Detailangaben überein",
       );
   }
   return errors;

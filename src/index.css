@@ -737,6 +737,26 @@ h3 {
   stroke-linejoin: round;
   stroke-width: 6;
 }
+.slalom-course svg { max-height: 520px; }
+.slalom-boundary {
+  fill: none;
+  stroke: #a2c0ce;
+  stroke-width: 2;
+  stroke-dasharray: 7 7;
+}
+.slalom-rule-note {
+  grid-column: 1 / -1;
+  border-left: 3px solid #31abe4;
+  border-radius: 0.7rem;
+  background: #eaf8fe;
+  padding: 0.75rem;
+  color: #145d7d;
+  font-size: 0.78rem;
+}
+.hurdle-rule-list button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 #hurdle-arrow path {
   fill: #1776a7;
 }
