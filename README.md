@@ -1,15 +1,16 @@
 # #Dogsports
 
-Installierbare, offlinefähige Hundesport-PWA mit THS, IBGH und dem integrierten Modul **IFH** für Planung, Dokumentation und Auswertung von Fährtentraining.
+Installierbare, offlinefähige Hundesport-PWA mit den Modulen THS und IBGH.
 
 Das visuelle System basiert auf dem #Dogsports-Banner in `public/dogsports-banner.webp`: Schwarz/Anthrazit (`#111212`), Weiß (`#FEFEFE`), Stahlblau (`#1776A7`), Hauptblau (`#31ABE4`), Cyan (`#59D3F9`) und kühles Neutralblau (`#A2C0CE`).
 
 ## Implementiert
 
-- modulares Dashboard mit THS/IBGH/IFH-Modulübersicht und iPhone-Bottom-Navigation
+- modulares Dashboard mit THS-/IBGH-Modulübersicht und iPhone-Bottom-Navigation
 - CRUD für vollständige Ergebnisse und Entwürfe, eindeutige UUIDs und Zeitstempel
 - automatische Formular-Zwischenspeicherung sowie dauerhafte IndexedDB-Persistenz mit Dexie
 - exakte FCI-VK1/2/3-Gesamtpunkteberechnung und kumulative Qualifikationen
+- optionale Hürdenfehler-Details für FCI-VK1/2 mit interaktivem Schaubild, festen Einzelabzügen und automatischer Summierung
 - Suche, Stufen-/Qualifikationsfilter, Entwurfsschalter und Sortierung
 - kompakte mobile Karten und horizontal scrollbarere vollständige Ergebnistabelle
 - Bestleistungen einschließlich Gleichständen
@@ -21,7 +22,7 @@ Das visuelle System basiert auf dem #Dogsports-Banner in `public/dogsports-banne
 
 ## Fachlogik
 
-Die reproduzierbare Berechnung liegt in `src/domain/scoring.ts`:
+Die reproduzierbare Berechnung liegt in `src/domain/scoring.ts`. Optionale Hürdenfehler-Details werden in `src/domain/hurdleFaults.ts` validiert und zu genau dem Fehlerwert summiert, den die Gesamtberechnung einmalig abzieht:
 
 ```text
 Gesamt = Grundwert + Unterordnung
@@ -55,15 +56,9 @@ Die Startseite trennt die Sportbereiche THS und IBGH. Nach der Modulauswahl steh
 
 Die Digitalen Leistungsrichter VDH-VK und FCI-IBGH liegen als interaktive Entwürfe mit konfigurierbaren Unteraufgaben, Detailabzügen und automatischen Wertungen vor. FCI-IBGH3 unterstützt zusätzlich fünf vorgeschriebene Übungsreihenfolgen.
 
-Das Modul IFH bietet Übersicht, Trainingsplanung, gespeicherte Einheiten, Fortschrittsauswertung und ein versioniertes Regelwerk. Plan und tatsächlich gelegte Fährte werden getrennt gespeichert. Entwürfe, Timer-Zeitstempel, Einzelbewertungen, schematische Vorschau, Aufbauhinweise und regelbasierte Trainingsvorschläge funktionieren vollständig lokal. Vorhandene Hundenamen aus THS dienen als Auswahlhilfe; es wird keine parallele Profilverwaltung geführt.
-
-Die IFH-Planung enthält zusätzlich einen mobilen Kartenplaner auf Basis von MapLibre, Terra Draw und Turf. Geländegrenzen und Fährtenlinien werden als WGS84-Koordinaten lokal in Dexie gespeichert. Die App kann regelbasierte Fährtenvorschläge innerhalb der markierten Fläche erzeugen; diese bleiben manuell bearbeitbare Planungsvorschläge und ersetzen weder Geländekontrolle noch Regelprüfung. Ohne MapTiler-Key steht eine OpenStreetMap-Straßenkarte als Fallback zur Verfügung. Für Straßen- und Luftbildkarten wird `VITE_MAPTILER_KEY` benötigt; siehe `.env.example`. Der Browser-Key muss beim Anbieter auf die erlaubten Origins beschränkt werden und darf nicht ins Repository committed werden.
-
-Die IFH-Regeln enthalten Regel-ID, Stufe, Regelart, Quelle, Version und Verifikationsstatus. Die Regeln wurden visuell mit der **FCI-Prüfungsordnung 2025, Seiten 67–76**, einschließlich Gegenstandstabelle und Abbildungen abgeglichen. Qualitative Kriterien werden nicht ohne Quellenbeleg in feste Punktabzüge umgewandelt; die Verweisskizze bleibt eine Orientierungshilfe und erzeugt keine automatische Foto- oder Positionsbewertung. Für das Mindestalter verwendet die App transparent die Produktkonvention „Legeende bis tatsächlicher Ansatz“, weil der geprüfte Abschnitt keinen eindeutigen rechnerischen Bezugspunkt festlegt.
-
 ## Lokale Datenmigration
 
-Dexie aktualisiert die bestehende Datenbank beim ersten Start additiv von Version 1 auf Version 2 und ergänzt `ifhSessions`. Die vorhandene Tabelle `results` und alle THS-Daten bleiben unverändert. Eine manuelle Migration oder Serverkonfiguration ist nicht erforderlich.
+Dexie aktualisiert bestehende Datenbanken beim ersten Start auf Version 4. Dabei wird die nicht mehr verwendete IFH-Tabelle entfernt; die Tabelle `results` und alle THS-Daten bleiben unverändert. Eine manuelle Migration oder Serverkonfiguration ist nicht erforderlich.
 
 ## Lokal starten und prüfen
 

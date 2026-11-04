@@ -114,4 +114,55 @@ describe("FCI scoring and qualifications", () => {
       ),
     ).toHaveLength(3);
   });
+
+  it("uses the detailed hurdle sum exactly once in the existing total", () => {
+    const score = calculateScore(
+      makeResult({
+        className: "FCI-VK1",
+        hurdles: {
+          time: 12.03,
+          faults: 12,
+          faultDetails: [
+            {
+              id: "bar-2",
+              position: "hurdle-2",
+              code: "bar-dropped",
+              points: 2,
+            },
+            {
+              id: "turn",
+              position: "turn-pole",
+              code: "turn-pole-omitted",
+              points: 10,
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(score.complete).toBe(true);
+    expect(score.total).toBe(251.52);
+  });
+
+  it("rejects a mismatch between hurdle details and entered fault points", () => {
+    const result = makeResult({
+      className: "FCI-VK2",
+      hurdles: {
+        time: 12.03,
+        faults: 4,
+        faultDetails: [
+          {
+            id: "bar-2",
+            position: "hurdle-2",
+            code: "bar-dropped",
+            points: 2,
+          },
+        ],
+      },
+    });
+
+    expect(validateResult(result)).toContain(
+      "Hürden: Fehlerpunkte stimmen nicht mit den Detailangaben überein",
+    );
+  });
 });

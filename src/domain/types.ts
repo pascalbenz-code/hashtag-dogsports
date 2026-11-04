@@ -11,6 +11,34 @@ export interface RunInput {
   time: number | null;
   faults: number | null;
 }
+
+export type HurdleFaultPosition =
+  | "hurdle-1"
+  | "hurdle-2"
+  | "turn-pole"
+  | "hurdle-3"
+  | "hurdle-4"
+  | "position-independent";
+
+export type HurdleFaultCode =
+  | "not-jumped"
+  | "bar-dropped"
+  | "early-or-late"
+  | "turn-pole-omitted"
+  | "turn-pole-crossed"
+  | "held-after-start";
+
+export interface HurdleFaultDetail {
+  id: string;
+  position: HurdleFaultPosition;
+  code: HurdleFaultCode;
+  points: 2 | 4 | 10;
+}
+
+export interface HurdleRunInput extends RunInput {
+  faultDetails?: HurdleFaultDetail[];
+}
+
 export interface CompetitionResult {
   id: string;
   date: string;
@@ -20,7 +48,7 @@ export interface CompetitionResult {
   handler: string;
   className: "FCI-VK1" | "FCI-VK2" | "FCI-VK3";
   obedience: number | null;
-  hurdles: RunInput;
+  hurdles: HurdleRunInput;
   slalom: RunInput;
   obstacle: RunInput;
   notes: string;

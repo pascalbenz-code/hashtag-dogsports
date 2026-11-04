@@ -2,20 +2,17 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   BarChart3,
-  BookOpen,
   ChevronRight,
   ClipboardList,
   Download,
   Home,
   Medal,
-  MapPinned,
   Plus,
   Scale,
   ShieldCheck,
   Trash2,
   Upload,
 } from "lucide-react";
-import type { IfhView } from "./components/ifh/IfhModule";
 import { db, deleteResult, saveResult } from "./data/db";
 import {
   mergeImport,
@@ -34,6 +31,11 @@ import type {
 import { Button } from "./components/ui/button";
 import { Card } from "./components/ui/card";
 import { LocaleNumberInput } from "./components/LocaleNumberInput";
+import { HurdleFaultDetails } from "./components/HurdleFaultDetails";
+import {
+  formatHurdleFaultDetail,
+  hurdleFaultsTotal,
+} from "./domain/hurdleFaults";
 
 const PerformanceChart = lazy(() => import("./components/PerformanceChart"));
 const JudgeForm = lazy(() =>
@@ -46,12 +48,7 @@ const IbghJudgeForm = lazy(() =>
     default: IbghJudgeForm,
   })),
 );
-const IfhModule = lazy(() =>
-  import("./components/ifh/IfhModule").then(({ IfhModule }) => ({
-    default: IfhModule,
-  })),
-);
-type SportModule = "ths" | "ibgh" | "ifh";
+type SportModule = "ths" | "ibgh";
 type Tab = "dashboard" | "judge" | "results" | "new" | "stats";
 const tabTitles: Record<Tab, string> = {
   dashboard: "Dashboard",
@@ -70,7 +67,7 @@ const blank = (): CompetitionResult => ({
   handler: "",
   className: "FCI-VK1",
   obedience: null,
-  hurdles: { time: null, faults: null },
+  hurdles: { time: null, faults: null, faultDetails: [] },
   slalom: { time: null, faults: null },
   obstacle: { time: null, faults: null },
   notes: "",
@@ -108,9 +105,6 @@ export default function App() {
   const results = useLiveQuery(() => db.results.toArray(), []) ?? [];
   const [sportModule, setSportModule] = useState<SportModule | null>(null);
   const [tab, setTab] = useState<Tab>("dashboard");
-  const [ifhView, setIfhView] = useState<IfhView>("overview");
-  const [ifhPlanRevision, setIfhPlanRevision] = useState(0);
-  const [ifhDirty, setIfhDirty] = useState(false);
   const [editing, setEditing] = useState<CompetitionResult | null>(null);
   const open = (r?: CompetitionResult) => {
     setEditing(structuredClone(r ?? newForm()));
@@ -122,30 +116,11 @@ export default function App() {
   };
   const openModule = (nextModule: SportModule) => {
     setSportModule(nextModule);
-    if (nextModule === "ifh") setIfhView("overview");
     navigate("dashboard");
   };
   const goHome = () => {
-    if (
-      sportModule === "ifh" &&
-      ifhDirty &&
-      !confirm("Ungespeicherte IFH-Änderungen verwerfen?")
-    )
-      return;
-    setIfhDirty(false);
     setSportModule(null);
     navigate("dashboard");
-  };
-  const navigateIfh = (next: IfhView, newPlan = false) => {
-    if (
-      ifhView === "plan" &&
-      ifhDirty &&
-      !confirm("Ungespeicherte IFH-Änderungen verwerfen?")
-    )
-      return;
-    setIfhDirty(false);
-    if (newPlan) setIfhPlanRevision((current) => current + 1);
-    setIfhView(next);
   };
   return (
     <div className={`min-h-dvh ${sportModule ? "pb-28" : "pb-8"}`}>
@@ -154,17 +129,7 @@ export default function App() {
           <span className="brand">#Dogsports</span>
           <span className="crumb">
             {sportModule
-              ? `Modul ${sportModule.toUpperCase()} · ${
-                  sportModule === "ifh"
-                    ? {
-                        overview: "Übersicht",
-                        plan: "Training planen",
-                        sessions: "Trainingseinheiten",
-                        progress: "Fortschritt",
-                        rules: "Regelwerk",
-                      }[ifhView]
-                    : tabTitles[tab]
-                }`
+              ? `Modul ${sportModule.toUpperCase()} · ${tabTitles[tab]}`
               : "Startseite · Modulauswahl"}
           </span>
         </button>
@@ -214,23 +179,8 @@ export default function App() {
         {sportModule === "ibgh" && tab === "stats" ? (
           <ModulePlaceholder module="IBGH" title="Statistik" />
         ) : null}
-        {sportModule === "ifh" ? (
-          <Suspense fallback={<Hint text="IFH-Modul wird geladen …" />}>
-            <IfhModule
-              key={`ifh-${ifhPlanRevision}`}
-              view={ifhView}
-              dogs={[
-                ...new Set(
-                  results.map((result) => result.dog.trim()).filter(Boolean),
-                ),
-              ].sort((a, b) => a.localeCompare(b, "de"))}
-              onNavigate={setIfhView}
-              onDirtyChange={setIfhDirty}
-            />
-          </Suspense>
-        ) : null}
       </main>
-      {sportModule && sportModule !== "ifh" ? (
+      {sportModule ? (
         <nav
           className="bottom-nav"
           aria-label={`Navigation ${sportModule.toUpperCase()}`}
@@ -264,40 +214,6 @@ export default function App() {
             icon={<BarChart3 />}
             label="Statistik"
             onClick={() => navigate("stats")}
-          />
-        </nav>
-      ) : null}
-      {sportModule === "ifh" ? (
-        <nav className="bottom-nav" aria-label="Navigation IFH">
-          <Nav
-            active={ifhView === "overview"}
-            icon={<Home />}
-            label="Übersicht"
-            onClick={() => navigateIfh("overview")}
-          />
-          <Nav
-            active={ifhView === "plan"}
-            icon={<Plus />}
-            label="Planen"
-            onClick={() => navigateIfh("plan", true)}
-          />
-          <Nav
-            active={ifhView === "sessions"}
-            icon={<ClipboardList />}
-            label="Einheiten"
-            onClick={() => navigateIfh("sessions")}
-          />
-          <Nav
-            active={ifhView === "progress"}
-            icon={<BarChart3 />}
-            label="Fortschritt"
-            onClick={() => navigateIfh("progress")}
-          />
-          <Nav
-            active={ifhView === "rules"}
-            icon={<BookOpen />}
-            label="Regelwerk"
-            onClick={() => navigateIfh("rules")}
           />
         </nav>
       ) : null}
@@ -343,13 +259,6 @@ function StartPage({
           details="Leistungsrichter aktiv · weitere Bereiche vorbereitet"
           icon={<Medal aria-hidden="true" />}
           onClick={() => openModule("ibgh")}
-        />
-        <ModuleChoice
-          title="IFH"
-          description="Fährtentraining planen, dokumentieren, auswerten und simulieren."
-          details="Planung · Einheiten · Fortschritt · Regelwerk"
-          icon={<MapPinned aria-hidden="true" />}
-          onClick={() => openModule("ifh")}
         />
       </div>
     </>
@@ -736,7 +645,16 @@ function Results({
                   <td className={bests.hurdles.has(r.id) ? "best" : ""}>
                     {fmt(r.hurdles.time)}
                   </td>
-                  <td>{fmt(r.hurdles.faults)}</td>
+                  <td
+                    title={(r.hurdles.faultDetails ?? [])
+                      .map(formatHurdleFaultDetail)
+                      .join("\n")}
+                  >
+                    {fmt(r.hurdles.faults)}
+                    {r.hurdles.faultDetails?.length
+                      ? ` · ${r.hurdles.faultDetails.length} Details`
+                      : ""}
+                  </td>
                   <td className={bests.slalom.has(r.id) ? "best" : ""}>
                     {fmt(r.slalom.time)}
                   </td>
@@ -777,6 +695,7 @@ function Editor({
       part: "time" | "faults",
       v: string,
     ) => setForm({ ...form, [key]: { ...form[key], [part]: n(v) } });
+  const hurdleDetails = form.hurdles.faultDetails ?? [];
   const persisted = useLiveQuery(() => db.results.get(form.id), [form.id]);
   useEffect(() => {
     const timer = setTimeout(
@@ -816,6 +735,13 @@ function Editor({
                 setForm({
                   ...form,
                   className: e.target.value as CompetitionResult["className"],
+                  hurdles: {
+                    ...form.hurdles,
+                    faultDetails:
+                      e.target.value === "FCI-VK3"
+                        ? undefined
+                        : form.hurdles.faultDetails,
+                  },
                 })
               }
             >
@@ -888,10 +814,39 @@ function Editor({
                 <input
                   inputMode="decimal"
                   value={form[key].faults ?? ""}
+                  readOnly={key === "hurdles" && hurdleDetails.length > 0}
+                  aria-describedby={
+                    key === "hurdles" && hurdleDetails.length > 0
+                      ? "hurdle-faults-calculated"
+                      : undefined
+                  }
                   onChange={(e) => setRun(key, "faults", e.target.value)}
                 />
               </Field>
             </div>
+            {key === "hurdles" && hurdleDetails.length > 0 ? (
+              <p id="hurdle-faults-calculated" className="mt-2 text-xs text-muted">
+                Die Fehlerpunkte werden aus den Detailangaben berechnet.
+              </p>
+            ) : null}
+            {key === "hurdles" && form.className !== "FCI-VK3" ? (
+              <HurdleFaultDetails
+                className={form.className}
+                details={hurdleDetails}
+                onChange={(faultDetails) =>
+                  setForm({
+                    ...form,
+                    hurdles: {
+                      ...form.hurdles,
+                      faults: faultDetails.length
+                        ? hurdleFaultsTotal(faultDetails)
+                        : null,
+                      faultDetails,
+                    },
+                  })
+                }
+              />
+            ) : null}
           </div>
         ))}
       </Card>
@@ -1161,6 +1116,12 @@ function ResultCard({
           <p className="text-sm text-muted">
             {dFmt(result.date)} · {result.className}
           </p>
+          {result.hurdles.faultDetails?.length ? (
+            <p className="mt-1 text-xs text-muted">
+              Hürden: {result.hurdles.faultDetails.length} Detailangaben · {" "}
+              {hurdleFaultsTotal(result.hurdles.faultDetails)} FP
+            </p>
+          ) : null}
           <div className="mt-2">
             <Qualis list={s.qualifications} />
           </div>

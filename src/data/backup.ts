@@ -1,5 +1,9 @@
 import type { CompetitionResult } from "../domain/types";
 import { validateResult } from "../domain/scoring";
+import {
+  formatHurdleFaultDetail,
+  isValidHurdleFaultDetail,
+} from "../domain/hurdleFaults";
 export interface Backup {
   app: "#Dogsports";
   version: 1;
@@ -46,6 +50,14 @@ export function parseBackup(text: string): Backup {
       !isRun(r.obstacle)
     )
       throw new Error("Mindestens ein Datensatz hat ein ungültiges Schema.");
+    if (
+      r.hurdles.faultDetails !== undefined &&
+      (!Array.isArray(r.hurdles.faultDetails) ||
+        !r.hurdles.faultDetails.every(isValidHurdleFaultDetail))
+    )
+      throw new Error(
+        "Mindestens ein Datensatz enthält ungültige Hürden-Detailangaben.",
+      );
     r.competitionType ??= "Vereinsprüfung";
   }
   return { ...(data as Backup), app: "#Dogsports" };
@@ -60,6 +72,7 @@ export function toCsv(results: CompetitionResult[]) {
     "Unterordnung",
     "Hürdenzeit",
     "Hürdenfehler",
+    "Hürdenfehler Details",
     "Slalomzeit",
     "Slalomfehler",
     "Hinderniszeit",
@@ -90,6 +103,9 @@ export function toCsv(results: CompetitionResult[]) {
           num(r.obedience),
           num(r.hurdles.time),
           num(r.hurdles.faults),
+          (r.hurdles.faultDetails ?? [])
+            .map(formatHurdleFaultDetail)
+            .join(" | "),
           num(r.slalom.time),
           num(r.slalom.faults),
           num(r.obstacle.time),

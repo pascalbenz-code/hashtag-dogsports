@@ -4,6 +4,10 @@ import type {
   Qualification,
   ScoreBreakdown,
 } from "./types";
+import {
+  hurdleFaultsTotal,
+  isValidHurdleFaultDetail,
+} from "./hurdleFaults";
 
 export const BASE_POINTS: Record<CompetitionResult["className"], number> = {
   "FCI-VK1": 250,
@@ -95,6 +99,21 @@ export function validateResult(result: CompetitionResult): string[] {
     if (!finite(run.faults)) errors.push(`${label}: Fehlerpunkte fehlen`);
     else if (run.faults! < 0)
       errors.push(`${label}: Fehlerpunkte dürfen nicht negativ sein`);
+  }
+
+  const hurdleDetails = result.hurdles.faultDetails ?? [];
+  if (hurdleDetails.length) {
+    if (result.className === "FCI-VK3")
+      errors.push("Hürden: Detailangaben sind nur für FCI-VK1 und FCI-VK2 vorgesehen");
+    if (!hurdleDetails.every(isValidHurdleFaultDetail))
+      errors.push("Hürden: Mindestens eine Detailangabe ist ungültig");
+    if (
+      finite(result.hurdles.faults) &&
+      hurdleFaultsTotal(hurdleDetails) !== result.hurdles.faults
+    )
+      errors.push(
+        "Hürden: Fehlerpunkte stimmen nicht mit den Detailangaben überein",
+      );
   }
   return errors;
 }

@@ -1,7 +1,6 @@
 import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
-import { createIfhSession } from "../domain/ifh";
 import { makeResult } from "../test/factory";
 import { THSDatabase } from "./db";
 
@@ -27,42 +26,7 @@ describe("Dexie persistence", () => {
     reopened.close();
   });
 
-  it("saves an IFH draft and restores it without changing THS data", async () => {
-    const name = `test-${crypto.randomUUID()}`;
-    names.push(name);
-    const first = new THSDatabase(name);
-    const result = makeResult();
-    const session = createIfhSession();
-    session.dog = "Mika";
-    session.title = "Winkeltraining";
-    session.plannedTrack.legs.push({
-      id: "leg-1",
-      order: 1,
-      lengthSteps: 200,
-      lengthMeters: null,
-      ground: "Acker",
-      vegetation: "",
-      direction: "",
-      shape: "straight",
-      semicircleRadiusMeters: null,
-      semicircleDirection: null,
-      notes: "",
-    });
-    await first.results.put(result);
-    await first.ifhSessions.put(session);
-    first.close();
-
-    const reopened = new THSDatabase(name);
-    expect((await reopened.ifhSessions.get(session.id))?.status).toBe("draft");
-    expect(
-      (await reopened.ifhSessions.get(session.id))?.plannedTrack.legs[0]
-        .lengthSteps,
-    ).toBe(200);
-    expect(await reopened.results.get(result.id)).toEqual(result);
-    reopened.close();
-  });
-
-  it("migrates an existing version-1 database additively", async () => {
+  it("migrates an existing version-1 database without changing THS data", async () => {
     const name = `test-${crypto.randomUUID()}`;
     names.push(name);
     const legacy = new Dexie(name);
@@ -75,17 +39,11 @@ describe("Dexie persistence", () => {
 
     const migrated = new THSDatabase(name);
     expect(await migrated.results.get(result.id)).toEqual(result);
-    expect(await migrated.ifhSessions.count()).toBe(0);
-    const session = createIfhSession();
-    await migrated.ifhSessions.put(session);
-    expect(await migrated.ifhSessions.get(session.id)).toEqual(session);
-    expect((await migrated.ifhSessions.get(session.id))?.mapPlan?.coordinateSystem).toBe(
-      "WGS84",
-    );
+    expect(migrated.tables.map((table) => table.name)).toEqual(["results"]);
     migrated.close();
   });
 
-  it("adds an empty map plan to existing version-2 IFH sessions", async () => {
+  it("removes the retired IFH store while preserving existing THS results", async () => {
     const name = `test-${crypto.randomUUID()}`;
     names.push(name);
     const legacy = new Dexie(name);
@@ -97,15 +55,19 @@ describe("Dexie persistence", () => {
       ifhSessions:
         "id,dog,date,status,mode,targetLevel,trackOwnership,createdAt,updatedAt,*focuses",
     });
-    const session = createIfhSession();
-    delete session.mapPlan;
-    await legacy.table("ifhSessions").put(session);
+    legacy.version(3).stores({
+      results: "id,date,className,createdAt,updatedAt",
+      ifhSessions:
+        "id,dog,date,status,mode,targetLevel,trackOwnership,createdAt,updatedAt,*focuses",
+    });
+    const result = makeResult();
+    await legacy.table("results").put(result);
+    await legacy.table("ifhSessions").put({ id: "retired-ifh-session" });
     legacy.close();
 
     const migrated = new THSDatabase(name);
-    const restored = await migrated.ifhSessions.get(session.id);
-    expect(restored?.mapPlan?.coordinateSystem).toBe("WGS84");
-    expect(restored?.mapPlan?.boundary).toBeNull();
+    expect(await migrated.results.get(result.id)).toEqual(result);
+    expect(migrated.tables.map((table) => table.name)).toEqual(["results"]);
     migrated.close();
   });
 });
