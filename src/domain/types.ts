@@ -61,6 +61,40 @@ export interface SlalomRunInput extends RunInput {
   faultDetails?: SlalomFaultDetail[];
 }
 
+export type ObstacleFaultPosition =
+  | "hurdle-1"
+  | "oxer"
+  | "tunnel"
+  | "plank"
+  | "barrel"
+  | "hoop"
+  | "high-long"
+  | "hurdle-2"
+  | "position-independent";
+
+export type ObstacleFaultCode =
+  | "obstacle-omitted"
+  | "oxer-bar-1-dropped"
+  | "oxer-bar-2-dropped"
+  | "plank-side-mount"
+  | "plank-side-dismount"
+  | "high-long-bar-1-dropped"
+  | "high-long-bar-2-dropped"
+  | "high-long-bar-1-under"
+  | "high-long-bar-2-under"
+  | "held-after-start";
+
+export interface ObstacleFaultDetail {
+  id: string;
+  position: ObstacleFaultPosition;
+  code: ObstacleFaultCode;
+  points: 1 | 2 | 4;
+}
+
+export interface ObstacleRunInput extends RunInput {
+  faultDetails?: ObstacleFaultDetail[];
+}
+
 export interface CompetitionResult {
   id: string;
   date: string;
@@ -74,7 +108,7 @@ export interface CompetitionResult {
   obedience: number | null;
   hurdles: HurdleRunInput;
   slalom: SlalomRunInput;
-  obstacle: RunInput;
+  obstacle: ObstacleRunInput;
   notes: string;
   createdAt: string;
   updatedAt: string;

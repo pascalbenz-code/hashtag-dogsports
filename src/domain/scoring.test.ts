@@ -214,6 +214,39 @@ describe("FCI scoring and qualifications", () => {
     );
   });
 
+  it("uses detailed obstacle-course faults exactly once", () => {
+    const score = calculateScore(
+      makeResult({
+        obstacle: {
+          time: 9.44,
+          faults: 7,
+          faultDetails: [
+            { id: "oxer", position: "oxer", code: "oxer-bar-1-dropped", points: 1 },
+            { id: "plank", position: "plank", code: "plank-side-mount", points: 4 },
+            { id: "high-long", position: "high-long", code: "high-long-bar-2-under", points: 2 },
+          ],
+        },
+      }),
+    );
+    expect(score.complete).toBe(true);
+    expect(score.total).toBe(273.52);
+  });
+
+  it("rejects a mismatch between obstacle details and entered fault points", () => {
+    const result = makeResult({
+      obstacle: {
+        time: 9.44,
+        faults: 2,
+        faultDetails: [
+          { id: "plank", position: "plank", code: "plank-side-mount", points: 4 },
+        ],
+      },
+    });
+    expect(validateResult(result)).toContain(
+      "Hindernis: Fehlerpunkte stimmen nicht mit den Detailangaben überein",
+    );
+  });
+
   it("accepts VK3 details on hurdles 5 and 6", () => {
     const result = makeResult({
       className: "FCI-VK3",

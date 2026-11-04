@@ -757,6 +757,16 @@ h3 {
   cursor: not-allowed;
   opacity: 0.55;
 }
+.obstacle-course svg { max-height: 560px; }
+.course-end-label { fill: #111212; font-size: 13px; font-weight: 800; }
+.obstacle-position { cursor: pointer; outline: none; }
+.obstacle-position > rect { fill: #fff; stroke: #a2c0ce; stroke-width: 2; }
+.obstacle-position > circle { fill: #111212; stroke: #fff; stroke-width: 3; transition: 150ms ease; }
+.obstacle-position > text:not(.obstacle-name) { fill: #fff; font-size: 12px; font-weight: 900; pointer-events: none; }
+.obstacle-position > .obstacle-name { fill: #111212; font-size: 12px; font-weight: 800; pointer-events: none; }
+.obstacle-position:hover > circle,
+.obstacle-position:focus-visible > circle,
+.obstacle-position.selected > circle { fill: #31abe4; stroke: #1776a7; transform-box: fill-box; transform-origin: center; transform: scale(1.12); }
 #hurdle-arrow path {
   fill: #1776a7;
 }

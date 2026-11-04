@@ -12,6 +12,10 @@ import {
   areValidSlalomFaultDetails,
   slalomFaultsTotal,
 } from "./slalomFaults";
+import {
+  areValidObstacleFaultDetails,
+  obstacleFaultsTotal,
+} from "./obstacleFaults";
 
 export const BASE_POINTS: Record<CompetitionResult["className"], number> = {
   "FCI-VK1": 250,
@@ -134,6 +138,18 @@ export function validateResult(result: CompetitionResult): string[] {
     )
       errors.push(
         "Slalom: Fehlerpunkte stimmen nicht mit den Detailangaben überein",
+      );
+  }
+  const obstacleDetails = result.obstacle.faultDetails ?? [];
+  if (obstacleDetails.length) {
+    if (!areValidObstacleFaultDetails(obstacleDetails))
+      errors.push("Hindernis: Mindestens eine Detailangabe ist ungültig");
+    if (
+      finite(result.obstacle.faults) &&
+      obstacleFaultsTotal(obstacleDetails) !== result.obstacle.faults
+    )
+      errors.push(
+        "Hindernis: Fehlerpunkte stimmen nicht mit den Detailangaben überein",
       );
   }
   return errors;
