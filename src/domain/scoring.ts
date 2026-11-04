@@ -103,9 +103,11 @@ export function validateResult(result: CompetitionResult): string[] {
 
   const hurdleDetails = result.hurdles.faultDetails ?? [];
   if (hurdleDetails.length) {
-    if (result.className === "FCI-VK3")
-      errors.push("Hürden: Detailangaben sind nur für FCI-VK1 und FCI-VK2 vorgesehen");
-    if (!hurdleDetails.every(isValidHurdleFaultDetail))
+    if (
+      !hurdleDetails.every((detail) =>
+        isValidHurdleFaultDetail(detail, result.className),
+      )
+    )
       errors.push("Hürden: Mindestens eine Detailangabe ist ungültig");
     if (
       finite(result.hurdles.faults) &&

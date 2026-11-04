@@ -1,4 +1,5 @@
 import type {
+  CompetitionResult,
   HurdleFaultCode,
   HurdleFaultDetail,
   HurdleFaultPosition,
@@ -21,15 +22,32 @@ export const HURDLE_POSITIONS: ReadonlyArray<{
   { id: "turn-pole", label: "Wendestange" },
   { id: "hurdle-3", label: "Hürde 3" },
   { id: "hurdle-4", label: "Hürde 4" },
+  { id: "hurdle-5", label: "Hürde 5" },
+  { id: "hurdle-6", label: "Hürde 6" },
   { id: "position-independent", label: "Positionsunabhängig" },
 ];
 
-const HURDLES: readonly HurdleFaultPosition[] = [
+const VK1_AND_VK2_HURDLES: readonly HurdleFaultPosition[] = [
   "hurdle-1",
   "hurdle-2",
   "hurdle-3",
   "hurdle-4",
 ];
+
+const VK3_HURDLES: readonly HurdleFaultPosition[] = [
+  ...VK1_AND_VK2_HURDLES,
+  "hurdle-5",
+  "hurdle-6",
+];
+
+const HURDLE_POSITIONS_BY_CLASS: Record<
+  CompetitionResult["className"],
+  readonly HurdleFaultPosition[]
+> = {
+  "FCI-VK1": VK1_AND_VK2_HURDLES,
+  "FCI-VK2": VK1_AND_VK2_HURDLES,
+  "FCI-VK3": VK3_HURDLES,
+};
 
 export const HURDLE_FAULT_RULES: readonly HurdleFaultRule[] = [
   {
@@ -38,21 +56,21 @@ export const HURDLE_FAULT_RULES: readonly HurdleFaultRule[] = [
     points: 4,
     explanation:
       "Die jeweilige Sprungpflicht beachten; zulässiges Danebenlaufen des HF ist kein Fehler.",
-    positions: HURDLES,
+    positions: VK3_HURDLES,
   },
   {
     code: "bar-dropped",
     label: "Stange abgeworfen",
     points: 2,
     explanation: "Unabhängig davon, ob Hund oder HF den Abwurf verursacht.",
-    positions: HURDLES,
+    positions: VK3_HURDLES,
   },
   {
     code: "early-or-late",
     label: "Vorprellen oder Nachhängen",
     points: 2,
     explanation: "Kann durch Hund oder HF verursacht sein.",
-    positions: HURDLES,
+    positions: VK3_HURDLES,
   },
   {
     code: "turn-pole-omitted",
@@ -87,21 +105,32 @@ const rulesByCode = new Map(
 export const hurdleRulesForPosition = (position: HurdleFaultPosition) =>
   HURDLE_FAULT_RULES.filter((rule) => rule.positions.includes(position));
 
+export const hurdlePositionsForClass = (
+  className: CompetitionResult["className"],
+) => HURDLE_POSITIONS_BY_CLASS[className];
+
 export const hurdleFaultsTotal = (details: readonly HurdleFaultDetail[]) =>
   details.reduce((total, detail) => total + detail.points, 0);
 
 export function isValidHurdleFaultDetail(
   detail: unknown,
+  className?: CompetitionResult["className"],
 ): detail is HurdleFaultDetail {
   if (!detail || typeof detail !== "object") return false;
   const candidate = detail as Partial<HurdleFaultDetail>;
   const rule = candidate.code ? rulesByCode.get(candidate.code) : undefined;
+  const validForClass =
+    !className ||
+    candidate.position === "turn-pole" ||
+    candidate.position === "position-independent" ||
+    HURDLE_POSITIONS_BY_CLASS[className].includes(candidate.position!);
   return (
     typeof candidate.id === "string" &&
     !!candidate.position &&
     !!rule &&
     rule.positions.includes(candidate.position) &&
-    candidate.points === rule.points
+    candidate.points === rule.points &&
+    validForClass
   );
 }
 

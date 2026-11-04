@@ -165,4 +165,53 @@ describe("FCI scoring and qualifications", () => {
       "Hürden: Fehlerpunkte stimmen nicht mit den Detailangaben überein",
     );
   });
+
+  it("accepts VK3 details on hurdles 5 and 6", () => {
+    const result = makeResult({
+      className: "FCI-VK3",
+      hurdles: {
+        time: 12.03,
+        faults: 6,
+        faultDetails: [
+          {
+            id: "hurdle-5-not-jumped",
+            position: "hurdle-5",
+            code: "not-jumped",
+            points: 4,
+          },
+          {
+            id: "hurdle-6-dropped",
+            position: "hurdle-6",
+            code: "bar-dropped",
+            points: 2,
+          },
+        ],
+      },
+    });
+
+    expect(validateResult(result)).toEqual([]);
+    expect(calculateScore(result).total).toBe(272.52);
+  });
+
+  it("rejects hurdles 5 and 6 for VK1 and VK2", () => {
+    const result = makeResult({
+      className: "FCI-VK2",
+      hurdles: {
+        time: 12.03,
+        faults: 2,
+        faultDetails: [
+          {
+            id: "hurdle-6-dropped",
+            position: "hurdle-6",
+            code: "bar-dropped",
+            points: 2,
+          },
+        ],
+      },
+    });
+
+    expect(validateResult(result)).toContain(
+      "Hürden: Mindestens eine Detailangabe ist ungültig",
+    );
+  });
 });

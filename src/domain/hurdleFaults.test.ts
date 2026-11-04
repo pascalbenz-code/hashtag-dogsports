@@ -23,6 +23,9 @@ describe("hurdle fault details", () => {
       hurdleRulesForPosition("turn-pole").map((rule) => rule.points),
     ).toEqual([10, 10]);
     expect(hurdleRulesForPosition("position-independent")).toHaveLength(1);
+    expect(hurdleRulesForPosition("hurdle-6").map((rule) => rule.points)).toEqual([
+      4, 2, 2,
+    ]);
   });
 
   it("adds multiple faults at the same hurdle", () => {
@@ -40,6 +43,13 @@ describe("hurdle fault details", () => {
     expect(
       isValidHurdleFaultDetail({ ...detail, position: "turn-pole" }),
     ).toBe(false);
+  });
+
+  it("allows hurdles 5 and 6 only for VK3", () => {
+    const vk3Detail = { ...detail, position: "hurdle-6" as const };
+    expect(isValidHurdleFaultDetail(vk3Detail, "FCI-VK3")).toBe(true);
+    expect(isValidHurdleFaultDetail(vk3Detail, "FCI-VK2")).toBe(false);
+    expect(isValidHurdleFaultDetail(detail, "FCI-VK2")).toBe(true);
   });
 
   it("formats a readable German summary", () => {

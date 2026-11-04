@@ -10,7 +10,7 @@ Das visuelle System basiert auf dem #Dogsports-Banner in `public/dogsports-banne
 - CRUD für vollständige Ergebnisse und Entwürfe, eindeutige UUIDs und Zeitstempel
 - automatische Formular-Zwischenspeicherung sowie dauerhafte IndexedDB-Persistenz mit Dexie
 - exakte FCI-VK1/2/3-Gesamtpunkteberechnung und kumulative Qualifikationen
-- optionale Hürdenfehler-Details für FCI-VK1/2 mit interaktivem Schaubild, festen Einzelabzügen und automatischer Summierung
+- optionale Hürdenfehler-Details für FCI-VK1/2/3 mit stufenspezifischem interaktivem Schaubild, festen Einzelabzügen und automatischer Summierung
 - Suche, Stufen-/Qualifikationsfilter, Entwurfsschalter und Sortierung
 - kompakte mobile Karten und horizontal scrollbarere vollständige Ergebnistabelle
 - Bestleistungen einschließlich Gleichständen

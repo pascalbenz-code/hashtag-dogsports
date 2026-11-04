@@ -53,7 +53,9 @@ export function parseBackup(text: string): Backup {
     if (
       r.hurdles.faultDetails !== undefined &&
       (!Array.isArray(r.hurdles.faultDetails) ||
-        !r.hurdles.faultDetails.every(isValidHurdleFaultDetail))
+        !r.hurdles.faultDetails.every((detail) =>
+          isValidHurdleFaultDetail(detail, r.className),
+        ))
     )
       throw new Error(
         "Mindestens ein Datensatz enthält ungültige Hürden-Detailangaben.",

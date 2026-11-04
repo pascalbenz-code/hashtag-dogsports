@@ -18,6 +18,8 @@ export type HurdleFaultPosition =
   | "turn-pole"
   | "hurdle-3"
   | "hurdle-4"
+  | "hurdle-5"
+  | "hurdle-6"
   | "position-independent";
 
 export type HurdleFaultCode =

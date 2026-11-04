@@ -13,18 +13,46 @@ import type {
 } from "../domain/types";
 import { Button } from "./ui/button";
 
-const diagramPositions: ReadonlyArray<{
+interface DiagramPosition {
   id: Exclude<HurdleFaultPosition, "position-independent">;
   x: number;
   y: number;
   shortLabel: string;
-}> = [
-  { id: "hurdle-1", x: 92, y: 254, shortLabel: "1" },
-  { id: "hurdle-2", x: 160, y: 164, shortLabel: "2" },
-  { id: "turn-pole", x: 244, y: 62, shortLabel: "W" },
-  { id: "hurdle-3", x: 300, y: 164, shortLabel: "3" },
-  { id: "hurdle-4", x: 232, y: 254, shortLabel: "4" },
-];
+}
+
+interface HurdleDiagram {
+  route: string;
+  positions: readonly DiagramPosition[];
+  hurdleCount: number;
+}
+
+const FOUR_HURDLE_DIAGRAM: HurdleDiagram = {
+  route:
+    "M35 310 L92 254 L160 164 Q205 106 244 62 Q285 104 300 164 L232 254 L185 310",
+  hurdleCount: 4,
+  positions: [
+    { id: "hurdle-1", x: 92, y: 254, shortLabel: "1" },
+    { id: "hurdle-2", x: 160, y: 164, shortLabel: "2" },
+    { id: "turn-pole", x: 244, y: 62, shortLabel: "W" },
+    { id: "hurdle-3", x: 300, y: 164, shortLabel: "3" },
+    { id: "hurdle-4", x: 232, y: 254, shortLabel: "4" },
+  ],
+};
+
+const SIX_HURDLE_DIAGRAM: HurdleDiagram = {
+  route:
+    "M28 310 L85 264 L138 202 L198 135 Q226 92 250 58 Q283 91 310 135 L252 202 L194 264 L154 310",
+  hurdleCount: 6,
+  positions: [
+    { id: "hurdle-1", x: 85, y: 264, shortLabel: "1" },
+    { id: "hurdle-2", x: 138, y: 202, shortLabel: "2" },
+    { id: "hurdle-3", x: 198, y: 135, shortLabel: "3" },
+    { id: "turn-pole", x: 250, y: 58, shortLabel: "W" },
+    { id: "hurdle-4", x: 310, y: 135, shortLabel: "4" },
+    { id: "hurdle-5", x: 252, y: 202, shortLabel: "5" },
+    { id: "hurdle-6", x: 194, y: 264, shortLabel: "6" },
+  ],
+};
 
 const positionName = (position: HurdleFaultPosition) =>
   HURDLE_POSITIONS.find(({ id }) => id === position)?.label ?? position;
@@ -42,6 +70,8 @@ export function HurdleFaultDetails({
   const [position, setPosition] =
     useState<HurdleFaultPosition>("hurdle-1");
   const rules = hurdleRulesForPosition(position);
+  const diagram =
+    className === "FCI-VK3" ? SIX_HURDLE_DIAGRAM : FOUR_HURDLE_DIAGRAM;
 
   const selectFromKeyboard = (
     event: React.KeyboardEvent<SVGGElement>,
@@ -92,10 +122,14 @@ export function HurdleFaultDetails({
             <p className="label">1. Fehlerposition im Schaubild auswählen</p>
             <figure className="hurdle-course">
               <figcaption>
-                Schaubild H-{className === "FCI-VK1" ? "VK1" : "VK2"} ·
-                schematische Darstellung
+                Schaubild H-{className.replace("FCI-", "")} · schematische
+                Darstellung
               </figcaption>
-              <svg viewBox="0 0 360 340" role="group" aria-label="Hürdenlauf mit vier Hürden und Wendestange">
+              <svg
+                viewBox="0 0 360 340"
+                role="group"
+                aria-label={`Hürdenlauf mit ${diagram.hurdleCount} Hürden und Wendestange`}
+              >
                 <defs>
                   <marker
                     id="hurdle-arrow"
@@ -111,7 +145,7 @@ export function HurdleFaultDetails({
                 <path
                   className="hurdle-route"
                   markerEnd="url(#hurdle-arrow)"
-                  d="M35 310 L92 254 L160 164 Q205 106 244 62 Q285 104 300 164 L232 254 L185 310"
+                  d={diagram.route}
                 />
                 <text className="hurdle-start-label" x="16" y="330">
                   Start
@@ -119,7 +153,7 @@ export function HurdleFaultDetails({
                 <text className="hurdle-start-label" x="172" y="330">
                   Ziel
                 </text>
-                {diagramPositions.map((item) => (
+                {diagram.positions.map((item) => (
                   <g
                     className={`hurdle-position ${position === item.id ? "selected" : ""}`}
                     role="button"

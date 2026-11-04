@@ -35,6 +35,7 @@ import { HurdleFaultDetails } from "./components/HurdleFaultDetails";
 import {
   formatHurdleFaultDetail,
   hurdleFaultsTotal,
+  isValidHurdleFaultDetail,
 } from "./domain/hurdleFaults";
 
 const PerformanceChart = lazy(() => import("./components/PerformanceChart"));
@@ -731,19 +732,28 @@ function Editor({
           <Field label="Prüfungsstufe">
             <select
               value={form.className}
-              onChange={(e) =>
+              onChange={(e) => {
+                const className = e.target
+                  .value as CompetitionResult["className"];
+                const previousDetails = form.hurdles.faultDetails ?? [];
+                const faultDetails = previousDetails.filter((detail) =>
+                  isValidHurdleFaultDetail(detail, className),
+                );
                 setForm({
                   ...form,
-                  className: e.target.value as CompetitionResult["className"],
+                  className,
                   hurdles: {
                     ...form.hurdles,
-                    faultDetails:
-                      e.target.value === "FCI-VK3"
-                        ? undefined
-                        : form.hurdles.faultDetails,
+                    faults:
+                      previousDetails.length === 0
+                        ? form.hurdles.faults
+                        : faultDetails.length
+                          ? hurdleFaultsTotal(faultDetails)
+                          : null,
+                    faultDetails,
                   },
-                })
-              }
+                });
+              }}
             >
               <option>FCI-VK1</option>
               <option>FCI-VK2</option>
@@ -829,8 +839,9 @@ function Editor({
                 Die Fehlerpunkte werden aus den Detailangaben berechnet.
               </p>
             ) : null}
-            {key === "hurdles" && form.className !== "FCI-VK3" ? (
+            {key === "hurdles" ? (
               <HurdleFaultDetails
+                key={form.className}
                 className={form.className}
                 details={hurdleDetails}
                 onChange={(faultDetails) =>
