@@ -59,12 +59,31 @@ describe("HurdleFaultDetails course image", () => {
     );
   });
 
-  it("keeps the six-hurdle VK3 schematic", () => {
+  it("uses the black-and-white six-hurdle reference for VK3", () => {
+    const positionIndependentFault: HurdleFaultDetail = {
+      id: "fault-independent",
+      position: "position-independent",
+      code: "held-after-start",
+      points: 2,
+    };
     const markup = renderDetails("FCI-VK3", [
-      droppedBar("fault-1", "hurdle-1"),
+      positionIndependentFault,
     ]);
 
-    expect(markup).not.toContain("hurdle-course-vk1-vk2-dk.svg");
-    expect(markup).toContain("Schaubild H-VK3");
+    expect(markup).toContain("hurdle-course-vk3-svk.svg");
+    expect(markup.match(/hurdle-reference-hotspot/g)).toHaveLength(7);
+    expect(markup).not.toContain('data-faulted="true"');
+  });
+
+  it("marks a stored error at the sixth VK3 hurdle", () => {
+    const markup = renderDetails("FCI-VK3", [
+      droppedBar("fault-6", "hurdle-6"),
+    ]);
+
+    expect(markup).toContain(
+      'data-position="hurdle-6" data-faulted="true"',
+    );
+    expect(markup.match(/data-faulted="true"/g)).toHaveLength(1);
+    expect(markup).toContain("Hürde 6 auswählen, Fehler erfasst");
   });
 });

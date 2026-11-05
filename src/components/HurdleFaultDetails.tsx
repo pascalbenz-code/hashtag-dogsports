@@ -12,47 +12,67 @@ import type {
 } from "../domain/types";
 import { Button } from "./ui/button";
 
-interface DiagramPosition {
+interface ReferencePosition {
   id: Exclude<HurdleFaultPosition, "position-independent">;
   x: number;
   y: number;
-  shortLabel: string;
-}
-
-interface HurdleDiagram {
-  route: string;
-  positions: readonly DiagramPosition[];
-  hurdleCount: number;
-}
-
-interface ReferencePosition extends DiagramPosition {
   width: number;
   height: number;
 }
 
+interface HurdleReferenceCourse {
+  image: string;
+  width: number;
+  height: number;
+  caption: string;
+  alt: string;
+  minTouchWidth: number;
+  minTouchHeight: number;
+  positions: readonly ReferencePosition[];
+}
+
 const FOUR_HURDLE_REFERENCE_POSITIONS: readonly ReferencePosition[] = [
-  { id: "hurdle-1", x: 435, y: 692, width: 250, height: 108, shortLabel: "1" },
-  { id: "hurdle-2", x: 624, y: 428, width: 246, height: 108, shortLabel: "2" },
-  { id: "turn-pole", x: 963, y: 96, width: 96, height: 180, shortLabel: "W" },
-  { id: "hurdle-3", x: 916, y: 428, width: 246, height: 108, shortLabel: "3" },
-  { id: "hurdle-4", x: 730, y: 692, width: 252, height: 108, shortLabel: "4" },
+  { id: "hurdle-1", x: 435, y: 692, width: 250, height: 108 },
+  { id: "hurdle-2", x: 624, y: 428, width: 246, height: 108 },
+  { id: "turn-pole", x: 963, y: 96, width: 96, height: 180 },
+  { id: "hurdle-3", x: 916, y: 428, width: 246, height: 108 },
+  { id: "hurdle-4", x: 730, y: 692, width: 252, height: 108 },
 ];
 
 const FOUR_HURDLE_REFERENCE_IMAGE = `${import.meta.env.BASE_URL}hurdle-course-vk1-vk2-dk.svg`;
 
-const SIX_HURDLE_DIAGRAM: HurdleDiagram = {
-  route:
-    "M28 310 L85 264 L138 202 L198 135 Q226 92 250 58 Q283 91 310 135 L252 202 L194 264 L154 310",
-  hurdleCount: 6,
-  positions: [
-    { id: "hurdle-1", x: 85, y: 264, shortLabel: "1" },
-    { id: "hurdle-2", x: 138, y: 202, shortLabel: "2" },
-    { id: "hurdle-3", x: 198, y: 135, shortLabel: "3" },
-    { id: "turn-pole", x: 250, y: 58, shortLabel: "W" },
-    { id: "hurdle-4", x: 310, y: 135, shortLabel: "4" },
-    { id: "hurdle-5", x: 252, y: 202, shortLabel: "5" },
-    { id: "hurdle-6", x: 194, y: 264, shortLabel: "6" },
-  ],
+const SIX_HURDLE_REFERENCE_POSITIONS: readonly ReferencePosition[] = [
+  { id: "hurdle-1", x: 337, y: 815, width: 185, height: 90 },
+  { id: "hurdle-2", x: 499, y: 565, width: 185, height: 90 },
+  { id: "hurdle-3", x: 645, y: 375, width: 182, height: 90 },
+  { id: "turn-pole", x: 928, y: 89, width: 90, height: 175 },
+  { id: "hurdle-4", x: 886, y: 375, width: 186, height: 90 },
+  { id: "hurdle-5", x: 746, y: 565, width: 186, height: 90 },
+  { id: "hurdle-6", x: 586, y: 815, width: 187, height: 90 },
+];
+
+const SIX_HURDLE_REFERENCE_IMAGE = `${import.meta.env.BASE_URL}hurdle-course-vk3-svk.svg`;
+
+const FOUR_HURDLE_REFERENCE: HurdleReferenceCourse = {
+  image: FOUR_HURDLE_REFERENCE_IMAGE,
+  width: 1458,
+  height: 1086,
+  caption: "Gültig für VDH-VK1, VDH-VK2 und VDH-DK",
+  alt: "Hürdenlauf mit vier nummerierten Hürden, Wendestange, Start und Ziel",
+  minTouchWidth: 260,
+  minTouchHeight: 230,
+  positions: FOUR_HURDLE_REFERENCE_POSITIONS,
+};
+
+const SIX_HURDLE_REFERENCE: HurdleReferenceCourse = {
+  image: SIX_HURDLE_REFERENCE_IMAGE,
+  width: 1309,
+  height: 1201,
+  caption: "Gültig für VDH-VK3 und VDH-S-VK",
+  alt: "Hürdenlauf mit sechs nummerierten Hürden, Wendestange, Start und Ziel",
+  minTouchWidth: 220,
+  minTouchHeight: 210,
+  positions: SIX_HURDLE_REFERENCE_POSITIONS,
 };
 
 const positionName = (position: HurdleFaultPosition) =>
@@ -69,9 +89,10 @@ export function HurdleFaultDetails({
 }) {
   const [expanded, setExpanded] = useState(details.length > 0);
   const isFourHurdleReference = className !== "FCI-VK3";
-  const [position, setPosition] = useState<HurdleFaultPosition | null>(
-    isFourHurdleReference ? null : "hurdle-1",
-  );
+  const referenceCourse = isFourHurdleReference
+    ? FOUR_HURDLE_REFERENCE
+    : SIX_HURDLE_REFERENCE;
+  const [position, setPosition] = useState<HurdleFaultPosition | null>(null);
   const rules = position ? hurdleRulesForPosition(position) : [];
   const faultedPositions = new Set(details.map((detail) => detail.position));
 
@@ -123,133 +144,84 @@ export function HurdleFaultDetails({
         <div className="hurdle-details-content">
           <div>
             <p className="label">1. Fehlerposition im Schaubild auswählen</p>
-            {isFourHurdleReference ? (
-              <figure className="hurdle-course hurdle-reference-course">
-                <figcaption>
-                  Gültig für VDH-VK1, VDH-VK2 und VDH-DK
-                </figcaption>
-                <div className="hurdle-reference-stage">
-                  <img
-                    src={FOUR_HURDLE_REFERENCE_IMAGE}
-                    width="1458"
-                    height="1086"
-                    alt="Hürdenlauf mit vier nummerierten Hürden, Wendestange, Start und Ziel"
-                  />
-                  <svg
-                    viewBox="0 0 1458 1086"
-                    role="group"
-                    aria-label="Fehlerposition auf dem Hürdenlauf-Schaubild auswählen"
-                  >
-                    {FOUR_HURDLE_REFERENCE_POSITIONS.map((item) => {
-                      const hasFault = faultedPositions.has(item.id);
-                      const left = item.x - item.width / 2;
-                      const top = item.y - item.height / 2;
-                      const touchWidth = Math.max(item.width, 260);
-                      const touchHeight = Math.max(item.height, 230);
-                      return (
-                        <g
-                          className={`hurdle-reference-hotspot ${position === item.id ? "selected" : ""} ${hasFault ? "has-fault" : ""}`}
-                          data-position={item.id}
-                          data-faulted={hasFault ? "true" : "false"}
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`${positionName(item.id)} auswählen${hasFault ? ", Fehler erfasst" : ""}`}
-                          aria-pressed={position === item.id}
-                          onClick={() => setPosition(item.id)}
-                          onKeyDown={(event) => selectFromKeyboard(event, item.id)}
-                          key={item.id}
-                        >
-                          <rect
-                            className="hurdle-reference-touch-target"
-                            x={item.x - touchWidth / 2}
-                            y={item.y - touchHeight / 2}
-                            width={touchWidth}
-                            height={touchHeight}
-                            rx="28"
-                          />
-                          <rect
-                            className="hurdle-reference-hit-area"
-                            x={left}
-                            y={top}
-                            width={item.width}
-                            height={item.height}
-                            rx="18"
-                          />
-                          {hasFault ? (
-                            <g
-                              className="hurdle-reference-fault-badge"
-                              aria-hidden="true"
-                              transform={`translate(${left + item.width - 9} ${top + 9})`}
-                            >
-                              <circle r="28" />
-                              <text y="10" textAnchor="middle">!</text>
-                            </g>
-                          ) : null}
-                        </g>
-                      );
-                    })}
-                  </svg>
-                </div>
-              </figure>
-            ) : (
-              <figure className="hurdle-course">
-                <figcaption>
-                  Schaubild H-{className.replace("FCI-", "")} · schematische
-                  Darstellung
-                </figcaption>
+            <figure className="hurdle-course hurdle-reference-course">
+              <figcaption>{referenceCourse.caption}</figcaption>
+              <div
+                className="hurdle-reference-stage"
+                style={{
+                  aspectRatio: `${referenceCourse.width} / ${referenceCourse.height}`,
+                }}
+              >
+                <img
+                  src={referenceCourse.image}
+                  width={referenceCourse.width}
+                  height={referenceCourse.height}
+                  alt={referenceCourse.alt}
+                />
                 <svg
-                  viewBox="0 0 360 340"
+                  viewBox={`0 0 ${referenceCourse.width} ${referenceCourse.height}`}
                   role="group"
-                  aria-label={`Hürdenlauf mit ${SIX_HURDLE_DIAGRAM.hurdleCount} Hürden und Wendestange`}
+                  aria-label="Fehlerposition auf dem Hürdenlauf-Schaubild auswählen"
                 >
-                  <defs>
-                    <marker
-                      id="hurdle-arrow"
-                      markerWidth="8"
-                      markerHeight="8"
-                      refX="6"
-                      refY="3"
-                      orient="auto"
-                    >
-                      <path d="M0,0 L0,6 L7,3 z" />
-                    </marker>
-                  </defs>
-                  <path
-                    className="hurdle-route"
-                    markerEnd="url(#hurdle-arrow)"
-                    d={SIX_HURDLE_DIAGRAM.route}
-                  />
-                  <text className="hurdle-start-label" x="16" y="330">
-                    Start
-                  </text>
-                  <text className="hurdle-start-label" x="172" y="330">
-                    Ziel
-                  </text>
-                  {SIX_HURDLE_DIAGRAM.positions.map((item) => (
-                    <g
-                      className={`hurdle-position ${position === item.id ? "selected" : ""}`}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`${positionName(item.id)} auswählen`}
-                      aria-pressed={position === item.id}
-                      onClick={() => setPosition(item.id)}
-                      onKeyDown={(event) => selectFromKeyboard(event, item.id)}
-                      key={item.id}
-                    >
-                      {item.id === "turn-pole" ? (
-                        <path d={`M${item.x} ${item.y + 19} V${item.y - 28}`} />
-                      ) : (
-                        <path d={`M${item.x - 27} ${item.y} H${item.x + 27}`} />
-                      )}
-                      <circle cx={item.x} cy={item.y} r="20" />
-                      <text x={item.x} y={item.y + 5} textAnchor="middle">
-                        {item.shortLabel}
-                      </text>
-                    </g>
-                  ))}
+                  {referenceCourse.positions.map((item) => {
+                    const hasFault = faultedPositions.has(item.id);
+                    const left = item.x - item.width / 2;
+                    const top = item.y - item.height / 2;
+                    const touchWidth = Math.max(
+                      item.width,
+                      referenceCourse.minTouchWidth,
+                    );
+                    const touchHeight = Math.max(
+                      item.height,
+                      referenceCourse.minTouchHeight,
+                    );
+                    return (
+                      <g
+                        className={`hurdle-reference-hotspot ${position === item.id ? "selected" : ""} ${hasFault ? "has-fault" : ""}`}
+                        data-position={item.id}
+                        data-faulted={hasFault ? "true" : "false"}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`${positionName(item.id)} auswählen${hasFault ? ", Fehler erfasst" : ""}`}
+                        aria-pressed={position === item.id}
+                        onClick={() => setPosition(item.id)}
+                        onKeyDown={(event) =>
+                          selectFromKeyboard(event, item.id)
+                        }
+                        key={item.id}
+                      >
+                        <rect
+                          className="hurdle-reference-touch-target"
+                          x={item.x - touchWidth / 2}
+                          y={item.y - touchHeight / 2}
+                          width={touchWidth}
+                          height={touchHeight}
+                          rx="28"
+                        />
+                        <rect
+                          className="hurdle-reference-hit-area"
+                          x={left}
+                          y={top}
+                          width={item.width}
+                          height={item.height}
+                          rx="18"
+                        />
+                        {hasFault ? (
+                          <g
+                            className="hurdle-reference-fault-badge"
+                            aria-hidden="true"
+                            transform={`translate(${left + item.width - 9} ${top + 9})`}
+                          >
+                            <circle r="28" />
+                            <text y="10" textAnchor="middle">!</text>
+                          </g>
+                        ) : null}
+                      </g>
+                    );
+                  })}
                 </svg>
-              </figure>
-            )}
+              </div>
+            </figure>
             <button
               type="button"
               className={`hurdle-independent ${position === "position-independent" ? "selected" : ""} ${faultedPositions.has("position-independent") ? "has-fault" : ""}`}

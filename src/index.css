@@ -736,7 +736,6 @@ h3 {
 .hurdle-reference-stage {
   position: relative;
   width: 100%;
-  aspect-ratio: 1458 / 1086;
   background: #fff;
 }
 .hurdle-reference-stage > img {
@@ -769,7 +768,6 @@ h3 {
   transition: fill 150ms ease, stroke 150ms ease;
   vector-effect: non-scaling-stroke;
 }
-.hurdle-reference-hotspot:hover > .hurdle-reference-hit-area,
 .hurdle-reference-hotspot:focus-visible > .hurdle-reference-hit-area,
 .hurdle-reference-hotspot.selected > .hurdle-reference-hit-area {
   fill: rgb(49 171 228 / 12%);
