@@ -13,18 +13,23 @@ import type {
 } from "../domain/types";
 import { Button } from "./ui/button";
 
-const GATES: ReadonlyArray<{
+interface SlalomReferencePosition {
   id: Exclude<SlalomFaultPosition, "position-independent">;
   x: number;
   y: number;
-  postStart: number;
-  postEnd: number;
-}> = [
-  { id: "gate-1", x: 195, y: 382, postStart: 158, postEnd: 232 },
-  { id: "gate-2", x: 82, y: 292, postStart: 45, postEnd: 119 },
-  { id: "gate-3", x: 195, y: 202, postStart: 158, postEnd: 232 },
-  { id: "gate-4", x: 82, y: 112, postStart: 45, postEnd: 119 },
+  width: number;
+  height: number;
+}
+
+const SLALOM_REFERENCE_POSITIONS: readonly SlalomReferencePosition[] = [
+  { id: "gate-1", x: 427, y: 1037, width: 125, height: 135 },
+  { id: "gate-2", x: 592, y: 830, width: 132, height: 137 },
+  { id: "gate-3", x: 428, y: 633, width: 125, height: 140 },
+  { id: "gate-4", x: 591, y: 435, width: 132, height: 143 },
+  { id: "gate-5", x: 427, y: 244, width: 125, height: 142 },
 ];
+
+const SLALOM_REFERENCE_IMAGE = `${import.meta.env.BASE_URL}slalom-course-vk-dk.svg`;
 
 const positionName = (position: SlalomFaultPosition) =>
   SLALOM_POSITIONS.find(({ id }) => id === position)?.label ?? position;
@@ -39,8 +44,9 @@ export function SlalomFaultDetails({
   onChange: (details: SlalomFaultDetail[]) => void;
 }) {
   const [expanded, setExpanded] = useState(details.length > 0);
-  const [position, setPosition] = useState<SlalomFaultPosition>("gate-1");
-  const rules = slalomRulesForPosition(position);
+  const [position, setPosition] = useState<SlalomFaultPosition | null>(null);
+  const rules = position ? slalomRulesForPosition(position) : [];
+  const faultedPositions = new Set(details.map((detail) => detail.position));
 
   const selectFromKeyboard = (
     event: React.KeyboardEvent<SVGGElement>,
@@ -53,6 +59,7 @@ export function SlalomFaultDetails({
   };
 
   const add = (code: (typeof rules)[number]["code"]) => {
+    if (!position) return;
     const rule = rules.find((candidate) => candidate.code === code);
     if (!rule) return;
     if (
@@ -101,59 +108,79 @@ export function SlalomFaultDetails({
           </p>
           <div>
             <p className="label">1. Fehlerposition im Schaubild auswählen</p>
-            <figure className="hurdle-course slalom-course">
+            <figure
+              className="hurdle-course slalom-course slalom-reference-course"
+              data-class-name={className}
+            >
               <figcaption>
-                Schaubild S-{className.replace("FCI-", "")} · schematische
-                Darstellung
+                Gültig für VDH-VK1, VDH-VK2, VDH-VK3, VDH-S-VK und VDH-DK
               </figcaption>
-              <svg
-                viewBox="0 0 280 500"
-                role="group"
-                aria-label="Slalomlauf mit vier Streckentoren, Start und Ziel"
-              >
-                <defs>
-                  <marker
-                    id="slalom-arrow"
-                    markerWidth="8"
-                    markerHeight="8"
-                    refX="6"
-                    refY="3"
-                    orient="auto"
-                  >
-                    <path d="M0,0 L0,6 L7,3 z" />
-                  </marker>
-                </defs>
-                <path
-                  className="hurdle-route"
-                  markerEnd="url(#slalom-arrow)"
-                  d="M105 463 C135 435 182 414 195 382 S120 315 82 292 S155 225 195 202 S120 135 82 112 S132 62 168 38"
+              <div className="slalom-reference-stage">
+                <img
+                  src={SLALOM_REFERENCE_IMAGE}
+                  width="1024"
+                  height="1536"
+                  alt="Slalomlauf mit fünf nummerierten Slalomtoren, Start und Ziel"
                 />
-                <path className="slalom-boundary" d="M38 28 V470 M240 28 V470" />
-                <text className="hurdle-start-label" x="70" y="488">Start</text>
-                <text className="hurdle-start-label" x="166" y="22">Ziel</text>
-                {GATES.map((item, index) => (
-                  <g
-                    className={`hurdle-position ${position === item.id ? "selected" : ""}`}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`${positionName(item.id)} auswählen`}
-                    aria-pressed={position === item.id}
-                    onClick={() => setPosition(item.id)}
-                    onKeyDown={(event) => selectFromKeyboard(event, item.id)}
-                    key={item.id}
-                  >
-                    <path d={`M${item.postStart} ${item.y} H${item.postEnd}`} />
-                    <circle cx={item.x} cy={item.y} r="23" />
-                    <text x={item.x} y={item.y + 5} textAnchor="middle">
-                      {index + 1}
-                    </text>
-                  </g>
-                ))}
-              </svg>
+                <svg
+                  viewBox="0 0 1024 1536"
+                  role="group"
+                  aria-label="Fehlerposition auf dem Slalomlauf-Schaubild auswählen"
+                >
+                  {SLALOM_REFERENCE_POSITIONS.map((item) => {
+                    const hasFault = faultedPositions.has(item.id);
+                    const left = item.x - item.width / 2;
+                    const top = item.y - item.height / 2;
+                    return (
+                      <g
+                        className={`slalom-reference-hotspot ${position === item.id ? "selected" : ""} ${hasFault ? "has-fault" : ""}`}
+                        data-position={item.id}
+                        data-faulted={hasFault ? "true" : "false"}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`${positionName(item.id)} auswählen${hasFault ? ", Fehler erfasst" : ""}`}
+                        aria-pressed={position === item.id}
+                        onClick={() => setPosition(item.id)}
+                        onKeyDown={(event) =>
+                          selectFromKeyboard(event, item.id)
+                        }
+                        key={item.id}
+                      >
+                        <rect
+                          className="slalom-reference-touch-target"
+                          x={item.x - 95}
+                          y={item.y - 85}
+                          width="190"
+                          height="170"
+                          rx="28"
+                        />
+                        <rect
+                          className="slalom-reference-hit-area"
+                          x={left}
+                          y={top}
+                          width={item.width}
+                          height={item.height}
+                          rx="18"
+                        />
+                        {hasFault ? (
+                          <g
+                            className="slalom-reference-fault-badge"
+                            aria-hidden="true"
+                            transform={`translate(${left + item.width - 5} ${top + 7})`}
+                          >
+                            <circle r="30" />
+                            <text y="11" textAnchor="middle">!</text>
+                          </g>
+                        ) : null}
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
             </figure>
             <button
               type="button"
-              className={`hurdle-independent ${position === "position-independent" ? "selected" : ""}`}
+              className={`hurdle-independent ${position === "position-independent" ? "selected" : ""} ${faultedPositions.has("position-independent") ? "has-fault" : ""}`}
               aria-pressed={position === "position-independent"}
               onClick={() => setPosition("position-independent")}
             >
@@ -163,34 +190,45 @@ export function SlalomFaultDetails({
 
           <div>
             <p className="label">
-              2. Fehler an „{positionName(position)}“ auswählen
+              {position
+                ? `2. Fehler an „${positionName(position)}“ auswählen`
+                : "2. Zuerst ein Slalomtor auswählen"}
             </p>
-            <div className="hurdle-rule-list">
-              {rules.map((rule) => {
-                const alreadyAdded =
-                  rule.code === "gate-omitted" &&
-                  details.some(
-                    (detail) =>
-                      detail.position === position && detail.code === rule.code,
+            {position ? (
+              <div className="hurdle-rule-list">
+                {rules.map((rule) => {
+                  const alreadyAdded =
+                    rule.code === "gate-omitted" &&
+                    details.some(
+                      (detail) =>
+                        detail.position === position &&
+                        detail.code === rule.code,
+                    );
+                  return (
+                    <button
+                      type="button"
+                      disabled={alreadyAdded}
+                      onClick={() => add(rule.code)}
+                      key={rule.code}
+                    >
+                      <span>
+                        <strong>{rule.label}</strong>
+                        <small>
+                          {alreadyAdded
+                            ? "Für dieses Tor bereits erfasst."
+                            : rule.explanation}
+                        </small>
+                      </span>
+                      <b>−{rule.points} FP</b>
+                    </button>
                   );
-                return (
-                  <button
-                    type="button"
-                    disabled={alreadyAdded}
-                    onClick={() => add(rule.code)}
-                    key={rule.code}
-                  >
-                    <span>
-                      <strong>{rule.label}</strong>
-                      <small>
-                        {alreadyAdded ? "Für dieses Tor bereits erfasst." : rule.explanation}
-                      </small>
-                    </span>
-                    <b>−{rule.points} FP</b>
-                  </button>
-                );
-              })}
-            </div>
+                })}
+              </div>
+            ) : (
+              <p className="hurdle-position-help">
+                Tippe auf eines der fünf nummerierten Tore in der Grafik.
+              </p>
+            )}
           </div>
 
           <div className="hurdle-detail-list" aria-live="polite">

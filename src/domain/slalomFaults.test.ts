@@ -13,6 +13,10 @@ describe("slalom fault details", () => {
       code: "gate-omitted",
       points: 4,
     });
+    expect(slalomRulesForPosition("gate-5")[0]).toMatchObject({
+      code: "gate-omitted",
+      points: 4,
+    });
   });
 
   it("keeps physical help position-independent", () => {
@@ -35,15 +39,16 @@ describe("slalom fault details", () => {
   });
 
   it("rejects invented positions and point values", () => {
-    expect(isValidSlalomFaultDetail({ id: "x", position: "gate-5", code: "gate-omitted", points: 4 })).toBe(false);
+    expect(isValidSlalomFaultDetail({ id: "x", position: "gate-5", code: "gate-omitted", points: 4 })).toBe(true);
+    expect(isValidSlalomFaultDetail({ id: "x", position: "gate-6", code: "gate-omitted", points: 4 })).toBe(false);
     expect(isValidSlalomFaultDetail({ id: "x", position: "gate-1", code: "gate-omitted", points: 8 })).toBe(false);
   });
 
   it("rejects duplicate deductions for the same omitted gate", () => {
     expect(
       areValidSlalomFaultDetails([
-        { id: "a", position: "gate-2", code: "gate-omitted", points: 4 },
-        { id: "b", position: "gate-2", code: "gate-omitted", points: 4 },
+        { id: "a", position: "gate-5", code: "gate-omitted", points: 4 },
+        { id: "b", position: "gate-5", code: "gate-omitted", points: 4 },
       ]),
     ).toBe(false);
   });

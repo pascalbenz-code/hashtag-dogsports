@@ -17,6 +17,7 @@ const GATES: readonly SlalomFaultPosition[] = [
   "gate-2",
   "gate-3",
   "gate-4",
+  "gate-5",
 ];
 
 export const SLALOM_POSITIONS: ReadonlyArray<{
@@ -27,6 +28,7 @@ export const SLALOM_POSITIONS: ReadonlyArray<{
   { id: "gate-2", label: "Slalomtor 2" },
   { id: "gate-3", label: "Slalomtor 3" },
   { id: "gate-4", label: "Slalomtor 4" },
+  { id: "gate-5", label: "Slalomtor 5" },
   { id: "position-independent", label: "Positionsunabhängig" },
 ];
 

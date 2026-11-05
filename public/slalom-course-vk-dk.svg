@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1536" role="img" aria-labelledby="title description">
+  <title id="title">Slalomlauf mit fünf Slalomtoren</title>
+  <desc id="description">Schwarz-weiße Streckengrafik für VDH-VK 1 bis 3, VDH-S-VK und VDH-DK mit den Slalomtoren 1 bis 5, Start und Ziel.</desc>
+
+  <rect width="1024" height="1536" fill="#fff"/>
+
+  <defs>
+    <g id="slalom-pole">
+      <path d="M-5 0 C-5 -4 -3 -6 0 -6 C3 -6 5 -4 5 0 V86 C5 90 3 92 0 92 C-3 92 -5 90 -5 86 Z" fill="#fff" stroke="#050505" stroke-width="4"/>
+      <ellipse cx="0" cy="91" rx="11" ry="6" fill="#050505"/>
+    </g>
+  </defs>
+
+  <!-- Begrenzung des Slalomfelds -->
+  <path
+    d="M419 137 H606 V1439 H419 Z"
+    fill="none"
+    stroke="#050505"
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-dasharray="17 13"
+  />
+
+  <!-- Zieltor -->
+  <use href="#slalom-pole" transform="translate(445 47)"/>
+  <use href="#slalom-pole" transform="translate(579 47)"/>
+
+  <!-- Slalomtor 5 -->
+  <use href="#slalom-pole" transform="translate(392 201)"/>
+  <use href="#slalom-pole" transform="translate(462 201)"/>
+
+  <!-- Slalomtor 4 -->
+  <use href="#slalom-pole" transform="translate(552 390)"/>
+  <use href="#slalom-pole" transform="translate(629 390)"/>
+
+  <!-- Slalomtor 3 -->
+  <use href="#slalom-pole" transform="translate(392 588)"/>
+  <use href="#slalom-pole" transform="translate(463 588)"/>
+
+  <!-- Slalomtor 2 -->
+  <use href="#slalom-pole" transform="translate(553 785)"/>
+  <use href="#slalom-pole" transform="translate(630 785)"/>
+
+  <!-- Slalomtor 1 -->
+  <use href="#slalom-pole" transform="translate(392 992)"/>
+  <use href="#slalom-pole" transform="translate(463 992)"/>
+
+  <!-- Starttor -->
+  <use href="#slalom-pole" transform="translate(447 1351)"/>
+  <use href="#slalom-pole" transform="translate(578 1351)"/>
+
+  <!-- Laufweg -->
+  <path
+    d="M499 1436
+       C505 1384 548 1327 569 1270
+       C594 1200 568 1143 504 1091
+       C441 1040 426 1008 458 962
+       C488 918 548 882 570 835
+       C597 776 558 731 495 681
+       C438 636 426 600 456 554
+       C485 510 544 475 568 425
+       C596 367 572 290 530 220
+       C510 187 488 158 467 141"
+    fill="none"
+    stroke="#050505"
+    stroke-width="7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path d="M467 141 L499 158 L470 181 Z" fill="#050505"/>
+
+  <g fill="#050505" font-family="Arial, Helvetica, sans-serif" font-weight="800">
+    <text x="512" y="95" text-anchor="middle" font-size="43" font-style="italic">Ziel</text>
+    <text x="427" y="258" text-anchor="middle" font-size="47">5</text>
+    <text x="591" y="452" text-anchor="middle" font-size="47">4</text>
+    <text x="427" y="649" text-anchor="middle" font-size="47">3</text>
+    <text x="592" y="846" text-anchor="middle" font-size="47">2</text>
+    <text x="427" y="1055" text-anchor="middle" font-size="47">1</text>
+    <text x="512" y="1487" text-anchor="middle" font-size="43" font-style="italic">Start</text>
+  </g>
+</svg>

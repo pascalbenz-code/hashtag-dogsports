@@ -55,6 +55,7 @@ export type SlalomFaultPosition =
   | "gate-2"
   | "gate-3"
   | "gate-4"
+  | "gate-5"
   | "position-independent";
 
 export type SlalomFaultCode = "gate-omitted" | "held-after-start";
