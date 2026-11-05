@@ -730,6 +730,74 @@ h3 {
   width: 100%;
   max-height: 360px;
 }
+.hurdle-reference-course {
+  background: #fff;
+}
+.hurdle-reference-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1458 / 1086;
+  background: #fff;
+}
+.hurdle-reference-stage > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+}
+.hurdle-reference-stage > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+.hurdle-reference-hotspot {
+  cursor: pointer;
+  outline: none;
+}
+.hurdle-reference-touch-target {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+}
+.hurdle-reference-hit-area {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 7;
+  pointer-events: none;
+  transition: fill 150ms ease, stroke 150ms ease;
+  vector-effect: non-scaling-stroke;
+}
+.hurdle-reference-hotspot:hover > .hurdle-reference-hit-area,
+.hurdle-reference-hotspot:focus-visible > .hurdle-reference-hit-area,
+.hurdle-reference-hotspot.selected > .hurdle-reference-hit-area {
+  fill: rgb(49 171 228 / 12%);
+  stroke: #1776a7;
+  stroke-dasharray: 8 6;
+}
+.hurdle-reference-hotspot.has-fault > .hurdle-reference-hit-area,
+.hurdle-reference-hotspot.has-fault:hover > .hurdle-reference-hit-area,
+.hurdle-reference-hotspot.has-fault:focus-visible > .hurdle-reference-hit-area,
+.hurdle-reference-hotspot.has-fault.selected > .hurdle-reference-hit-area {
+  fill: rgb(201 35 42 / 16%);
+  stroke: #c9232a;
+  stroke-dasharray: none;
+}
+.hurdle-reference-fault-badge {
+  pointer-events: none;
+}
+.hurdle-reference-fault-badge circle {
+  fill: #c9232a;
+  stroke: #fff;
+  stroke-width: 5;
+  vector-effect: non-scaling-stroke;
+}
+.hurdle-reference-fault-badge text {
+  fill: #fff;
+  font-size: 40px;
+  font-weight: 900;
+}
 .hurdle-route {
   fill: none;
   stroke: #1776a7;
@@ -822,6 +890,19 @@ h3 {
   border-color: #1776a7;
   background: #d7f2fc;
   color: #11698f;
+}
+.hurdle-independent.has-fault {
+  border-color: #c9232a;
+  background: #fff0f1;
+  color: #9e1920;
+}
+.hurdle-position-help {
+  margin-top: 0.5rem;
+  border: 1px dashed #a2c0ce;
+  border-radius: 10px;
+  padding: 0.75rem;
+  color: #55585a;
+  font-size: 0.76rem;
 }
 .hurdle-rule-list {
   display: grid;
@@ -1092,6 +1173,11 @@ tbody tr:hover {
     border-color: #31abe4;
     background: #143648;
     color: #59d3f9;
+  }
+  .hurdle-independent.has-fault {
+    border-color: #e2545b;
+    background: #3a1719;
+    color: #ffb3b7;
   }
   .hurdle-detail-list li {
     background: #23282b;

@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1458 1086" role="img" aria-labelledby="title description">
+  <title id="title">Hürdenlauf mit vier Hürden</title>
+  <desc id="description">Schwarz-weiße Streckengrafik für VDH-VK 1, VDH-VK 2 und VDH-DK mit den Hürden 1 bis 4, Wendestange, Start und Ziel.</desc>
+
+  <rect width="1458" height="1086" fill="#fff"/>
+
+  <g fill="none" stroke="#050505" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="68" y="65" width="325" height="77" stroke-width="4"/>
+
+    <!-- Laufweg -->
+    <path d="M241 969 L433 699 L624 436 L828 140 C864 91 943 103 986 109 C1058 119 1111 155 1093 204 C1072 262 1009 337 948 435 L730 699 L539 969" stroke-width="8"/>
+
+    <!-- gestrichelte Hürdenlinien -->
+    <path d="M241 701 H610" stroke-width="3" stroke-dasharray="12 11"/>
+    <path d="M480 437 H1080" stroke-width="3" stroke-dasharray="12 11"/>
+
+    <!-- Hürde 1 -->
+    <path d="M328 666 H535" stroke-width="5"/>
+    <path d="M352 672 L337 705 C334 713 340 718 351 718 C362 718 368 713 365 705 L351 672" stroke-width="4" fill="#fff"/>
+    <path d="M511 672 L496 705 C493 713 499 718 510 718 C521 718 527 713 524 705 L510 672" stroke-width="4" fill="#fff"/>
+
+    <!-- Hürde 2 -->
+    <path d="M522 403 H724" stroke-width="5"/>
+    <path d="M545 409 L530 440 C527 448 533 452 544 452 C555 452 561 448 558 440 L544 409" stroke-width="4" fill="#fff"/>
+    <path d="M703 409 L688 440 C685 448 691 452 702 452 C713 452 719 448 716 440 L702 409" stroke-width="4" fill="#fff"/>
+
+    <!-- Hürde 3 -->
+    <path d="M815 403 H1018" stroke-width="5"/>
+    <path d="M839 409 L824 440 C821 448 827 452 838 452 C849 452 855 448 852 440 L838 409" stroke-width="4" fill="#fff"/>
+    <path d="M997 409 L982 440 C979 448 985 452 996 452 C1007 452 1013 448 1010 440 L996 409" stroke-width="4" fill="#fff"/>
+
+    <!-- Hürde 4 -->
+    <path d="M626 666 H835" stroke-width="5"/>
+    <path d="M650 672 L635 705 C632 713 638 718 649 718 C660 718 666 713 663 705 L649 672" stroke-width="4" fill="#fff"/>
+    <path d="M811 672 L796 705 C793 713 799 718 810 718 C821 718 827 713 824 705 L810 672" stroke-width="4" fill="#fff"/>
+
+    <!-- Wendestange -->
+    <path d="M963 17 C968 17 971 20 971 25 V166 C971 172 968 175 963 175 C958 175 955 172 955 166 V25 C955 20 958 17 963 17 Z" stroke-width="4" fill="#fff"/>
+
+    <!-- Starttor -->
+    <path d="M153 811 C157 811 160 814 160 819 V966 H307 V819 C307 814 310 811 314 811 C318 811 321 814 321 819 V971 H146 V819 C146 814 149 811 153 811 Z" stroke-width="4" fill="#fff"/>
+
+    <!-- Zieltor -->
+    <path d="M449 811 C453 811 456 814 456 819 V966 H606 V819 C606 814 609 811 613 811 C617 811 620 814 620 819 V971 H442 V819 C442 814 445 811 449 811 Z" stroke-width="4" fill="#fff"/>
+
+    <!-- Startbereich -->
+    <path d="M146 974 L79 1070 H260 L321 974" stroke-width="3" stroke-dasharray="9 8"/>
+  </g>
+
+  <!-- Zielpfeil -->
+  <path d="M539 969 L547 925 L568 941 Z" fill="#050505"/>
+
+  <g fill="#050505" font-family="Arial, Helvetica, sans-serif">
+    <text x="87" y="121" font-size="54" font-weight="800">Hürdenlauf</text>
+    <text x="435" y="711" text-anchor="middle" font-size="35" font-weight="800">1</text>
+    <text x="624" y="449" text-anchor="middle" font-size="35" font-weight="800">2</text>
+    <text x="916" y="449" text-anchor="middle" font-size="35" font-weight="800">3</text>
+    <text x="730" y="711" text-anchor="middle" font-size="35" font-weight="800">4</text>
+    <text x="470" y="608" transform="rotate(-54 470 608)" font-size="38" font-weight="800">Laufweg</text>
+    <text x="234" y="1013" text-anchor="middle" font-size="42" font-style="italic" font-weight="800">Start</text>
+    <text x="531" y="1013" text-anchor="middle" font-size="42" font-style="italic" font-weight="800">Ziel</text>
+  </g>
+</svg>
