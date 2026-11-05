@@ -7,6 +7,15 @@ export type CompetitionType =
   | "dhv Deutsche Meisterschaft"
   | "VDH Deutsche Meisterschaft";
 
+export type CompetitionClass =
+  | "FCI-VK1"
+  | "FCI-VK2"
+  | "FCI-VK3"
+  | "VDH-S-VK"
+  | "VDH-HL"
+  | "VDH-DK";
+export type LeashMode = "on" | "off";
+
 export interface RunInput {
   time: number | null;
   faults: number | null;
@@ -101,14 +110,26 @@ export interface CompetitionResult {
   competitionType: CompetitionType;
   event: string;
   handlerId?: string;
+  handlerBirthDate?: string;
+  handlerGender?: "male" | "female" | "";
   dogId?: string;
   dog: string;
   handler: string;
-  className: "FCI-VK1" | "FCI-VK2" | "FCI-VK3";
+  className: CompetitionClass;
   obedience: number | null;
   hurdles: HurdleRunInput;
+  hurdlesLeash?: LeashMode;
   slalom: SlalomRunInput;
+  slalomLeash?: LeashMode;
   obstacle: ObstacleRunInput;
+  obstacleLeash?: LeashMode;
+  obstacle2?: ObstacleRunInput;
+  obstacle2Leash?: LeashMode;
+  crossCountry?: {
+    timeSeconds: number | null;
+    distanceMeters: number | null;
+    falseStart: boolean;
+  };
   notes: string;
   createdAt: string;
   updatedAt: string;

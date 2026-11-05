@@ -14,6 +14,10 @@ Das visuelle System basiert auf dem #Dogsports-Banner in `public/dogsports-banne
 - optionale Hürdenfehler-Details für FCI-VK1/2/3 mit stufenspezifischem interaktivem Schaubild, festen Einzelabzügen und automatischer Summierung
 - optionale Slalomfehler-Details für FCI-VK1/2/3 mit interaktivem Vier-Tore-Schaubild, torbezogenen Abzügen und automatischer Summierung
 - optionale Hindernislauffehler-Details für FCI-VK1/2/3 mit beschriftetem Acht-Hindernis-Schaubild, Einzelstangenbewertung und automatischer Summierung
+- THS-Ergebniserfassung und Statistik für VDH-S-VK, VDH-HL und VDH-DK mit disziplinspezifischer Berechnung
+- HL mit zwei Hindernisläufen, Leinen-Strafsekunden und kleinerer Gesamtzeit als besserem Ergebnis
+- DK ohne Unterordnung mit fünf Bonuspunkten je Laufdisziplin ohne Leine
+- S-VK mit tatsächlicher 1000-m-Streckenlänge, normiertem Zeitwert, Frühstartabzug und alters-/geschlechtsabhängigen Qualifikationen
 - Suche, Stufen-/Qualifikationsfilter, Entwurfsschalter und Sortierung
 - kompakte mobile Karten und horizontal scrollbarere vollständige Ergebnistabelle
 - Bestleistungen einschließlich Gleichständen
@@ -64,7 +68,7 @@ Die Digitalen Leistungsrichter VDH-VK und FCI-IBGH liegen als interaktive Entwü
 
 Dexie aktualisiert bestehende Datenbanken beim ersten Start auf Version 5. Dabei werden globale Tabellen für Hundeführer und Hunde ergänzt. Namen aus vorhandenen THS-Ergebnissen werden ohne Änderung der Leistungsdaten in gemeinsame Profile überführt und die Ergebnisse über stabile IDs verknüpft. Unbekannte Stammdaten werden sichtbar als noch zu ergänzen markiert. Eine manuelle Migration oder Serverkonfiguration ist nicht erforderlich.
 
-Profile werden über **Profile** in der globalen Kopfzeile verwaltet und stehen unabhängig vom geöffneten Modul zur Verfügung. Bereits in Ergebnissen verwendete Profile können bearbeitet, aber nicht versehentlich gelöscht werden. JSON-Backups ab Version 2 enthalten Ergebnisse und beide Profilarten; ältere Backups werden beim Import automatisch in die neue Struktur überführt.
+Profile werden über **Profile** in der globalen Kopfzeile verwaltet und stehen unabhängig vom geöffneten Modul zur Verfügung. Bereits in Ergebnissen verwendete Profile können bearbeitet, aber nicht versehentlich gelöscht werden. JSON-Backups ab Version 2 enthalten Ergebnisse und beide Profilarten; Version 3 ergänzt die disziplinspezifischen HL-, DK- und S-VK-Daten. Ältere Backups werden beim Import automatisch in die aktuelle Struktur überführt.
 
 ## Lokal starten und prüfen
 

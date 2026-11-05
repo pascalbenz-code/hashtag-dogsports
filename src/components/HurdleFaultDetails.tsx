@@ -7,7 +7,6 @@ import {
   hurdleRulesForPosition,
 } from "../domain/hurdleFaults";
 import type {
-  CompetitionResult,
   HurdleFaultDetail,
   HurdleFaultPosition,
 } from "../domain/types";
@@ -62,7 +61,7 @@ export function HurdleFaultDetails({
   details,
   onChange,
 }: {
-  className: CompetitionResult["className"];
+  className: "FCI-VK1" | "FCI-VK2" | "FCI-VK3";
   details: HurdleFaultDetail[];
   onChange: (details: HurdleFaultDetail[]) => void;
 }) {

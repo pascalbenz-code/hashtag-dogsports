@@ -126,7 +126,12 @@ export async function saveHandlerProfile(
       await database.results
         .where("handlerId")
         .equals(next.id)
-        .modify({ handler: next.name, updatedAt: now });
+        .modify({
+          handler: next.name,
+          handlerBirthDate: next.birthDate,
+          handlerGender: next.gender,
+          updatedAt: now,
+        });
     },
   );
   return next.id;

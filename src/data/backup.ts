@@ -1,5 +1,5 @@
 import type { CompetitionResult } from "../domain/types";
-import { validateResult } from "../domain/scoring";
+import { calculateScore, validateResult } from "../domain/scoring";
 import {
   isDogProfile,
   isHandlerProfile,
@@ -18,9 +18,15 @@ import {
   areValidObstacleFaultDetails,
   formatObstacleFaultDetail,
 } from "../domain/obstacleFaults";
+import {
+  CLASS_LABELS,
+  COMPETITION_CLASSES,
+  hurdleReferenceClass,
+  normalizedCrossCountryTime,
+} from "../domain/disciplines";
 export interface Backup {
   app: "#Dogsports";
-  version: 2;
+  version: 3;
   exportedAt: string;
   results: CompetitionResult[];
   handlers: HandlerProfile[];
@@ -32,7 +38,7 @@ export const createBackup = (
   dogs: DogProfile[] = [],
 ): Backup => ({
   app: "#Dogsports",
-  version: 2,
+  version: 3,
   exportedAt: new Date().toISOString(),
   results,
   handlers,
@@ -75,7 +81,7 @@ export function parseBackup(text: string): Backup {
       typeof r.id !== "string" ||
       typeof r.date !== "string" ||
       typeof r.event !== "string" ||
-      !["FCI-VK1", "FCI-VK2", "FCI-VK3"].includes(r.className) ||
+      !COMPETITION_CLASSES.includes(r.className) ||
       !isRun(r.hurdles) ||
       !isRun(r.slalom) ||
       !isRun(r.obstacle)
@@ -85,7 +91,7 @@ export function parseBackup(text: string): Backup {
       r.hurdles.faultDetails !== undefined &&
       (!Array.isArray(r.hurdles.faultDetails) ||
         !r.hurdles.faultDetails.every((detail) =>
-          isValidHurdleFaultDetail(detail, r.className),
+          isValidHurdleFaultDetail(detail, hurdleReferenceClass(r.className)),
         ))
     )
       throw new Error(
@@ -107,6 +113,14 @@ export function parseBackup(text: string): Backup {
       throw new Error(
         "Mindestens ein Datensatz enthält ungültige Hindernislauf-Detailangaben.",
       );
+    if (
+      r.obstacle2?.faultDetails !== undefined &&
+      (!Array.isArray(r.obstacle2.faultDetails) ||
+        !areValidObstacleFaultDetails(r.obstacle2.faultDetails))
+    )
+      throw new Error(
+        "Mindestens ein Datensatz enthält ungültige Details für Hindernislauf 2.",
+      );
     r.competitionType ??= "Vereinsprüfung";
     if (!r.handlerId && r.handler.trim()) {
       let profile = handlers.find(
@@ -117,6 +131,11 @@ export function parseBackup(text: string): Backup {
         handlers.push(profile);
       }
       r.handlerId = profile.id;
+    }
+    const handlerProfile = handlers.find((item) => item.id === r.handlerId);
+    if (handlerProfile) {
+      r.handlerBirthDate ||= handlerProfile.birthDate;
+      r.handlerGender ||= handlerProfile.gender;
     }
     if (!r.dogId && r.dog.trim()) {
       let profile = dogs.find(
@@ -129,7 +148,7 @@ export function parseBackup(text: string): Backup {
       r.dogId = profile.id;
     }
   }
-  return { app: "#Dogsports", version: 2, exportedAt: raw.exportedAt ?? now, results: raw.results, handlers, dogs };
+  return { app: "#Dogsports", version: 3, exportedAt: raw.exportedAt ?? now, results: raw.results, handlers, dogs };
 }
 export function toCsv(results: CompetitionResult[]) {
   const headers = [
@@ -150,6 +169,18 @@ export function toCsv(results: CompetitionResult[]) {
     "Hinderniszeit",
     "Hindernisfehler",
     "Hindernisfehler Details",
+    "Hürden Leinenstatus",
+    "Slalom Leinenstatus",
+    "Hindernis Leinenstatus",
+    "Hindernislauf 2 Zeit",
+    "Hindernislauf 2 Fehler",
+    "Hindernislauf 2 Details",
+    "Hindernislauf 2 Leinenstatus",
+    "1000m gemessene Sekunden",
+    "1000m tatsächliche Meter",
+    "1000m rechnerischer Wert",
+    "1000m Frühstart",
+    "Gesamtergebnis",
     "Status",
     "Erstellt",
     "Geändert",
@@ -174,7 +205,7 @@ export function toCsv(results: CompetitionResult[]) {
           r.dog,
           r.competitionType,
           r.event,
-          r.className,
+          CLASS_LABELS[r.className],
           num(r.obedience),
           num(r.hurdles.time),
           num(r.hurdles.faults),
@@ -191,6 +222,20 @@ export function toCsv(results: CompetitionResult[]) {
           (r.obstacle.faultDetails ?? [])
             .map(formatObstacleFaultDetail)
             .join(" | "),
+          r.hurdlesLeash,
+          r.slalomLeash,
+          r.obstacleLeash,
+          num(r.obstacle2?.time ?? null),
+          num(r.obstacle2?.faults ?? null),
+          (r.obstacle2?.faultDetails ?? [])
+            .map(formatObstacleFaultDetail)
+            .join(" | "),
+          r.obstacle2Leash,
+          num(r.crossCountry?.timeSeconds ?? null),
+          num(r.crossCountry?.distanceMeters ?? null),
+          num(normalizedCrossCountryTime(r)),
+          r.crossCountry?.falseStart ? "Ja" : "Nein",
+          num(calculateScore(r).total),
           validateResult(r).length ? "Entwurf" : "Vollständig",
           r.createdAt,
           r.updatedAt,

@@ -1,200 +1,187 @@
 import type {
+  CompetitionClass,
   CompetitionResult,
   CompetitionType,
   Qualification,
+  QualificationKey,
   ScoreBreakdown,
 } from "./types";
-import {
-  hurdleFaultsTotal,
-  isValidHurdleFaultDetail,
-} from "./hurdleFaults";
-import {
-  areValidSlalomFaultDetails,
-  slalomFaultsTotal,
-} from "./slalomFaults";
-import {
-  areValidObstacleFaultDetails,
-  obstacleFaultsTotal,
-} from "./obstacleFaults";
+import { calculateAge } from "./profiles";
+import { hurdleFaultsTotal, isValidHurdleFaultDetail } from "./hurdleFaults";
+import { areValidSlalomFaultDetails, slalomFaultsTotal } from "./slalomFaults";
+import { areValidObstacleFaultDetails, obstacleFaultsTotal } from "./obstacleFaults";
+import { hurdleReferenceClass, isVierkampf, normalizedCrossCountryTime } from "./disciplines";
 
-export const BASE_POINTS: Record<CompetitionResult["className"], number> = {
-  "FCI-VK1": 250,
-  "FCI-VK2": 255,
-  "FCI-VK3": 265,
+export const BASE_POINTS: Record<CompetitionClass, number> = {
+  "FCI-VK1": 250, "FCI-VK2": 255, "FCI-VK3": 265,
+  "VDH-S-VK": 340, "VDH-HL": 0, "VDH-DK": 240,
 };
-
-const CLUB_AND_DISTRICT: readonly CompetitionType[] = [
-  "Vereinsprüfung",
-  "Kreismeisterschaft",
-];
-
+const CLUB_AND_DISTRICT: readonly CompetitionType[] = ["Vereinsprüfung", "Kreismeisterschaft"];
 const ALL_COMPETITION_TYPES: readonly CompetitionType[] = [
-  "Vereinsprüfung",
-  "Kreismeisterschaft",
-  "Verbandsmeisterschaft",
-  "dhv Deutsche Meisterschaft",
-  "VDH Deutsche Meisterschaft",
+  "Vereinsprüfung", "Kreismeisterschaft", "Verbandsmeisterschaft",
+  "dhv Deutsche Meisterschaft", "VDH Deutsche Meisterschaft",
 ];
 
 export const QUALIFICATION_RULES = {
   "FCI-VK1": [
-    {
-      key: "promotion-vk2",
-      label: "Aufstieg-VK2",
-      color: "gray",
-      minObedience: 48,
-      minTotal: 250,
-      competitionTypes: ALL_COMPETITION_TYPES,
-    },
+    { key: "promotion-vk2", label: "Aufstieg-VK2", color: "gray", minObedience: 48, minTotal: 250, competitionTypes: ALL_COMPETITION_TYPES },
   ],
   "FCI-VK2": [
-    {
-      key: "promotion-vk3",
-      label: "Aufstieg-VK3",
-      color: "gray",
-      minObedience: 48,
-      minTotal: 260,
-      competitionTypes: CLUB_AND_DISTRICT,
-    },
+    { key: "promotion-vk3", label: "Aufstieg-VK3", color: "gray", minObedience: 48, minTotal: 260, competitionTypes: CLUB_AND_DISTRICT },
   ],
   "FCI-VK3": [
-    {
-      key: "swhv",
-      label: "swhv-Quali",
-      color: "green",
-      minObedience: 48,
-      minTotal: 250,
-      competitionTypes: CLUB_AND_DISTRICT,
-    },
-    {
-      key: "dhv",
-      label: "dhv-Quali",
-      color: "blue",
-      minObedience: 48,
-      minTotal: 265,
-      competitionTypes: ["Verbandsmeisterschaft"],
-    },
-    {
-      key: "vdh",
-      label: "VDH-Quali",
-      color: "red",
-      minObedience: 54,
-      minTotal: 270,
-      competitionTypes: ALL_COMPETITION_TYPES,
-    },
+    { key: "swhv", label: "swhv-Quali", color: "green", minObedience: 48, minTotal: 250, competitionTypes: CLUB_AND_DISTRICT },
+    { key: "dhv", label: "dhv-Quali", color: "blue", minObedience: 48, minTotal: 265, competitionTypes: ["Verbandsmeisterschaft"] },
+    { key: "vdh", label: "VDH-Quali", color: "red", minObedience: 54, minTotal: 270, competitionTypes: ALL_COMPETITION_TYPES },
   ],
 } as const;
 
-const finite = (value: number | null) =>
-  value !== null && Number.isFinite(value);
+const finite = (value: number | null | undefined): value is number =>
+  value !== null && value !== undefined && Number.isFinite(value);
+const round = (value: number) => Math.round(value * 100) / 100;
+
+function validateRun(errors: string[], label: string, run: { time: number | null; faults: number | null } | undefined) {
+  if (!run || !finite(run.time)) errors.push(`${label}: Laufzeit fehlt`);
+  else if (run.time < 0) errors.push(`${label}: Laufzeit darf nicht negativ sein`);
+  if (!run || !finite(run.faults)) errors.push(`${label}: Fehlerpunkte fehlen`);
+  else if (run.faults < 0) errors.push(`${label}: Fehlerpunkte dürfen nicht negativ sein`);
+}
+
+function validateObstacleDetails(errors: string[], label: string, run: CompetitionResult["obstacle"] | undefined) {
+  const details = run?.faultDetails ?? [];
+  if (!details.length) return;
+  if (!areValidObstacleFaultDetails(details)) errors.push(`${label}: Mindestens eine Detailangabe ist ungültig`);
+  if (finite(run?.faults) && obstacleFaultsTotal(details) !== run.faults)
+    errors.push(`${label}: Fehlerpunkte stimmen nicht mit den Detailangaben überein`);
+}
+
+function validateStandardRuns(result: CompetitionResult, errors: string[]) {
+  validateRun(errors, "Hürden", result.hurdles);
+  validateRun(errors, "Slalom", result.slalom);
+  validateRun(errors, "Hindernis", result.obstacle);
+  const hurdleDetails = result.hurdles.faultDetails ?? [];
+  if (hurdleDetails.length) {
+    if (!hurdleDetails.every((detail) => isValidHurdleFaultDetail(detail, hurdleReferenceClass(result.className))))
+      errors.push("Hürden: Mindestens eine Detailangabe ist ungültig");
+    if (finite(result.hurdles.faults) && hurdleFaultsTotal(hurdleDetails) !== result.hurdles.faults)
+      errors.push("Hürden: Fehlerpunkte stimmen nicht mit den Detailangaben überein");
+  }
+  const slalomDetails = result.slalom.faultDetails ?? [];
+  if (slalomDetails.length) {
+    if (!areValidSlalomFaultDetails(slalomDetails)) errors.push("Slalom: Mindestens eine Detailangabe ist ungültig");
+    if (finite(result.slalom.faults) && slalomFaultsTotal(slalomDetails) !== result.slalom.faults)
+      errors.push("Slalom: Fehlerpunkte stimmen nicht mit den Detailangaben überein");
+  }
+  validateObstacleDetails(errors, "Hindernis", result.obstacle);
+}
 
 export function validateResult(result: CompetitionResult): string[] {
   const errors: string[] = [];
   if (!result.date) errors.push("Datum fehlt");
   if (!result.event.trim()) errors.push("Turnier / Verein fehlt");
-  if (!result.handlerId || !result.handler.trim())
-    errors.push("Hundeführer fehlt");
+  if (!result.handlerId || !result.handler.trim()) errors.push("Hundeführer fehlt");
   if (!result.dogId || !result.dog.trim()) errors.push("Hund fehlt");
-  if (!finite(result.obedience)) errors.push("Unterordnung fehlt");
-  else if (result.obedience! < 0 || result.obedience! > 60)
-    errors.push("Unterordnung muss zwischen 0 und 60 liegen");
-
-  for (const [label, run] of [
-    ["Hürden", result.hurdles],
-    ["Slalom", result.slalom],
-    ["Hindernis", result.obstacle],
-  ] as const) {
-    if (!finite(run.time)) errors.push(`${label}: Laufzeit fehlt`);
-    else if (run.time! < 0)
-      errors.push(`${label}: Laufzeit darf nicht negativ sein`);
-    if (!finite(run.faults)) errors.push(`${label}: Fehlerpunkte fehlen`);
-    else if (run.faults! < 0)
-      errors.push(`${label}: Fehlerpunkte dürfen nicht negativ sein`);
-  }
-
-  const hurdleDetails = result.hurdles.faultDetails ?? [];
-  if (hurdleDetails.length) {
-    if (
-      !hurdleDetails.every((detail) =>
-        isValidHurdleFaultDetail(detail, result.className),
-      )
-    )
-      errors.push("Hürden: Mindestens eine Detailangabe ist ungültig");
-    if (
-      finite(result.hurdles.faults) &&
-      hurdleFaultsTotal(hurdleDetails) !== result.hurdles.faults
-    )
-      errors.push(
-        "Hürden: Fehlerpunkte stimmen nicht mit den Detailangaben überein",
-      );
-  }
-  const slalomDetails = result.slalom.faultDetails ?? [];
-  if (slalomDetails.length) {
-    if (!areValidSlalomFaultDetails(slalomDetails))
-      errors.push("Slalom: Mindestens eine Detailangabe ist ungültig");
-    if (
-      finite(result.slalom.faults) &&
-      slalomFaultsTotal(slalomDetails) !== result.slalom.faults
-    )
-      errors.push(
-        "Slalom: Fehlerpunkte stimmen nicht mit den Detailangaben überein",
-      );
-  }
-  const obstacleDetails = result.obstacle.faultDetails ?? [];
-  if (obstacleDetails.length) {
-    if (!areValidObstacleFaultDetails(obstacleDetails))
-      errors.push("Hindernis: Mindestens eine Detailangabe ist ungültig");
-    if (
-      finite(result.obstacle.faults) &&
-      obstacleFaultsTotal(obstacleDetails) !== result.obstacle.faults
-    )
-      errors.push(
-        "Hindernis: Fehlerpunkte stimmen nicht mit den Detailangaben überein",
-      );
+  if (isVierkampf(result.className)) {
+    if (!finite(result.obedience)) errors.push("Unterordnung fehlt");
+    else if (result.obedience < 0 || result.obedience > 60) errors.push("Unterordnung muss zwischen 0 und 60 liegen");
+    validateStandardRuns(result, errors);
+  } else if (result.className === "VDH-DK") {
+    validateStandardRuns(result, errors);
+    if (!result.hurdlesLeash) errors.push("Hürden: Leinenstatus fehlt");
+    if (!result.slalomLeash) errors.push("Slalom: Leinenstatus fehlt");
+    if (!result.obstacleLeash) errors.push("Hindernis: Leinenstatus fehlt");
+  } else if (result.className === "VDH-S-VK") {
+    validateStandardRuns(result, errors);
+    const crossCountry = result.crossCountry;
+    if (!crossCountry || !finite(crossCountry.timeSeconds)) errors.push("1000-m-Lauf: Laufzeit fehlt");
+    else if (crossCountry.timeSeconds < 0) errors.push("1000-m-Lauf: Laufzeit darf nicht negativ sein");
+    if (!crossCountry || !finite(crossCountry.distanceMeters)) errors.push("1000-m-Lauf: Streckenlänge fehlt");
+    else if (crossCountry.distanceMeters <= 0) errors.push("1000-m-Lauf: Streckenlänge muss größer als 0 sein");
+    if (!result.handlerBirthDate || !result.handlerGender)
+      errors.push("Hundeführerdaten für Altersklasse und Qualifikation fehlen");
+  } else if (result.className === "VDH-HL") {
+    validateRun(errors, "Hindernislauf 1", result.obstacle);
+    validateRun(errors, "Hindernislauf 2", result.obstacle2);
+    validateObstacleDetails(errors, "Hindernislauf 1", result.obstacle);
+    validateObstacleDetails(errors, "Hindernislauf 2", result.obstacle2);
+    if (!result.obstacleLeash) errors.push("Hindernislauf 1: Leinenstatus fehlt");
+    if (!result.obstacle2Leash) errors.push("Hindernislauf 2: Leinenstatus fehlt");
   }
   return errors;
 }
 
+const runDeduction = (run: { time: number | null; faults: number | null }) => run.time! + run.faults!;
+type AgeGroup = "youngest" | "youth" | "active" | "senior";
+export function getAgeGroup(birthDate: string, eventDate: string): AgeGroup | null {
+  const age = calculateAge(birthDate, new Date(`${eventDate}T12:00:00`));
+  if (age === null) return null;
+  if (age <= 14) return "youngest";
+  if (age <= 18) return "youth";
+  if (age <= 49) return "active";
+  return "senior";
+}
+
+const SPRINT_THRESHOLDS = {
+  swhv: {
+    male: { youngest: 210, youth: 210, active: 250, senior: 230 },
+    female: { youngest: 200, youth: 200, active: 240, senior: 220 },
+  },
+  dhv: {
+    male: { youngest: 225, youth: 230, active: 245, senior: 240 },
+    female: { youngest: 220, youth: 225, active: 240, senior: 235 },
+  },
+  vdh: {
+    male: { youngest: 250, youth: 260, active: 270, senior: 260 },
+    female: { youngest: 240, youth: 250, active: 263, senior: 250 },
+  },
+} as const;
+
+function sprintQualifications(result: CompetitionResult, total: number): Qualification[] {
+  const gender = result.handlerGender;
+  const ageGroup = getAgeGroup(result.handlerBirthDate ?? "", result.date);
+  if ((gender !== "male" && gender !== "female") || !ageGroup) return [];
+  const matched = new Set<QualificationKey>();
+  if (CLUB_AND_DISTRICT.includes(result.competitionType) && total >= SPRINT_THRESHOLDS.swhv[gender][ageGroup]) matched.add("swhv");
+  if (result.competitionType === "Verbandsmeisterschaft" && total >= SPRINT_THRESHOLDS.dhv[gender][ageGroup]) matched.add("dhv");
+  if (total >= SPRINT_THRESHOLDS.vdh[gender][ageGroup]) matched.add("vdh");
+  if (matched.has("dhv")) matched.add("swhv");
+  const badges: Qualification[] = [
+    { key: "swhv", label: "swhv-Quali", color: "green" },
+    { key: "dhv", label: "dhv-Quali", color: "blue" },
+    { key: "vdh", label: "VDH-Quali", color: "red" },
+  ];
+  return badges.filter((qualification) => matched.has(qualification.key));
+}
+
+function vierkampfQualifications(result: CompetitionResult, total: number) {
+  const rules = QUALIFICATION_RULES[result.className as keyof typeof QUALIFICATION_RULES];
+  const matched = new Set(rules.filter((rule) =>
+    result.obedience! >= rule.minObedience && total >= rule.minTotal &&
+    (rule.competitionTypes as readonly CompetitionType[]).includes(result.competitionType),
+  ).map((rule) => rule.key));
+  if (result.className === "FCI-VK3" && matched.has("dhv")) matched.add("swhv");
+  return rules.filter((rule) => matched.has(rule.key)).map(({ key, label, color }) => ({ key, label, color }) as Qualification);
+}
+
 export function calculateScore(result: CompetitionResult): ScoreBreakdown {
   const errors = validateResult(result);
-  if (errors.length)
-    return { total: null, complete: false, qualifications: [], errors };
-
-  const total =
-    Math.round(
-      (BASE_POINTS[result.className] +
-        result.obedience! -
-        result.hurdles.time! -
-        result.hurdles.faults! -
-        result.slalom.time! -
-        result.slalom.faults! -
-        result.obstacle.time! -
-        result.obstacle.faults!) *
-        100,
-    ) / 100;
-
-  const matched = new Set(
-    QUALIFICATION_RULES[result.className]
-      .filter(
-        (rule) =>
-          result.obedience! >= rule.minObedience &&
-          total >= rule.minTotal &&
-          (rule.competitionTypes as readonly CompetitionType[]).includes(
-            result.competitionType ?? "Vereinsprüfung",
-          ),
-      )
-      .map((rule) => rule.key),
-  );
-
-  // Qualifikationen sind hierarchisch: Eine auf der Verbandsmeisterschaft
-  // erreichte dhv-Quali schließt die niedrigere swhv-Quali ein.
-  if (result.className === "FCI-VK3" && matched.has("dhv")) {
-    matched.add("swhv");
+  if (errors.length) return { total: null, complete: false, qualifications: [], errors };
+  let total: number;
+  if (result.className === "VDH-HL") {
+    total = round(runDeduction(result.obstacle) + runDeduction(result.obstacle2!) +
+      (result.obstacleLeash === "on" ? 5 : 0) + (result.obstacle2Leash === "on" ? 5 : 0));
+  } else if (result.className === "VDH-DK") {
+    const bonus = [result.hurdlesLeash, result.slalomLeash, result.obstacleLeash].filter((mode) => mode === "off").length * 5;
+    total = round(240 + bonus - runDeduction(result.hurdles) - runDeduction(result.slalom) - runDeduction(result.obstacle));
+  } else if (result.className === "VDH-S-VK") {
+    total = round(340 - (result.crossCountry?.falseStart ? 10 : 0) - runDeduction(result.hurdles) -
+      runDeduction(result.slalom) - runDeduction(result.obstacle) - normalizedCrossCountryTime(result)!);
+  } else {
+    total = round(BASE_POINTS[result.className] + result.obedience! - runDeduction(result.hurdles) -
+      runDeduction(result.slalom) - runDeduction(result.obstacle));
   }
-
-  const qualifications = QUALIFICATION_RULES[result.className]
-    .filter((rule) => matched.has(rule.key))
-    .map(({ key, label, color }) => ({ key, label, color }) as Qualification);
-
+  const qualifications = isVierkampf(result.className)
+    ? vierkampfQualifications(result, total)
+    : result.className === "VDH-S-VK" ? sprintQualifications(result, total) : [];
   return { total, complete: true, qualifications, errors: [] };
 }

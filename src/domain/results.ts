@@ -1,4 +1,64 @@
-import {calculateScore} from './scoring';import type{CompetitionResult,QualificationKey}from'./types'
-export type SortKey='date-desc'|'date-asc'|'score-desc'|'score-asc';export interface ResultFilters{query:string;className:'all'|CompetitionResult['className'];qualification:'all'|QualificationKey;includeDrafts:boolean;sort:SortKey}
-export function filterAndSort(results:CompetitionResult[],f:ResultFilters){const query=f.query.trim().toLocaleLowerCase('de');return results.filter(r=>f.includeDrafts||calculateScore(r).complete).filter(r=>f.className==='all'||r.className===f.className).filter(r=>[r.event,r.handler,r.dog].some(value=>value.toLocaleLowerCase('de').includes(query))).filter(r=>f.qualification==='all'||calculateScore(r).qualifications.some(q=>q.key===f.qualification)).sort((a,b)=>{const sa=calculateScore(a).total??-Infinity,sb=calculateScore(b).total??-Infinity;if(f.sort==='score-desc')return sb-sa;if(f.sort==='score-asc')return sa-sb;const tie=a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id);return f.sort==='date-asc'?a.date.localeCompare(b.date)||tie:b.date.localeCompare(a.date)||-tie})}
-export function bestIds(results:CompetitionResult[]){const complete=results.filter(r=>calculateScore(r).complete);const pick=(getter:(r:CompetitionResult)=>number|null,mode:'min'|'max')=>{const values=complete.map(getter).filter((v):v is number=>v!==null);if(!values.length)return new Set<string>();const best=mode==='max'?Math.max(...values):Math.min(...values);return new Set(complete.filter(r=>getter(r)===best).map(r=>r.id))};return{obedience:pick(r=>r.obedience,'max'),hurdles:pick(r=>r.hurdles.time,'min'),slalom:pick(r=>r.slalom.time,'min'),obstacle:pick(r=>r.obstacle.time,'min'),total:pick(r=>calculateScore(r).total,'max')}}
+import { isTimeResult } from "./disciplines";
+import { calculateScore } from "./scoring";
+import type { CompetitionResult, QualificationKey } from "./types";
+
+export type SortKey = "date-desc" | "date-asc" | "score-desc" | "score-asc";
+export interface ResultFilters {
+  query: string;
+  className: "all" | CompetitionResult["className"];
+  qualification: "all" | QualificationKey;
+  includeDrafts: boolean;
+  sort: SortKey;
+}
+
+const comparableScore = (result: CompetitionResult) => {
+  const total = calculateScore(result).total;
+  if (total === null) return -Infinity;
+  return isTimeResult(result.className) ? -total : total;
+};
+
+export function filterAndSort(results: CompetitionResult[], filters: ResultFilters) {
+  const query = filters.query.trim().toLocaleLowerCase("de");
+  return results
+    .filter((result) => filters.includeDrafts || calculateScore(result).complete)
+    .filter((result) => filters.className === "all" || result.className === filters.className)
+    .filter((result) => [result.event, result.handler, result.dog].some((value) => value.toLocaleLowerCase("de").includes(query)))
+    .filter((result) => filters.qualification === "all" || calculateScore(result).qualifications.some((qualification) => qualification.key === filters.qualification))
+    .sort((a, b) => {
+      if (filters.sort === "score-desc") return comparableScore(b) - comparableScore(a);
+      if (filters.sort === "score-asc") return comparableScore(a) - comparableScore(b);
+      const tie = a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
+      return filters.sort === "date-asc"
+        ? a.date.localeCompare(b.date) || tie
+        : b.date.localeCompare(a.date) || -tie;
+    });
+}
+
+export function bestIds(results: CompetitionResult[]) {
+  const complete = results.filter((result) => calculateScore(result).complete);
+  const pickPerClass = (
+    getter: (result: CompetitionResult) => number | null,
+    mode: "min" | "max" | ((result: CompetitionResult) => "min" | "max"),
+  ) => {
+    const ids = new Set<string>();
+    for (const className of new Set(complete.map((result) => result.className))) {
+      const candidates = complete.filter((result) => result.className === className);
+      const values = candidates.map(getter).filter((value): value is number => value !== null);
+      if (!values.length) continue;
+      const direction = typeof mode === "function" ? mode(candidates[0]) : mode;
+      const best = direction === "max" ? Math.max(...values) : Math.min(...values);
+      candidates.filter((result) => getter(result) === best).forEach((result) => ids.add(result.id));
+    }
+    return ids;
+  };
+  return {
+    obedience: pickPerClass((result) => result.obedience, "max"),
+    hurdles: pickPerClass((result) => result.hurdles.time, "min"),
+    slalom: pickPerClass((result) => result.slalom.time, "min"),
+    obstacle: pickPerClass((result) => result.obstacle.time, "min"),
+    total: pickPerClass(
+      (result) => calculateScore(result).total,
+      (result) => (isTimeResult(result.className) ? "min" : "max"),
+    ),
+  };
+}

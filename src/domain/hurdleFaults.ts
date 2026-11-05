@@ -1,9 +1,10 @@
 import type {
-  CompetitionResult,
   HurdleFaultCode,
   HurdleFaultDetail,
   HurdleFaultPosition,
 } from "./types";
+
+type HurdleClass = "FCI-VK1" | "FCI-VK2" | "FCI-VK3";
 
 export interface HurdleFaultRule {
   code: HurdleFaultCode;
@@ -41,7 +42,7 @@ const VK3_HURDLES: readonly HurdleFaultPosition[] = [
 ];
 
 const HURDLE_POSITIONS_BY_CLASS: Record<
-  CompetitionResult["className"],
+  HurdleClass,
   readonly HurdleFaultPosition[]
 > = {
   "FCI-VK1": VK1_AND_VK2_HURDLES,
@@ -106,7 +107,7 @@ export const hurdleRulesForPosition = (position: HurdleFaultPosition) =>
   HURDLE_FAULT_RULES.filter((rule) => rule.positions.includes(position));
 
 export const hurdlePositionsForClass = (
-  className: CompetitionResult["className"],
+  className: HurdleClass,
 ) => HURDLE_POSITIONS_BY_CLASS[className];
 
 export const hurdleFaultsTotal = (details: readonly HurdleFaultDetail[]) =>
@@ -114,7 +115,7 @@ export const hurdleFaultsTotal = (details: readonly HurdleFaultDetail[]) =>
 
 export function isValidHurdleFaultDetail(
   detail: unknown,
-  className?: CompetitionResult["className"],
+  className?: HurdleClass,
 ): detail is HurdleFaultDetail {
   if (!detail || typeof detail !== "object") return false;
   const candidate = detail as Partial<HurdleFaultDetail>;

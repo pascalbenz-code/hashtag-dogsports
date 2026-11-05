@@ -131,6 +131,8 @@ describe("Dexie persistence", () => {
     await saveDogProfile({ ...dog, callName: "Fiete Neu" }, database);
     expect(await database.results.get("1")).toMatchObject({
       handler: "Alex Neu",
+      handlerBirthDate: handler.birthDate,
+      handlerGender: handler.gender,
       dog: "Fiete Neu",
     });
     await expect(deleteHandlerProfile(handler.id, database)).rejects.toThrow(

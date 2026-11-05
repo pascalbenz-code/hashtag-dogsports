@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateScore, validateResult } from "./scoring";
+import { calculateScore, getAgeGroup, validateResult } from "./scoring";
 import { makeResult } from "../test/factory";
 import type { CompetitionType } from "./types";
 
@@ -295,4 +295,96 @@ describe("FCI scoring and qualifications", () => {
       "Hürden: Mindestens eine Detailangabe ist ungültig",
     );
   });
+});
+
+describe("additional THS disciplines", () => {
+  it("adds both HL runs, faults and five seconds for each leashed run", () => {
+    const score = calculateScore(
+      makeResult({
+        className: "VDH-HL",
+        obstacle: { time: 30, faults: 4 },
+        obstacleLeash: "off",
+        obstacle2: { time: 31, faults: 0 },
+        obstacle2Leash: "on",
+      }),
+    );
+    expect(score.total).toBe(70);
+    expect(score.qualifications).toEqual([]);
+  });
+
+  it("calculates DK from 240 points and five bonus points per off-leash discipline", () => {
+    const score = calculateScore(
+      makeResult({
+        className: "VDH-DK",
+        hurdles: { time: 20, faults: 2 },
+        slalom: { time: 20, faults: 2 },
+        obstacle: { time: 20, faults: 2 },
+        hurdlesLeash: "on",
+        slalomLeash: "off",
+        obstacleLeash: "off",
+      }),
+    );
+    expect(score.total).toBe(184);
+    expect(score.qualifications).toEqual([]);
+  });
+
+  it("matches the supplied sprint-four-event formula to two decimals", () => {
+    const score = calculateScore(
+      makeResult({
+        className: "VDH-S-VK",
+        handlerGender: "male",
+        handlerBirthDate: "1990-01-01",
+        hurdles: { time: 24, faults: 4 },
+        slalom: { time: 24, faults: 0 },
+        obstacle: { time: 24.01, faults: 0 },
+        crossCountry: { timeSeconds: 652, distanceMeters: 973, falseStart: false },
+      }),
+    );
+    expect(score.total).toBe(196.98);
+  });
+
+  it("deducts ten sprint points for a false start", () => {
+    const base = makeResult({
+      className: "VDH-S-VK",
+      handlerGender: "female",
+      handlerBirthDate: "1990-01-01",
+      hurdles: { time: 20, faults: 0 },
+      slalom: { time: 20, faults: 0 },
+      obstacle: { time: 20, faults: 0 },
+      crossCountry: { timeSeconds: 600, distanceMeters: 1000, falseStart: false },
+    });
+    expect(calculateScore({ ...base, crossCountry: { ...base.crossCountry!, falseStart: true } }).total)
+      .toBe(calculateScore(base).total! - 10);
+  });
+
+  it("maps the global THS age classes at their boundaries", () => {
+    expect(getAgeGroup("2012-05-11", "2026-05-10")).toBe("youngest");
+    expect(getAgeGroup("2011-05-10", "2026-05-10")).toBe("youth");
+    expect(getAgeGroup("2007-05-10", "2026-05-10")).toBe("active");
+    expect(getAgeGroup("1976-05-10", "2026-05-10")).toBe("senior");
+  });
+
+  it.each([
+    ["male", "1990-01-01", 250, "Vereinsprüfung", ["swhv"]],
+    ["female", "1960-01-01", 220, "Kreismeisterschaft", ["swhv"]],
+    ["male", "2010-01-01", 230, "Verbandsmeisterschaft", ["swhv", "dhv"]],
+    ["female", "1990-01-01", 263, "VDH Deutsche Meisterschaft", ["vdh"]],
+  ] as const)(
+    "applies sprint qualification threshold for %s born %s",
+    (handlerGender, handlerBirthDate, target, competitionType, expected) => {
+      const score = calculateScore(
+        makeResult({
+          className: "VDH-S-VK",
+          competitionType,
+          handlerGender,
+          handlerBirthDate,
+          hurdles: { time: 340 - target, faults: 0 },
+          slalom: { time: 0, faults: 0 },
+          obstacle: { time: 0, faults: 0 },
+          crossCountry: { timeSeconds: 0, distanceMeters: 1000, falseStart: false },
+        }),
+      );
+      expect(score.qualifications.map((qualification) => qualification.key)).toEqual(expected);
+    },
+  );
 });

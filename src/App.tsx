@@ -21,7 +21,7 @@ import {
   serializeBackup,
   toCsv,
 } from "./data/backup";
-import { calculateScore } from "./domain/scoring";
+import { calculateScore, getAgeGroup } from "./domain/scoring";
 import { bestIds, filterAndSort, type ResultFilters } from "./domain/results";
 import { calculateStatistics, type Direction } from "./domain/statistics";
 import type {
@@ -50,6 +50,14 @@ import {
   formatObstacleFaultDetail,
   obstacleFaultsTotal,
 } from "./domain/obstacleFaults";
+import {
+  CLASS_LABELS,
+  COMPETITION_CLASSES,
+  hurdleReferenceClass,
+  isTimeResult,
+  isVierkampf,
+  normalizedCrossCountryTime,
+} from "./domain/disciplines";
 
 const PerformanceChart = lazy(() => import("./components/PerformanceChart"));
 const JudgeForm = lazy(() =>
@@ -78,14 +86,22 @@ const blank = (): CompetitionResult => ({
   competitionType: "Vereinsprüfung",
   event: "",
   handlerId: "",
+  handlerBirthDate: "",
+  handlerGender: "",
   dogId: "",
   dog: "",
   handler: "",
   className: "FCI-VK1",
   obedience: null,
   hurdles: { time: null, faults: null, faultDetails: [] },
+  hurdlesLeash: "on",
   slalom: { time: null, faults: null, faultDetails: [] },
+  slalomLeash: "on",
   obstacle: { time: null, faults: null, faultDetails: [] },
+  obstacleLeash: "on",
+  obstacle2: { time: null, faults: null, faultDetails: [] },
+  obstacle2Leash: "on",
+  crossCountry: { timeSeconds: null, distanceMeters: 1000, falseStart: false },
   notes: "",
   createdAt: now(),
   updatedAt: now(),
@@ -391,13 +407,16 @@ function Dashboard({
 }) {
   const complete = results.filter((r) => calculateScore(r).complete),
     drafts = results.length - complete.length,
-    bests = bestIds(results),
-    latest = complete.sort((a, b) => b.date.localeCompare(a.date))[0],
+    latest = [...complete].sort((a, b) => b.date.localeCompare(a.date))[0],
+    comparable = latest
+      ? complete.filter((result) => result.className === latest.className)
+      : [],
+    bests = bestIds(comparable),
     q = complete.reduce(
       (n, r) => n + calculateScore(r).qualifications.length,
       0,
     ),
-    series = complete
+    series = comparable
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((r) => ({
         date: dFmt(r.date),
@@ -428,11 +447,14 @@ function Dashboard({
         <Metric value={String(q)} label="Qualifikationen" accent />
       </div>
       <section>
-        <Title text="Persönliche Bestleistungen" />
+        <Title
+          text={`Bestleistungen${latest ? ` · ${CLASS_LABELS[latest.className]}` : ""}`}
+        />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <Mini
             label="Gesamt"
             value={metric(bests.total, (r) => calculateScore(r).total)}
+            unit={latest && isTimeResult(latest.className) ? "s" : undefined}
           />
           <Mini
             label="Unterordnung"
@@ -456,7 +478,9 @@ function Dashboard({
         </div>
       </section>
       <Card>
-        <Title text="Gesamtpunkte-Entwicklung" />
+        <Title
+          text={`${latest && isTimeResult(latest.className) ? "Gesamtzeit" : "Gesamtpunkte"}-Entwicklung${latest ? ` · ${CLASS_LABELS[latest.className]}` : ""}`}
+        />
         {series.length ? (
           <Chart
             data={series}
@@ -557,10 +581,10 @@ function Results({
               })
             }
           >
-            <option value="all">Alle Stufen</option>
-            <option>FCI-VK1</option>
-            <option>FCI-VK2</option>
-            <option>FCI-VK3</option>
+            <option value="all">Alle Disziplinen</option>
+            {COMPETITION_CLASSES.map((value) => (
+              <option value={value} key={value}>{CLASS_LABELS[value]}</option>
+            ))}
           </select>
           <select
             className="control"
@@ -588,8 +612,8 @@ function Results({
           >
             <option value="date-desc">Datum ↓</option>
             <option value="date-asc">Datum ↑</option>
-            <option value="score-desc">Punkte ↓</option>
-            <option value="score-asc">Punkte ↑</option>
+            <option value="score-desc">Bestes Ergebnis zuerst</option>
+            <option value="score-asc">Schwächstes Ergebnis zuerst</option>
           </select>
           <label className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 text-sm">
             <input
@@ -659,6 +683,7 @@ function Results({
                 "Hundeführer / Hund",
                 "Turnier / Verein",
                 "Stufe",
+                "Zusatzdaten",
                 "UO",
                 "Hürden",
                 "F.",
@@ -682,7 +707,8 @@ function Results({
                   <td>{dFmt(r.date)}</td>
                   <td>{r.handler} / {r.dog}</td>
                   <td>{r.event}</td>
-                  <td>{r.className}</td>
+                  <td>{CLASS_LABELS[r.className]}</td>
+                  <td>{additionalResultSummary(r)}</td>
                   <td className={bests.obedience.has(r.id) ? "best" : ""}>
                     {fmt(r.obedience)}
                   </td>
@@ -726,7 +752,7 @@ function Results({
                       : ""}
                   </td>
                   <td className={bests.total.has(r.id) ? "best" : ""}>
-                    {fmt(s.total)}
+                    {fmt(s.total)}{isTimeResult(r.className) ? " s" : ""}
                   </td>
                   <td>
                     <Qualis list={s.qualifications} />
@@ -742,6 +768,18 @@ function Results({
     </>
   );
 }
+function additionalResultSummary(result: CompetitionResult) {
+  if (result.className === "VDH-HL")
+    return `L2 ${fmt(result.obstacle2?.time ?? null)} s / ${fmt(result.obstacle2?.faults ?? null)} FP · ${result.obstacleLeash === "on" ? "L1 Leine" : "L1 frei"} · ${result.obstacle2Leash === "on" ? "L2 Leine" : "L2 frei"}`;
+  if (result.className === "VDH-DK") {
+    const bonus = [result.hurdlesLeash, result.slalomLeash, result.obstacleLeash]
+      .filter((mode) => mode === "off").length * 5;
+    return `Leinenbonus +${bonus}`;
+  }
+  if (result.className === "VDH-S-VK")
+    return `1000 m: ${fmt(result.crossCountry?.timeSeconds ?? null)} s / ${fmt(result.crossCountry?.distanceMeters ?? null, 1)} m · Wert ${fmt(normalizedCrossCountryTime(result))}${result.crossCountry?.falseStart ? " · Frühstart" : ""}`;
+  return "–";
+}
 function Editor({
   initial,
   close,
@@ -755,17 +793,17 @@ function Editor({
   dogs: DogProfile[];
   manageProfiles: () => void;
 }) {
-  const [form, setForm] = useState(initial),
-    score = calculateScore(form),
-    n = (v: string) => (v.trim() === "" ? null : Number(v.replace(",", "."))),
-    setRun = (
-      key: "hurdles" | "slalom" | "obstacle",
-      part: "time" | "faults",
-      v: string,
-    ) => setForm({ ...form, [key]: { ...form[key], [part]: n(v) } });
-  const hurdleDetails = form.hurdles.faultDetails ?? [];
-  const slalomDetails = form.slalom.faultDetails ?? [];
-  const obstacleDetails = form.obstacle.faultDetails ?? [];
+  const [form, setForm] = useState(() => {
+      const profile = handlers.find((item) => item.id === initial.handlerId);
+      return profile
+        ? {
+            ...initial,
+            handlerBirthDate: initial.handlerBirthDate || profile.birthDate,
+            handlerGender: initial.handlerGender || profile.gender,
+          }
+        : initial;
+    }),
+    score = calculateScore(form);
   const persisted = useLiveQuery(() => db.results.get(form.id), [form.id]);
   useEffect(() => {
     const timer = setTimeout(
@@ -806,7 +844,13 @@ function Editor({
               value={form.handlerId ?? ""}
               onChange={(e) => {
                 const selected = handlers.find((item) => item.id === e.target.value);
-                setForm({ ...form, handlerId: selected?.id ?? "", handler: selected?.name ?? "" });
+                setForm({
+                  ...form,
+                  handlerId: selected?.id ?? "",
+                  handler: selected?.name ?? "",
+                  handlerBirthDate: selected?.birthDate ?? "",
+                  handlerGender: selected?.gender ?? "",
+                });
               }}
             >
               <option value="">Bitte auswählen</option>
@@ -845,7 +889,10 @@ function Editor({
                   .value as CompetitionResult["className"];
                 const previousDetails = form.hurdles.faultDetails ?? [];
                 const faultDetails = previousDetails.filter((detail) =>
-                  isValidHurdleFaultDetail(detail, className),
+                  isValidHurdleFaultDetail(
+                    detail,
+                    hurdleReferenceClass(className),
+                  ),
                 );
                 setForm({
                   ...form,
@@ -863,9 +910,11 @@ function Editor({
                 });
               }}
             >
-              <option>FCI-VK1</option>
-              <option>FCI-VK2</option>
-              <option>FCI-VK3</option>
+              {COMPETITION_CLASSES.map((value) => (
+                <option value={value} key={value}>
+                  {CLASS_LABELS[value]}
+                </option>
+              ))}
             </select>
           </Field>
         </div>
@@ -893,140 +942,20 @@ function Editor({
           />
         </Field>
       </Card>
-      <Card>
-        <h3>Leistungsdaten</h3>
-        <Field label="Unterordnung · 0 bis 60 Punkte">
-          <LocaleNumberInput
-            key={`${form.id}-obedience`}
-            value={form.obedience}
-            placeholder="0,0"
-            max={60}
-            maxFractionDigits={1}
-            onValueChange={(value) => setForm({ ...form, obedience: value })}
-          />
-        </Field>
-        {(
-          [
-            ["hurdles", "Hürdenlauf"],
-            ["slalom", "Slalomlauf"],
-            ["obstacle", "Hindernislauf"],
-          ] as const
-        ).map(([key, label]) => (
-          <div key={key} className="mt-5">
-            <h3>{label}</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Zeit · Sekunden">
-                <LocaleNumberInput
-                  key={`${form.id}-${key}-time`}
-                  value={form[key].time}
-                  placeholder="0,00"
-                  onValueChange={(value) =>
-                    setForm({
-                      ...form,
-                      [key]: { ...form[key], time: value },
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Fehlerpunkte">
-                <input
-                  inputMode="decimal"
-                  value={form[key].faults ?? ""}
-                  readOnly={
-                    (key === "hurdles" && hurdleDetails.length > 0) ||
-                    (key === "slalom" && slalomDetails.length > 0) ||
-                    (key === "obstacle" && obstacleDetails.length > 0)
-                  }
-                  aria-describedby={
-                    key === "hurdles" && hurdleDetails.length > 0
-                      ? "hurdle-faults-calculated"
-                      : key === "slalom" && slalomDetails.length > 0
-                        ? "slalom-faults-calculated"
-                        : key === "obstacle" && obstacleDetails.length > 0
-                          ? "obstacle-faults-calculated"
-                      : undefined
-                  }
-                  onChange={(e) => setRun(key, "faults", e.target.value)}
-                />
-              </Field>
-            </div>
-            {key === "hurdles" && hurdleDetails.length > 0 ? (
-              <p id="hurdle-faults-calculated" className="mt-2 text-xs text-muted">
-                Die Fehlerpunkte werden aus den Detailangaben berechnet.
-              </p>
-            ) : null}
-            {key === "slalom" && slalomDetails.length > 0 ? (
-              <p id="slalom-faults-calculated" className="mt-2 text-xs text-muted">
-                Die Fehlerpunkte werden aus den Detailangaben berechnet.
-              </p>
-            ) : null}
-            {key === "obstacle" && obstacleDetails.length > 0 ? (
-              <p id="obstacle-faults-calculated" className="mt-2 text-xs text-muted">
-                Die Fehlerpunkte werden aus den Detailangaben berechnet.
-              </p>
-            ) : null}
-            {key === "hurdles" ? (
-              <HurdleFaultDetails
-                key={form.className}
-                className={form.className}
-                details={hurdleDetails}
-                onChange={(faultDetails) =>
-                  setForm({
-                    ...form,
-                    hurdles: {
-                      ...form.hurdles,
-                      faults: faultDetails.length
-                        ? hurdleFaultsTotal(faultDetails)
-                        : null,
-                      faultDetails,
-                    },
-                  })
-                }
-              />
-            ) : null}
-            {key === "slalom" ? (
-              <SlalomFaultDetails
-                className={form.className}
-                details={slalomDetails}
-                onChange={(faultDetails) =>
-                  setForm({
-                    ...form,
-                    slalom: {
-                      ...form.slalom,
-                      faults: faultDetails.length
-                        ? slalomFaultsTotal(faultDetails)
-                        : null,
-                      faultDetails,
-                    },
-                  })
-                }
-              />
-            ) : null}
-            {key === "obstacle" ? (
-              <ObstacleFaultDetails
-                details={obstacleDetails}
-                onChange={(faultDetails) =>
-                  setForm({
-                    ...form,
-                    obstacle: {
-                      ...form.obstacle,
-                      faults: faultDetails.length
-                        ? obstacleFaultsTotal(faultDetails)
-                        : null,
-                      faultDetails,
-                    },
-                  })
-                }
-              />
-            ) : null}
-          </div>
-        ))}
-      </Card>
+      <PerformanceFields form={form} setForm={setForm} />
       <Card className="score">
         <span>
-          {score.complete ? "Gesamtpunkte" : "Noch nicht berechenbar"}
+          {score.complete
+            ? isTimeResult(form.className)
+              ? "Gesamtzeit inklusive Fehlern"
+              : "Gesamtpunkte"
+            : "Noch nicht berechenbar"}
         </span>
-        {score.complete && <strong>{fmt(score.total)}</strong>}
+        {score.complete && (
+          <strong>
+            {fmt(score.total)}{isTimeResult(form.className) ? " s" : ""}
+          </strong>
+        )}
         <Status score={score} />
         <Qualis list={score.qualifications} />
         {!score.complete && (
@@ -1070,9 +999,233 @@ function Editor({
     </form>
   );
 }
+
+type ResultSetter = React.Dispatch<React.SetStateAction<CompetitionResult>>;
+const parseNumber = (value: string) =>
+  value.trim() === "" ? null : Number(value.replace(",", "."));
+
+function PerformanceFields({
+  form,
+  setForm,
+}: {
+  form: CompetitionResult;
+  setForm: ResultSetter;
+}) {
+  const normalized = normalizedCrossCountryTime(form);
+  if (form.className === "VDH-HL") {
+    return (
+      <Card>
+        <h3>Hindernislauf · zwei Läufe</h3>
+        <p className="mt-2 text-sm text-muted">
+          Beide Laufzeiten, Fehlerpunkte und gegebenenfalls fünf Strafsekunden
+          für „mit Leine“ werden addiert. Eine kleinere Gesamtzeit ist besser.
+        </p>
+        <ObstacleRunFields runNumber={1} form={form} setForm={setForm} />
+        <ObstacleRunFields runNumber={2} form={form} setForm={setForm} />
+      </Card>
+    );
+  }
+  return (
+    <Card>
+      <h3>Leistungsdaten</h3>
+      {isVierkampf(form.className) ? (
+        <Field label="Unterordnung · 0 bis 60 Punkte">
+          <LocaleNumberInput
+            key={`${form.id}-obedience`}
+            value={form.obedience}
+            placeholder="0,0"
+            max={60}
+            maxFractionDigits={1}
+            onValueChange={(value) => setForm({ ...form, obedience: value })}
+          />
+        </Field>
+      ) : null}
+      {form.className === "VDH-S-VK" ? (
+        <div className="mt-5 rounded-2xl border border-sky-200 bg-sky-50 p-4">
+          <h3>1000-m-Lauf</h3>
+          <p className="mt-2 text-sm text-muted">
+            Altersklasse: <strong>{formatAgeGroup(getAgeGroup(form.handlerBirthDate ?? "", form.date))}</strong>
+            {form.handlerGender ? ` · ${form.handlerGender === "male" ? "männlich" : "weiblich"}` : ""}
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Field label="Gemessene Zeit · Sekunden">
+              <LocaleNumberInput
+                value={form.crossCountry?.timeSeconds ?? null}
+                placeholder="652,00"
+                onValueChange={(timeSeconds) =>
+                  setForm({
+                    ...form,
+                    crossCountry: {
+                      ...(form.crossCountry ?? { distanceMeters: 1000, falseStart: false }),
+                      timeSeconds,
+                    },
+                  })
+                }
+              />
+            </Field>
+            <Field label="Tatsächliche Strecke · Meter">
+              <LocaleNumberInput
+                value={form.crossCountry?.distanceMeters ?? null}
+                placeholder="1000"
+                maxFractionDigits={1}
+                onValueChange={(distanceMeters) =>
+                  setForm({
+                    ...form,
+                    crossCountry: {
+                      ...(form.crossCountry ?? { timeSeconds: null, falseStart: false }),
+                      distanceMeters,
+                    },
+                  })
+                }
+              />
+            </Field>
+          </div>
+          <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
+            <input
+              type="checkbox"
+              checked={form.crossCountry?.falseStart ?? false}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  crossCountry: {
+                    ...(form.crossCountry ?? { timeSeconds: null, distanceMeters: 1000 }),
+                    falseStart: event.target.checked,
+                  },
+                })
+              }
+            />
+            Frühstart · −10 Punkte
+          </label>
+          <p className="mt-3 text-sm text-muted">
+            Rechnerischer 1000-m-Wert: <strong>{fmt(normalized)} Punkte</strong>
+          </p>
+        </div>
+      ) : null}
+      {form.className === "VDH-DK" ? (
+        <p className="mt-3 text-sm text-muted">
+          Ohne Leine werden je Laufdisziplin fünf Bonuspunkte vergeben.
+        </p>
+      ) : null}
+      {(["hurdles", "slalom", "obstacle"] as const).map((key) => (
+        <StandardRunFields key={key} runKey={key} form={form} setForm={setForm} />
+      ))}
+    </Card>
+  );
+}
+
+function formatAgeGroup(group: ReturnType<typeof getAgeGroup>) {
+  return group
+    ? { youngest: "Jüngstenklasse · bis AK14", youth: "Jugendklasse · AK15", active: "Aktivenklasse · AK19/AK35", senior: "Seniorenklasse · ab AK50" }[group]
+    : "Hundeführerprofil auswählen";
+}
+
+function StandardRunFields({
+  runKey,
+  form,
+  setForm,
+}: {
+  runKey: "hurdles" | "slalom" | "obstacle";
+  form: CompetitionResult;
+  setForm: ResultSetter;
+}) {
+  const labels = { hurdles: "Hürdenlauf", slalom: "Slalomlauf", obstacle: "Hindernislauf" } as const;
+  const run = form[runKey];
+  const details = run.faultDetails ?? [];
+  const leashKey = `${runKey}Leash` as "hurdlesLeash" | "slalomLeash" | "obstacleLeash";
+  const update = (part: "time" | "faults", value: number | null) =>
+    setForm({ ...form, [runKey]: { ...run, [part]: value } });
+  return (
+    <div className="mt-5">
+      <h3>{labels[runKey]}</h3>
+      {form.className === "VDH-DK" ? (
+        <Field label="Leinenstatus">
+          <select
+            value={form[leashKey] ?? "on"}
+            onChange={(event) => setForm({ ...form, [leashKey]: event.target.value })}
+          >
+            <option value="on">Mit Leine · kein Bonus</option>
+            <option value="off">Ohne Leine · +5 Punkte</option>
+          </select>
+        </Field>
+      ) : null}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Zeit · Sekunden">
+          <LocaleNumberInput value={run.time} placeholder="0,00" onValueChange={(value) => update("time", value)} />
+        </Field>
+        <Field label="Fehlerpunkte">
+          <input
+            inputMode="decimal"
+            value={run.faults ?? ""}
+            readOnly={details.length > 0}
+            onChange={(event) => update("faults", parseNumber(event.target.value))}
+          />
+        </Field>
+      </div>
+      {details.length ? <p className="mt-2 text-xs text-muted">Die Fehlerpunkte werden aus den Detailangaben berechnet.</p> : null}
+      {runKey === "hurdles" ? (
+        <HurdleFaultDetails
+          key={hurdleReferenceClass(form.className)}
+          className={hurdleReferenceClass(form.className)}
+          details={form.hurdles.faultDetails ?? []}
+          onChange={(faultDetails) => setForm({ ...form, hurdles: { ...form.hurdles, faults: faultDetails.length ? hurdleFaultsTotal(faultDetails) : null, faultDetails } })}
+        />
+      ) : runKey === "slalom" ? (
+        <SlalomFaultDetails
+          className={form.className}
+          details={form.slalom.faultDetails ?? []}
+          onChange={(faultDetails) => setForm({ ...form, slalom: { ...form.slalom, faults: faultDetails.length ? slalomFaultsTotal(faultDetails) : null, faultDetails } })}
+        />
+      ) : (
+        <ObstacleFaultDetails
+          details={form.obstacle.faultDetails ?? []}
+          onChange={(faultDetails) => setForm({ ...form, obstacle: { ...form.obstacle, faults: faultDetails.length ? obstacleFaultsTotal(faultDetails) : null, faultDetails } })}
+        />
+      )}
+    </div>
+  );
+}
+
+function ObstacleRunFields({
+  runNumber,
+  form,
+  setForm,
+}: {
+  runNumber: 1 | 2;
+  form: CompetitionResult;
+  setForm: ResultSetter;
+}) {
+  const runKey = runNumber === 1 ? "obstacle" : "obstacle2";
+  const leashKey = runNumber === 1 ? "obstacleLeash" : "obstacle2Leash";
+  const run = form[runKey] ?? { time: null, faults: null, faultDetails: [] };
+  const details = run.faultDetails ?? [];
+  return (
+    <div className="mt-5 border-t pt-4">
+      <h3>Lauf {runNumber}</h3>
+      <Field label="Leinenstatus">
+        <select value={form[leashKey] ?? "on"} onChange={(event) => setForm({ ...form, [leashKey]: event.target.value })}>
+          <option value="off">Ohne Leine · keine Strafsekunden</option>
+          <option value="on">Mit Leine · +5 Strafsekunden</option>
+        </select>
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Zeit · Sekunden">
+          <LocaleNumberInput value={run.time} placeholder="0,00" onValueChange={(time) => setForm({ ...form, [runKey]: { ...run, time } })} />
+        </Field>
+        <Field label="Fehlerpunkte">
+          <input inputMode="decimal" value={run.faults ?? ""} readOnly={details.length > 0} onChange={(event) => setForm({ ...form, [runKey]: { ...run, faults: parseNumber(event.target.value) } })} />
+        </Field>
+      </div>
+      {details.length ? <p className="mt-2 text-xs text-muted">Die Fehlerpunkte werden aus den Detailangaben berechnet.</p> : null}
+      <ObstacleFaultDetails
+        details={details}
+        onChange={(faultDetails) => setForm({ ...form, [runKey]: { ...run, faults: faultDetails.length ? obstacleFaultsTotal(faultDetails) : null, faultDetails } })}
+      />
+    </div>
+  );
+}
 const METRICS = {
   total: {
-    label: "Gesamtpunkte",
+    label: "Gesamtergebnis",
     direction: "higher" as Direction,
     get: (r: CompetitionResult) => calculateScore(r).total,
   },
@@ -1118,23 +1271,66 @@ const METRICS = {
     get: (r: CompetitionResult) => r.obstacle.faults,
     limits: { min: 0 },
   },
+  obstacle2: {
+    label: "Hindernislauf 2 · Laufzeit",
+    direction: "lower" as Direction,
+    get: (r: CompetitionResult) => r.obstacle2?.time ?? null,
+    limits: { min: 0 },
+  },
+  obstacle2Faults: {
+    label: "Hindernislauf 2 · Fehler",
+    direction: "lower" as Direction,
+    get: (r: CompetitionResult) => r.obstacle2?.faults ?? null,
+    limits: { min: 0 },
+  },
+  crossCountryRaw: {
+    label: "1000-m-Lauf · gemessene Sekunden",
+    direction: "lower" as Direction,
+    get: (r: CompetitionResult) => r.crossCountry?.timeSeconds ?? null,
+    limits: { min: 0 },
+  },
+  crossCountryNormalized: {
+    label: "1000-m-Lauf · rechnerischer Wert",
+    direction: "lower" as Direction,
+    get: (r: CompetitionResult) => normalizedCrossCountryTime(r),
+    limits: { min: 0 },
+  },
+  crossCountryDistance: {
+    label: "1000-m-Lauf · Streckenlänge",
+    direction: "higher" as Direction,
+    get: (r: CompetitionResult) => r.crossCountry?.distanceMeters ?? null,
+    limits: { min: 0 },
+  },
 };
 type MetricKey = keyof typeof METRICS;
+const metricKeysForClass = (className: CompetitionResult["className"]): MetricKey[] => {
+  if (className === "VDH-HL")
+    return ["total", "obstacle", "obstacleFaults", "obstacle2", "obstacle2Faults"];
+  if (className === "VDH-S-VK")
+    return ["total", "crossCountryRaw", "crossCountryNormalized", "crossCountryDistance", "hurdles", "hurdleFaults", "slalom", "slalomFaults", "obstacle", "obstacleFaults"];
+  if (className === "VDH-DK")
+    return ["total", "hurdles", "hurdleFaults", "slalom", "slalomFaults", "obstacle", "obstacleFaults"];
+  return ["total", "obedience", "hurdles", "hurdleFaults", "slalom", "slalomFaults", "obstacle", "obstacleFaults"];
+};
 function Statistics({ results }: { results: CompetitionResult[] }) {
   const [metric, setMetric] = useState<MetricKey>("total"),
-    [stage, setStage] = useState<"all" | CompetitionResult["className"]>(
-      "FCI-VK3",
-    ),
+    [stage, setStage] = useState<CompetitionResult["className"]>("FCI-VK3"),
     [period, setPeriod] = useState("all"),
     [today] = useState(() => Date.now()),
     definition = METRICS[metric],
+    direction = metric === "total" && isTimeResult(stage)
+      ? "lower" as Direction
+      : definition.direction,
+    metricLabel = metric === "total"
+      ? isTimeResult(stage) ? "Gesamtzeit inklusive Fehlern" : "Gesamtpunkte"
+      : definition.label,
     cutoff =
       period === "all"
         ? null
         : new Date(today - Number(period) * 24 * 3600 * 1000),
     filtered = results
       .filter((r) => calculateScore(r).complete)
-      .filter((r) => stage === "all" || r.className === stage)
+      .filter((r) => r.className === stage)
       .filter((r) => !cutoff || new Date(r.date) >= cutoff)
       .sort(
         (a, b) =>
@@ -1147,14 +1343,16 @@ function Statistics({ results }: { results: CompetitionResult[] }) {
       .filter((v): v is number => v !== null),
     stats = calculateStatistics(
       values,
-      definition.direction,
+      direction,
       "limits" in definition ? definition.limits : undefined,
     ),
-    data = filtered.map((r) => ({
-      date: dFmt(r.date),
-      name: r.event,
-      value: definition.get(r),
-    }));
+    data = filtered
+      .map((r) => ({
+        date: dFmt(r.date),
+        name: r.event,
+        value: definition.get(r),
+      }))
+      .filter((item) => item.value !== null);
   if (stats.forecast !== null)
     data.push({
       date: "Prognose",
@@ -1170,21 +1368,23 @@ function Statistics({ results }: { results: CompetitionResult[] }) {
           value={metric}
           onChange={(e) => setMetric(e.target.value as MetricKey)}
         >
-          {Object.entries(METRICS).map(([k, v]) => (
-            <option value={k} key={k}>
-              {v.label}
+          {metricKeysForClass(stage).map((key) => (
+            <option value={key} key={key}>
+              {METRICS[key].label}
             </option>
           ))}
         </select>
         <select
           className="control"
           value={stage}
-          onChange={(e) => setStage(e.target.value as typeof stage)}
+          onChange={(e) => {
+            setStage(e.target.value as typeof stage);
+            setMetric("total");
+          }}
         >
-          <option value="all">Alle Stufen*</option>
-          <option>FCI-VK1</option>
-          <option>FCI-VK2</option>
-          <option>FCI-VK3</option>
+          {COMPETITION_CLASSES.map((value) => (
+            <option value={value} key={value}>{CLASS_LABELS[value]}</option>
+          ))}
         </select>
         <select
           className="control col-span-2 md:col-span-1"
@@ -1197,11 +1397,9 @@ function Statistics({ results }: { results: CompetitionResult[] }) {
           <option value="365">Letztes Jahr</option>
         </select>
       </Card>
-      {stage === "all" && metric === "total" && (
-        <Hint text="Stufenübergreifende Gesamtpunkte nutzen unterschiedliche Grundwerte." />
-      )}
+      <Hint text="Statistiken vergleichen ausschließlich Ergebnisse derselben Disziplin. Dadurch werden Punktewertungen und HL-Gesamtzeiten nicht vermischt." />
       <Card>
-        <h3>{definition.label}</h3>
+        <h3>{metricLabel}</h3>
         {data.length ? (
           <Chart data={data} mean={stats.mean} />
         ) : (
@@ -1276,7 +1474,9 @@ function ResultCard({
     <button className="w-full text-left" onClick={onClick}>
       <Card className="flex items-center gap-4">
         <div className="result-score">
-          {s.total === null ? "–" : fmt(s.total)}
+          {s.total === null
+            ? "–"
+            : `${fmt(s.total)}${isTimeResult(result.className) ? " s" : ""}`}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -1286,7 +1486,7 @@ function ResultCard({
             {best && <Medal className="size-4 text-amber-500" />}
           </div>
           <p className="text-sm text-muted">
-            {dFmt(result.date)} · {result.className}
+            {dFmt(result.date)} · {CLASS_LABELS[result.className]}
           </p>
           <p className="mt-1 text-xs text-muted">
             {result.handler || "Kein Hundeführer"} · {result.dog || "Kein Hund"}
@@ -1307,6 +1507,21 @@ function ResultCard({
             <p className="mt-1 text-xs text-muted">
               Hindernis: {result.obstacle.faultDetails.length} Detailangaben ·{" "}
               {obstacleFaultsTotal(result.obstacle.faultDetails)} FP
+            </p>
+          ) : null}
+          {result.className === "VDH-HL" && result.obstacle2 ? (
+            <p className="mt-1 text-xs text-muted">
+              Lauf 2: {fmt(result.obstacle2.time)} s · {fmt(result.obstacle2.faults)} FP
+            </p>
+          ) : null}
+          {result.className === "VDH-S-VK" ? (
+            <p className="mt-1 text-xs text-muted">
+              1000-m-Wert: {fmt(normalizedCrossCountryTime(result))}
+            </p>
+          ) : null}
+          {result.className === "VDH-DK" ? (
+            <p className="mt-1 text-xs text-muted">
+              Leinenbonus: +{[result.hurdlesLeash, result.slalomLeash, result.obstacleLeash].filter((mode) => mode === "off").length * 5} Punkte
             </p>
           ) : null}
           <div className="mt-2">

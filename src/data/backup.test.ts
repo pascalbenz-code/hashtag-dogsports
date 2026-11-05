@@ -74,9 +74,40 @@ describe("backup", () => {
 
   it("round-trips global handler and dog profiles", () => {
     const restored = parseBackup(serializeBackup([makeResult()], [handler], [dog]));
-    expect(restored.version).toBe(2);
+    expect(restored.version).toBe(3);
     expect(restored.handlers).toEqual([handler]);
     expect(restored.dogs).toEqual([dog]);
+  });
+
+  it("round-trips HL, DK and sprint-specific fields", () => {
+    const results = [
+      makeResult({
+        id: "hl",
+        className: "VDH-HL",
+        obstacle: { time: 20, faults: 1 },
+        obstacleLeash: "off",
+        obstacle2: { time: 21, faults: 2 },
+        obstacle2Leash: "on",
+      }),
+      makeResult({
+        id: "dk",
+        className: "VDH-DK",
+        hurdlesLeash: "off",
+        slalomLeash: "on",
+        obstacleLeash: "off",
+      }),
+      makeResult({
+        id: "sprint",
+        className: "VDH-S-VK",
+        handlerGender: "female",
+        handlerBirthDate: "1990-01-01",
+        crossCountry: { timeSeconds: 652, distanceMeters: 973, falseStart: true },
+      }),
+    ];
+    const restored = parseBackup(serializeBackup(results)).results;
+    expect(restored.find((result) => result.id === "hl")?.obstacle2?.time).toBe(21);
+    expect(restored.find((result) => result.id === "dk")?.hurdlesLeash).toBe("off");
+    expect(restored.find((result) => result.id === "sprint")?.crossCountry).toEqual({ timeSeconds: 652, distanceMeters: 973, falseStart: true });
   });
 
   it("migrates a version-1 backup into shared profiles", () => {
@@ -126,6 +157,7 @@ describe("backup", () => {
     expect(csv).toContain("Hürde 2: Stange abgeworfen (−2 FP)");
     expect(csv).toContain("Slalomtor 2: Streckentor nicht durchlaufen (−4 FP)");
     expect(csv).toContain("Tunnel: Hindernis ausgelassen (−4 FP)");
+    expect(csv).toContain("Gesamtergebnis");
     expect(csv).toContain("Alex");
     expect(csv).toContain("Fiete");
     expect(csv).toContain(";");
