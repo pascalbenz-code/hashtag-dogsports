@@ -5,6 +5,7 @@ import {
   BarChart3,
   ChevronRight,
   ClipboardList,
+  Cloud,
   Download,
   Eraser,
   Home,
@@ -16,7 +17,12 @@ import {
   Upload,
   UsersRound,
 } from "lucide-react";
-import { db, deleteResult, saveResult } from "./data/db";
+import {
+  db,
+  deleteResult,
+  saveImportedData,
+  saveResult,
+} from "./data/db";
 import {
   mergeImport,
   parseBackup,
@@ -38,6 +44,8 @@ import { HurdleFaultDetails } from "./components/HurdleFaultDetails";
 import { SlalomFaultDetails } from "./components/SlalomFaultDetails";
 import { ObstacleFaultDetails } from "./components/ObstacleFaultDetails";
 import { ProfilesManager } from "./components/ProfilesManager";
+import { CloudSyncPanel } from "./components/CloudSyncPanel";
+import { useCloudSync } from "./hooks/useCloudSync";
 import type { DogProfile, HandlerProfile } from "./domain/profiles";
 import {
   formatHurdleFaultDetail,
@@ -112,8 +120,10 @@ export default function App() {
   const dogs = useLiveQuery(() => db.dogs.orderBy("callName").toArray(), []) ?? [];
   const [sportModule, setSportModule] = useState<SportModule | null>(null);
   const [showProfiles, setShowProfiles] = useState(false);
+  const [showCloud, setShowCloud] = useState(false);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [editing, setEditing] = useState<CompetitionResult | null>(null);
+  const cloud = useCloudSync();
   const open = (r?: CompetitionResult) => {
     setEditing(structuredClone(r ?? loadNewResultForm()));
     setTab("new");
@@ -124,17 +134,25 @@ export default function App() {
   };
   const openModule = (nextModule: SportModule) => {
     setShowProfiles(false);
+    setShowCloud(false);
     setSportModule(nextModule);
     navigate("dashboard");
   };
   const goHome = () => {
     setShowProfiles(false);
+    setShowCloud(false);
     setSportModule(null);
     navigate("dashboard");
   };
-  const backNavigation = getBackNavigation({ sportModule, tab, showProfiles });
+  const backNavigation = showCloud
+    ? { target: "close-cloud" as const, label: "Cloud-Sicherung schließen" }
+    : getBackNavigation({ sportModule, tab, showProfiles });
   const goBack = () => {
     if (!backNavigation) return;
+    if (backNavigation.target === "close-cloud") {
+      setShowCloud(false);
+      return;
+    }
     if (backNavigation.target === "close-profiles") {
       setShowProfiles(false);
       return;
@@ -145,6 +163,7 @@ export default function App() {
     }
     navigate("dashboard");
   };
+  const contentVisible = !showProfiles && !showCloud;
   return (
     <div className={`min-h-dvh ${sportModule ? "pb-28" : "pb-8"}`}>
       <header className="app-header">
@@ -167,33 +186,58 @@ export default function App() {
         >
           <span className="brand">#Dogsports</span>
           <span className="crumb">
-            {showProfiles
+            {showCloud
+              ? "Cloud-Sicherung · alle Module"
+              : showProfiles
               ? "Globale Profile · alle Module"
               : sportModule
               ? `Modul ${sportModule.toUpperCase()} · ${tabTitles[tab]}`
               : "Startseite · Modulauswahl"}
           </span>
         </button>
-        <button
-          type="button"
-          className={`header-profile-button ${showProfiles ? "active" : ""}`}
-          onClick={() => setShowProfiles((current) => !current)}
-          aria-label="Hundeführer und Hunde verwalten"
-        >
-          <UsersRound aria-hidden="true" />
-          <span>Profile</span>
-        </button>
+        <div className="header-actions">
+          <button
+            type="button"
+            className={`header-cloud-button ${showCloud ? "active" : ""} ${cloud.status}`}
+            onClick={() => {
+              setShowProfiles(false);
+              setShowCloud((current) => !current);
+            }}
+            aria-label={
+              cloud.user
+                ? `Cloud-Sicherung öffnen, ${cloud.pendingCount} Änderung(en) warten`
+                : "Cloud-Sicherung öffnen"
+            }
+            title="Cloud-Sicherung"
+          >
+            <Cloud aria-hidden="true" />
+            <span className="cloud-indicator" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className={`header-profile-button ${showProfiles ? "active" : ""}`}
+            onClick={() => {
+              setShowCloud(false);
+              setShowProfiles((current) => !current);
+            }}
+            aria-label="Hundeführer und Hunde verwalten"
+          >
+            <UsersRound aria-hidden="true" />
+            <span>Profile</span>
+          </button>
+        </div>
       </header>
       <main className="mx-auto max-w-6xl space-y-5 px-4 py-5">
+        {showCloud ? <CloudSyncPanel cloud={cloud} /> : null}
         {showProfiles ? <ProfilesManager handlers={handlers} dogs={dogs} /> : null}
-        {!showProfiles && !sportModule ? <StartPage openModule={openModule} /> : null}
-        {!showProfiles && sportModule === "ths" && tab === "dashboard" ? (
+        {contentVisible && !sportModule ? <StartPage openModule={openModule} /> : null}
+        {contentVisible && sportModule === "ths" && tab === "dashboard" ? (
           <Dashboard results={results} open={open} />
         ) : null}
-        {!showProfiles && sportModule === "ths" && tab === "results" ? (
+        {contentVisible && sportModule === "ths" && tab === "results" ? (
           <Results results={results} handlers={handlers} dogs={dogs} open={open} />
         ) : null}
-        {!showProfiles && sportModule === "ths" && tab === "new" ? (
+        {contentVisible && sportModule === "ths" && tab === "new" ? (
           <Editor
             key={editing?.id ?? "new"}
             initial={editing ?? loadNewResultForm()}
@@ -204,33 +248,33 @@ export default function App() {
             manageProfiles={() => setShowProfiles(true)}
           />
         ) : null}
-        {!showProfiles && sportModule === "ths" && tab === "stats" ? (
+        {contentVisible && sportModule === "ths" && tab === "stats" ? (
           <Statistics results={results} />
         ) : null}
-        {!showProfiles && sportModule === "ths" && tab === "judge" ? (
+        {contentVisible && sportModule === "ths" && tab === "judge" ? (
           <Suspense fallback={<Hint text="Leistungsrichter wird geladen …" />}>
             <JudgeForm />
           </Suspense>
         ) : null}
-        {!showProfiles && sportModule === "ibgh" && tab === "dashboard" ? (
+        {contentVisible && sportModule === "ibgh" && tab === "dashboard" ? (
           <IbghDashboard />
         ) : null}
-        {!showProfiles && sportModule === "ibgh" && tab === "judge" ? (
+        {contentVisible && sportModule === "ibgh" && tab === "judge" ? (
           <Suspense fallback={<Hint text="Leistungsrichter wird geladen …" />}>
             <IbghJudgeForm />
           </Suspense>
         ) : null}
-        {!showProfiles && sportModule === "ibgh" && tab === "results" ? (
+        {contentVisible && sportModule === "ibgh" && tab === "results" ? (
           <ModulePlaceholder module="IBGH" title="Ergebnisse" />
         ) : null}
-        {!showProfiles && sportModule === "ibgh" && tab === "new" ? (
+        {contentVisible && sportModule === "ibgh" && tab === "new" ? (
           <ModulePlaceholder module="IBGH" title="Neuer Eintrag" />
         ) : null}
-        {!showProfiles && sportModule === "ibgh" && tab === "stats" ? (
+        {contentVisible && sportModule === "ibgh" && tab === "stats" ? (
           <ModulePlaceholder module="IBGH" title="Statistik" />
         ) : null}
       </main>
-      {sportModule && !showProfiles ? (
+      {sportModule && contentVisible ? (
         <nav
           className="bottom-nav"
           aria-label={`Navigation ${sportModule.toUpperCase()}`}
@@ -546,14 +590,11 @@ function Results({
         merged = mergeImport(results, incoming.results, replace),
         mergedHandlers = mergeImport(handlers, incoming.handlers, replace),
         mergedDogs = mergeImport(dogs, incoming.dogs, replace);
-      await db.transaction("rw", db.results, db.handlers, db.dogs, async () => {
-        await db.results.clear();
-        await db.handlers.clear();
-        await db.dogs.clear();
-        await db.results.bulkPut(merged.results);
-        await db.handlers.bulkPut(mergedHandlers.results);
-        await db.dogs.bulkPut(mergedDogs.results);
-      });
+      await saveImportedData(
+        merged.results,
+        mergedHandlers.results,
+        mergedDogs.results,
+      );
       alert(
         `Import abgeschlossen: ${merged.added + mergedHandlers.added + mergedDogs.added} neu, ${merged.replaced + mergedHandlers.replaced + mergedDogs.replaced} ersetzt, ${merged.skipped + mergedHandlers.skipped + mergedDogs.skipped} übersprungen.`,
       );

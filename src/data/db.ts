@@ -6,11 +6,30 @@ import {
   type HandlerProfile,
 } from "../domain/profiles";
 import type { CompetitionResult } from "../domain/types";
+import {
+  syncRecordKey,
+  type QueuedSyncChange,
+  type RemoteSyncRecord,
+  type SyncEntity,
+  type SyncOperation,
+} from "../domain/cloudSync";
+
+export interface SyncMetaEntry {
+  key: string;
+  value: string;
+}
+
+export const SYNC_META_KEYS = {
+  boundUserId: "bound-user-id",
+  lastSyncedAt: "last-synced-at",
+} as const;
 
 export class THSDatabase extends Dexie {
   results!: EntityTable<CompetitionResult, "id">;
   handlers!: EntityTable<HandlerProfile, "id">;
   dogs!: EntityTable<DogProfile, "id">;
+  syncQueue!: EntityTable<QueuedSyncChange, "id">;
+  syncMeta!: EntityTable<SyncMetaEntry, "key">;
 
   constructor(name = "dogsport") {
     super(name);
@@ -85,23 +104,81 @@ export class THSDatabase extends Dexie {
         if (results.length)
           await transaction.table("results").bulkPut(results);
       });
+    this.version(6).stores({
+      results: "id,date,className,handlerId,dogId,createdAt,updatedAt",
+      handlers: "id,name,birthDate,updatedAt",
+      dogs: "id,callName,birthDate,updatedAt",
+      syncQueue: "id,entity,recordId,operation,updatedAt,userId",
+      syncMeta: "key",
+    });
   }
 }
 
 export const db = new THSDatabase();
 
-export async function saveResult(result: CompetitionResult) {
+async function queueSyncChange(
+  database: THSDatabase,
+  entity: SyncEntity,
+  recordId: string,
+  operation: SyncOperation,
+  updatedAt: string,
+  payload?: unknown,
+) {
+  const binding = await database.syncMeta.get(SYNC_META_KEYS.boundUserId);
+  await database.syncQueue.put({
+    id: syncRecordKey(entity, recordId),
+    entity,
+    recordId,
+    operation,
+    payload,
+    updatedAt,
+    userId: binding?.value,
+  });
+}
+
+export async function saveResult(
+  result: CompetitionResult,
+  database: THSDatabase = db,
+) {
   const now = new Date().toISOString();
-  return db.results.put({
+  const next = {
     ...result,
     id: result.id || crypto.randomUUID(),
     createdAt: result.createdAt || now,
     updatedAt: now,
-  });
+  };
+  await database.transaction(
+    "rw",
+    database.results,
+    database.syncQueue,
+    database.syncMeta,
+    async () => {
+      await database.results.put(next);
+      await queueSyncChange(
+        database,
+        "results",
+        next.id,
+        "upsert",
+        now,
+        next,
+      );
+    },
+  );
+  return next.id;
 }
 
-export async function deleteResult(id: string) {
-  return db.results.delete(id);
+export async function deleteResult(id: string, database: THSDatabase = db) {
+  const now = new Date().toISOString();
+  await database.transaction(
+    "rw",
+    database.results,
+    database.syncQueue,
+    database.syncMeta,
+    async () => {
+      await database.results.delete(id);
+      await queueSyncChange(database, "results", id, "delete", now);
+    },
+  );
 }
 
 export async function saveHandlerProfile(
@@ -121,6 +198,8 @@ export async function saveHandlerProfile(
     "rw",
     database.handlers,
     database.results,
+    database.syncQueue,
+    database.syncMeta,
     async () => {
       await database.handlers.put(next);
       await database.results
@@ -132,6 +211,27 @@ export async function saveHandlerProfile(
           handlerGender: next.gender,
           updatedAt: now,
         });
+      const affectedResults = await database.results
+        .where("handlerId")
+        .equals(next.id)
+        .toArray();
+      await queueSyncChange(
+        database,
+        "handlers",
+        next.id,
+        "upsert",
+        now,
+        next,
+      );
+      for (const result of affectedResults)
+        await queueSyncChange(
+          database,
+          "results",
+          result.id,
+          "upsert",
+          result.updatedAt,
+          result,
+        );
     },
   );
   return next.id;
@@ -154,12 +254,35 @@ export async function saveDogProfile(
     "rw",
     database.dogs,
     database.results,
+    database.syncQueue,
+    database.syncMeta,
     async () => {
       await database.dogs.put(next);
       await database.results
         .where("dogId")
         .equals(next.id)
         .modify({ dog: next.callName, updatedAt: now });
+      const affectedResults = await database.results
+        .where("dogId")
+        .equals(next.id)
+        .toArray();
+      await queueSyncChange(
+        database,
+        "dogs",
+        next.id,
+        "upsert",
+        now,
+        next,
+      );
+      for (const result of affectedResults)
+        await queueSyncChange(
+          database,
+          "results",
+          result.id,
+          "upsert",
+          result.updatedAt,
+          result,
+        );
     },
   );
   return next.id;
@@ -173,7 +296,17 @@ export async function deleteHandlerProfile(
     throw new Error(
       "Der Hundeführer wird bereits in Ergebnissen verwendet und kann nicht gelöscht werden.",
     );
-  return database.handlers.delete(id);
+  const now = new Date().toISOString();
+  await database.transaction(
+    "rw",
+    database.handlers,
+    database.syncQueue,
+    database.syncMeta,
+    async () => {
+      await database.handlers.delete(id);
+      await queueSyncChange(database, "handlers", id, "delete", now);
+    },
+  );
 }
 
 export async function deleteDogProfile(
@@ -184,5 +317,166 @@ export async function deleteDogProfile(
     throw new Error(
       "Der Hund wird bereits in Ergebnissen verwendet und kann nicht gelöscht werden.",
     );
-  return database.dogs.delete(id);
+  const now = new Date().toISOString();
+  await database.transaction(
+    "rw",
+    database.dogs,
+    database.syncQueue,
+    database.syncMeta,
+    async () => {
+      await database.dogs.delete(id);
+      await queueSyncChange(database, "dogs", id, "delete", now);
+    },
+  );
+}
+
+export async function saveImportedData(
+  results: CompetitionResult[],
+  handlers: HandlerProfile[],
+  dogs: DogProfile[],
+  database: THSDatabase = db,
+) {
+  await database.transaction(
+    "rw",
+    database.results,
+    database.handlers,
+    database.dogs,
+    database.syncQueue,
+    database.syncMeta,
+    async () => {
+      await database.results.bulkPut(results);
+      await database.handlers.bulkPut(handlers);
+      await database.dogs.bulkPut(dogs);
+      for (const result of results)
+        await queueSyncChange(
+          database,
+          "results",
+          result.id,
+          "upsert",
+          result.updatedAt,
+          result,
+        );
+      for (const handler of handlers)
+        await queueSyncChange(
+          database,
+          "handlers",
+          handler.id,
+          "upsert",
+          handler.updatedAt,
+          handler,
+        );
+      for (const dog of dogs)
+        await queueSyncChange(
+          database,
+          "dogs",
+          dog.id,
+          "upsert",
+          dog.updatedAt,
+          dog,
+        );
+    },
+  );
+}
+
+export async function bindDatabaseToUser(
+  userId: string,
+  database: THSDatabase = db,
+) {
+  await database.transaction(
+    "rw",
+    database.syncMeta,
+    database.syncQueue,
+    async () => {
+      const current = await database.syncMeta.get(SYNC_META_KEYS.boundUserId);
+      if (current && current.value !== userId)
+        throw new Error(
+          "Diese lokale Installation ist bereits mit einem anderen #Dogsports-Konto verbunden. Melde dich mit dem ursprünglichen Konto an, damit keine Daten vermischt werden.",
+        );
+      await database.syncMeta.put({
+        key: SYNC_META_KEYS.boundUserId,
+        value: userId,
+      });
+      await database.syncQueue.toCollection().modify({ userId });
+    },
+  );
+}
+
+export async function getLocalSyncRecords(database: THSDatabase = db) {
+  const [results, handlers, dogs] = await Promise.all([
+    database.results.toArray(),
+    database.handlers.toArray(),
+    database.dogs.toArray(),
+  ]);
+  return [
+    ...results.map((payload) => ({
+      entity: "results" as const,
+      recordId: payload.id,
+      payload,
+      updatedAt: payload.updatedAt,
+    })),
+    ...handlers.map((payload) => ({
+      entity: "handlers" as const,
+      recordId: payload.id,
+      payload,
+      updatedAt: payload.updatedAt,
+    })),
+    ...dogs.map((payload) => ({
+      entity: "dogs" as const,
+      recordId: payload.id,
+      payload,
+      updatedAt: payload.updatedAt,
+    })),
+  ];
+}
+
+export async function applyRemoteRecords(
+  records: RemoteSyncRecord[],
+  database: THSDatabase = db,
+) {
+  await database.transaction(
+    "rw",
+    database.results,
+    database.handlers,
+    database.dogs,
+    database.syncQueue,
+    async () => {
+      for (const record of records) {
+        const queued = await database.syncQueue.get(
+          syncRecordKey(record.entity_type, record.record_id),
+        );
+        if (
+          queued &&
+          Date.parse(queued.updatedAt) > Date.parse(record.client_updated_at)
+        )
+          continue;
+        if (record.entity_type === "results") {
+          if (record.deleted_at) await database.results.delete(record.record_id);
+          else await database.results.put(record.payload as CompetitionResult);
+        } else if (record.entity_type === "handlers") {
+          if (record.deleted_at) await database.handlers.delete(record.record_id);
+          else await database.handlers.put(record.payload as HandlerProfile);
+        } else if (record.deleted_at) {
+          await database.dogs.delete(record.record_id);
+        } else {
+          await database.dogs.put(record.payload as DogProfile);
+        }
+      }
+    },
+  );
+}
+
+export async function removeQueueChangesIfUnchanged(
+  changes: Pick<QueuedSyncChange, "id" | "updatedAt" | "operation">[],
+  database: THSDatabase = db,
+) {
+  await database.transaction("rw", database.syncQueue, async () => {
+    for (const change of changes) {
+      const current = await database.syncQueue.get(change.id);
+      if (
+        current?.updatedAt === change.updatedAt &&
+        current.operation === change.operation
+      )
+        await database.syncQueue.delete(change.id);
+    }
+  });
 }

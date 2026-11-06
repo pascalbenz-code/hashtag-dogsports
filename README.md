@@ -10,6 +10,9 @@ Das visuelle System basiert auf dem #Dogsports-Banner in `public/dogsports-banne
 - CRUD für vollständige Ergebnisse und Entwürfe, eindeutige UUIDs und Zeitstempel
 - globale Hundeführer- und Hundeprofile mit Stammdaten, automatisch berechnetem Alter und geschützter Ergebniszuordnung
 - automatische Formular-Zwischenspeicherung sowie dauerhafte IndexedDB-Persistenz mit Dexie
+- optionale Supabase-Konten mit automatischer Offline-First-Synchronisation aller Ergebnisse sowie Hunde- und Hundeführerprofile
+- sichtbare Sync-Warteschlange, manueller Abgleich, Wiederaufnahme nach Netzrückkehr, Lösch-Tombstones und deterministische Konfliktauflösung
+- kontogetrennte Cloud-Daten durch Supabase Row Level Security (RLS)
 - exakte FCI-VK1/2/3-Gesamtpunkteberechnung und kumulative Qualifikationen
 - optionale Hürdenfehler-Details für FCI-VK1/2/3 mit stufenspezifischem interaktivem Schaubild, festen Einzelabzügen und automatischer Summierung
 - optionale Slalomfehler-Details für FCI-VK1/2/3 mit interaktivem Vier-Tore-Schaubild, torbezogenen Abzügen und automatischer Summierung
@@ -25,7 +28,7 @@ Das visuelle System basiert auf dem #Dogsports-Banner in `public/dogsports-banne
 - interaktive Recharts-Diagramme mit Messpunkten, Tooltip, Mittelwert und Prognosepunkt
 - deutsches JSON-Backup mit Schema- und Konfliktprüfung sowie Excel-kompatibler CSV-Export
 - Hell-/Dunkelmodus entsprechend der Systemeinstellung
-- offlinefähige PWA ohne Tracking, Konto, Server oder kostenpflichtige APIs
+- offlinefähige PWA ohne Tracking; ein Cloud-Konto ist optional und die lokale Nutzung bleibt jederzeit möglich
 
 ## Fachlogik
 
@@ -50,7 +53,9 @@ src/
   data/
     db.ts               Dexie-Datenbank, Profil-/Ergebnis-CRUD und Migrationen
     backup.ts           JSON-Validierung/-Import und JSON-/CSV-Export
+    cloudSync.ts        bidirektionaler Supabase-Abgleich und Validierung
   domain/
+    cloudSync.ts        reine Konfliktauflösung und Sync-Datentypen
     types.ts            THS-Domänenmodell
     profiles.ts         globale Hundeführer-/Hundemodelle und Alterslogik
     scoring.ts          Validierung, Gesamtpunkte, Qualifikationen
@@ -64,9 +69,11 @@ Die Startseite trennt die Sportbereiche THS und IBGH. Nach der Modulauswahl steh
 
 Die Digitalen Leistungsrichter VDH-VK und FCI-IBGH liegen als interaktive Entwürfe mit konfigurierbaren Unteraufgaben, Detailabzügen und automatischen Wertungen vor. FCI-IBGH3 unterstützt zusätzlich fünf vorgeschriebene Übungsreihenfolgen.
 
-## Lokale Datenmigration
+## Datenmigration und Cloud-Sicherung
 
-Dexie aktualisiert bestehende Datenbanken beim ersten Start auf Version 5. Dabei werden globale Tabellen für Hundeführer und Hunde ergänzt. Namen aus vorhandenen THS-Ergebnissen werden ohne Änderung der Leistungsdaten in gemeinsame Profile überführt und die Ergebnisse über stabile IDs verknüpft. Unbekannte Stammdaten werden sichtbar als noch zu ergänzen markiert. Eine manuelle Migration oder Serverkonfiguration ist nicht erforderlich.
+Dexie aktualisiert bestehende Datenbanken beim ersten Start auf Version 6. Dabei werden globale Tabellen für Hundeführer und Hunde sowie eine Sync-Warteschlange und Sync-Metadaten ergänzt. Namen aus vorhandenen THS-Ergebnissen werden ohne Änderung der Leistungsdaten in gemeinsame Profile überführt und die Ergebnisse über stabile IDs verknüpft. Unbekannte Stammdaten werden sichtbar als noch zu ergänzen markiert.
+
+Die App bleibt offline-first: Jede Änderung wird zuerst atomar in IndexedDB gespeichert. Ist ein Supabase-Konto angemeldet, werden offene Änderungen anschließend übertragen. Beim ersten Abgleich werden auch alle schon vor der Cloud-Einführung vorhandenen lokalen Daten hochgeladen. Löschungen werden als Tombstones synchronisiert. Bei konkurrierenden Änderungen gewinnt der neuere Änderungszeitpunkt; eine während des Abgleichs neu entstandene lokale Änderung wird nicht überschrieben. Eine lokale Installation wird dauerhaft an die erste verwendete Benutzer-ID gebunden, damit Daten verschiedener Konten niemals vermischt werden.
 
 Profile werden über **Profile** in der globalen Kopfzeile verwaltet und stehen unabhängig vom geöffneten Modul zur Verfügung. Bereits in Ergebnissen verwendete Profile können bearbeitet, aber nicht versehentlich gelöscht werden. JSON-Backups ab Version 2 enthalten Ergebnisse und beide Profilarten; Version 3 ergänzt die disziplinspezifischen HL-, DK- und S-VK-Daten. Ältere Backups werden beim Import automatisch in die aktuelle Struktur überführt.
 
@@ -96,6 +103,17 @@ Die Tests decken FCI-Berechnung, Grenzwerte, kumulative Qualifikationen, Entwür
 
 HTTPS ist für Service Worker und Installation außerhalb von `localhost` erforderlich. Nach dem ersten vollständigen Laden funktioniert die App offline.
 
+### Supabase einmalig einrichten
+
+1. Im Supabase-Projekt die Migration `supabase/migrations/20261106120000_create_dogsports_records.sql` ausführen (CLI oder SQL Editor).
+2. Unter **Authentication → URL Configuration** die Site URL `https://hashtag-dogsports.vercel.app` und für lokale Entwicklung `http://localhost:5173/**` als Redirect URL eintragen.
+3. In Vercel für Production, Preview und Development setzen:
+   - `VITE_SUPABASE_URL`: Projekt-URL
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`: veröffentlichbarer Publishable Key (alternativ der ältere Anon Key)
+4. Niemals einen `service_role`-Schlüssel in Vite oder Vercel hinterlegen. Variablen mit Präfix `VITE_` sind absichtlich im Browser sichtbar; die Zugriffssicherheit kommt aus Auth und RLS.
+
+Die Migration legt ausschließlich die additive Tabelle `dogsports_records` an. Vier getrennte RLS-Policies erlauben angemeldeten Benutzern nur `select`, `insert`, `update` und `delete` ihrer eigenen Zeilen. Es gibt keine öffentliche `anon`-Berechtigung.
+
 ## Installation auf dem iPhone
 
 1. Die bereitgestellte HTTPS-Adresse in **Safari** öffnen.
@@ -104,7 +122,7 @@ HTTPS ist für Service Worker und Installation außerhalb von `localhost` erford
 4. Namen bestätigen und **Hinzufügen** tippen.
 5. #Dogsports einmal vom Home-Bildschirm öffnen.
 
-Alle Fachdaten bleiben lokal auf diesem Gerät. Eine Neuinstallation oder das Löschen von Safari-Websitedaten kann sie entfernen. Deshalb regelmäßig unter **Ergebnisse → JSON** ein Backup speichern. Wiederherstellung erfolgt über **Import**; bei ID-Konflikten kann Überspringen oder Ersetzen gewählt werden.
+Ohne Anmeldung bleiben alle Fachdaten ausschließlich lokal auf diesem Gerät. Mit Anmeldung werden sie zusätzlich im persönlichen Supabase-Konto gesichert und zwischen Geräten abgeglichen. Eine Neuinstallation oder das Löschen von Safari-Websitedaten kann noch nicht synchronisierte Eingaben entfernen. Deshalb vor dem Löschen auf den grünen Cloud-Status achten und ergänzend regelmäßig unter **Ergebnisse → JSON** ein Backup speichern. Wiederherstellung erfolgt über **Import**; bei ID-Konflikten kann Überspringen oder Ersetzen gewählt werden.
 
 ## Bekannte technische Einschränkung
 

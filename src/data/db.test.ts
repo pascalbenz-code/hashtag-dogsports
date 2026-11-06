@@ -5,10 +5,14 @@ import { makeResult } from "../test/factory";
 import type { DogProfile, HandlerProfile } from "../domain/profiles";
 import { resetResultForm } from "../domain/resultForm";
 import {
+  applyRemoteRecords,
+  bindDatabaseToUser,
+  deleteResult,
   deleteDogProfile,
   deleteHandlerProfile,
   saveDogProfile,
   saveHandlerProfile,
+  saveResult,
   THSDatabase,
 } from "./db";
 
@@ -78,6 +82,8 @@ describe("Dexie persistence", () => {
       "dogs",
       "handlers",
       "results",
+      "syncMeta",
+      "syncQueue",
     ]);
     migrated.close();
   });
@@ -110,6 +116,8 @@ describe("Dexie persistence", () => {
       "dogs",
       "handlers",
       "results",
+      "syncMeta",
+      "syncQueue",
     ]);
     migrated.close();
   });
@@ -162,6 +170,75 @@ describe("Dexie persistence", () => {
     );
     await expect(deleteDogProfile(dog.id, database)).rejects.toThrow(
       "bereits in Ergebnissen verwendet",
+    );
+    database.close();
+  });
+
+  it("queues local writes and tombstones without losing offline data", async () => {
+    const name = `test-${crypto.randomUUID()}`;
+    names.push(name);
+    const database = new THSDatabase(name);
+    const result = makeResult();
+
+    await saveResult(result, database);
+    expect(await database.results.get(result.id)).toBeTruthy();
+    expect(await database.syncQueue.get(`results:${result.id}`)).toMatchObject({
+      operation: "upsert",
+      recordId: result.id,
+    });
+
+    await deleteResult(result.id, database);
+    expect(await database.results.get(result.id)).toBeUndefined();
+    expect(await database.syncQueue.get(`results:${result.id}`)).toMatchObject({
+      operation: "delete",
+      payload: undefined,
+    });
+    database.close();
+  });
+
+  it("does not overwrite a newer queued edit during a cloud download", async () => {
+    const name = `test-${crypto.randomUUID()}`;
+    names.push(name);
+    const database = new THSDatabase(name);
+    const result = makeResult({ event: "Neue lokale Änderung" });
+    await saveResult(result, database);
+
+    await applyRemoteRecords(
+      [
+        {
+          user_id: "user-1",
+          entity_type: "results",
+          record_id: result.id,
+          payload: {
+            ...result,
+            event: "Ältere Cloud-Version",
+            updatedAt: "2020-01-01T00:00:00.000Z",
+          },
+          client_updated_at: "2020-01-01T00:00:00.000Z",
+          deleted_at: null,
+          server_updated_at: "2020-01-01T00:00:00.000Z",
+        },
+      ],
+      database,
+    );
+
+    expect((await database.results.get(result.id))?.event).toBe(
+      "Neue lokale Änderung",
+    );
+    expect(await database.syncQueue.get(`results:${result.id}`)).toBeTruthy();
+    database.close();
+  });
+
+  it("binds one local database to exactly one cloud account", async () => {
+    const name = `test-${crypto.randomUUID()}`;
+    names.push(name);
+    const database = new THSDatabase(name);
+    await saveResult(makeResult(), database);
+
+    await bindDatabaseToUser("user-1", database);
+    expect((await database.syncQueue.toArray())[0].userId).toBe("user-1");
+    await expect(bindDatabaseToUser("user-2", database)).rejects.toThrow(
+      "anderen #Dogsports-Konto",
     );
     database.close();
   });
