@@ -890,16 +890,74 @@ h3 {
   cursor: not-allowed;
   opacity: 0.55;
 }
-.obstacle-course svg { max-height: 560px; }
-.course-end-label { fill: #111212; font-size: 13px; font-weight: 800; }
-.obstacle-position { cursor: pointer; outline: none; }
-.obstacle-position > rect { fill: #fff; stroke: #a2c0ce; stroke-width: 2; }
-.obstacle-position > circle { fill: #111212; stroke: #fff; stroke-width: 3; transition: 150ms ease; }
-.obstacle-position > text:not(.obstacle-name) { fill: #fff; font-size: 12px; font-weight: 900; pointer-events: none; }
-.obstacle-position > .obstacle-name { fill: #111212; font-size: 12px; font-weight: 800; pointer-events: none; }
-.obstacle-position:hover > circle,
-.obstacle-position:focus-visible > circle,
-.obstacle-position.selected > circle { fill: #31abe4; stroke: #1776a7; transform-box: fill-box; transform-origin: center; transform: scale(1.12); }
+.obstacle-reference-course {
+  background: #fff;
+}
+.obstacle-reference-stage {
+  position: relative;
+  width: min(100%, 360px);
+  aspect-ratio: 259 / 560;
+  margin-inline: auto;
+  background: #fff;
+}
+.obstacle-reference-stage > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+}
+.obstacle-reference-stage > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+.obstacle-reference-hotspot {
+  cursor: pointer;
+  outline: none;
+}
+.obstacle-reference-touch-target {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+}
+.obstacle-reference-hit-area {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 4;
+  pointer-events: none;
+  transition: fill 150ms ease, stroke 150ms ease;
+  vector-effect: non-scaling-stroke;
+}
+.obstacle-reference-hotspot:focus-visible > .obstacle-reference-hit-area,
+.obstacle-reference-hotspot.selected > .obstacle-reference-hit-area {
+  fill: rgb(49 171 228 / 12%);
+  stroke: #1776a7;
+  stroke-dasharray: 5 4;
+}
+.obstacle-reference-hotspot.has-fault > .obstacle-reference-hit-area,
+.obstacle-reference-hotspot.has-fault:hover > .obstacle-reference-hit-area,
+.obstacle-reference-hotspot.has-fault:focus-visible > .obstacle-reference-hit-area,
+.obstacle-reference-hotspot.has-fault.selected > .obstacle-reference-hit-area {
+  fill: rgb(201 35 42 / 20%);
+  stroke: #c9232a;
+  stroke-dasharray: none;
+}
+.obstacle-reference-fault-badge {
+  pointer-events: none;
+}
+.obstacle-reference-fault-badge circle {
+  fill: #c9232a;
+  stroke: #fff;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.obstacle-reference-fault-badge text {
+  fill: #fff;
+  font-size: 13px;
+  font-weight: 900;
+}
 #hurdle-arrow path {
   fill: #1776a7;
 }
@@ -1226,10 +1284,16 @@ tbody tr:hover {
   .hurdle-course {
     background: linear-gradient(145deg, #10232c, #143648);
   }
+  .hurdle-course.obstacle-reference-course {
+    background: #fff;
+  }
   .hurdle-course figcaption,
   .hurdle-details-toggle strong,
   .hurdle-rule-list button small {
     color: #a2c0ce;
+  }
+  .hurdle-course.obstacle-reference-course figcaption {
+    color: #55585a;
   }
   .hurdle-position > path {
     stroke: #f5f7f8;

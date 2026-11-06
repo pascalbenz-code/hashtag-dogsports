@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="259" height="560" viewBox="0 0 259 560" role="img" aria-labelledby="title description">
+  <title id="title">Hindernislauf mit acht Hindernissen</title>
+  <desc id="description">Streckengrafik des THS-Hindernislaufs mit Start, Zieltor, zwei Hürden, Oxer, Tunnel, Laufdiele, Tonne, Durchsprung und Hoch-Weit-Sprung.</desc>
+
+  <rect width="259" height="560" fill="#fff"/>
+
+  <defs>
+    <marker id="dimension-arrow" markerWidth="5" markerHeight="5" refX="2.5" refY="2.5" orient="auto-start-reverse">
+      <path d="M0 2.5 L5 0 L5 5 Z" fill="#ff496f"/>
+    </marker>
+    <marker id="route-arrow" markerWidth="8" markerHeight="8" refX="5.8" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L0 6 L6.5 3 Z" fill="#0579b7"/>
+    </marker>
+  </defs>
+
+  <!-- dezente seitliche Orientierungspfeile -->
+  <path d="M0 216 L23 230 L0 244 Z" fill="#f6c8cf" opacity=".75"/>
+  <path d="M259 216 L236 230 L259 244 Z" fill="#f6c8cf" opacity=".75"/>
+
+  <!-- innere Begrenzungslinien -->
+  <g fill="none" stroke="#bcc3c7" stroke-width="1.2" stroke-dasharray="6 5">
+    <path d="M92 35 V477"/>
+    <path d="M117 35 V477"/>
+  </g>
+
+  <!-- Laufweg -->
+  <path d="M128 478 V42" fill="none" stroke="#0579b7" stroke-width="3.5" marker-end="url(#route-arrow)"/>
+  <text x="143" y="266" transform="rotate(-90 143 266)" fill="#075f8e" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700">Laufweg</text>
+
+  <!-- Zieltor -->
+  <g fill="#111" stroke="#111" stroke-linecap="round">
+    <path d="M93 22 V35 M140 22 V35" fill="none" stroke-width="1.6"/>
+    <circle cx="93" cy="35" r="4"/>
+    <circle cx="140" cy="35" r="4"/>
+  </g>
+  <text x="116.5" y="25" text-anchor="middle" fill="#292929" font-family="Arial, Helvetica, sans-serif" font-size="12">Zieltor</text>
+
+  <!-- obere Hürde -->
+  <g fill="none" stroke="#555" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M91 52 H119" stroke-width="1.8"/>
+    <path d="M94 52 V61 M116 52 V61" stroke-width="1.4"/>
+  </g>
+  <circle cx="94" cy="52" r="3.2" fill="#111"/>
+  <circle cx="116" cy="52" r="3.2" fill="#111"/>
+
+  <!-- Hoch-Weit-Sprung -->
+  <g fill="none" stroke="#555" stroke-linecap="round">
+    <path d="M91 101 H119 M91 116 H119" stroke-width="1.5"/>
+  </g>
+  <g fill="#111">
+    <circle cx="94" cy="101" r="3.1"/>
+    <circle cx="116" cy="101" r="3.1"/>
+    <circle cx="94" cy="116" r="3.1"/>
+    <circle cx="116" cy="116" r="3.1"/>
+  </g>
+
+  <!-- Durchsprung -->
+  <g fill="none" stroke="#666" stroke-width="1.4" stroke-linecap="round">
+    <path d="M92 175 V196 M117 175 V196 M92 185 H117"/>
+  </g>
+  <circle cx="92" cy="185" r="2.5" fill="#111"/>
+  <circle cx="117" cy="185" r="2.5" fill="#111"/>
+
+  <!-- Tonne -->
+  <rect x="92" y="230" width="25" height="16" fill="#fafafa" stroke="#555" stroke-width="1.4"/>
+
+  <!-- Laufdiele -->
+  <g fill="none" stroke="#555" stroke-linejoin="round">
+    <rect x="100" y="271" width="9" height="37" fill="#fafafa" stroke-width="1.5"/>
+    <path d="M100 278 H109 M100 301 H109" stroke-width="1"/>
+  </g>
+
+  <!-- Tunnel -->
+  <g fill="none" stroke="#666" stroke-width="1.4">
+    <rect x="96" y="338" width="17" height="37" fill="#fafafa"/>
+    <path d="M101 338 V375 M108 338 V375" stroke="#a8a8a8" stroke-width=".8"/>
+  </g>
+
+  <!-- Oxer -->
+  <g fill="none" stroke="#555" stroke-linejoin="round">
+    <rect x="90" y="400" width="27" height="16" fill="#fafafa" stroke-width="1.4"/>
+    <path d="M90 405 H117 M90 411 H117" stroke-width="1"/>
+  </g>
+
+  <!-- untere Hürde -->
+  <g fill="none" stroke="#555" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M91 467 H119" stroke-width="1.8"/>
+    <path d="M94 467 V477 M116 467 V477" stroke-width="1.4"/>
+  </g>
+  <circle cx="94" cy="467" r="3.2" fill="#111"/>
+  <circle cx="116" cy="467" r="3.2" fill="#111"/>
+
+  <!-- Hindernisbezeichnungen -->
+  <g fill="#353535" font-family="Arial, Helvetica, sans-serif" font-size="10.5" text-anchor="end">
+    <text x="87" y="56">Hürde</text>
+    <text x="87" y="107"><tspan x="87" dy="0">Hoch-</tspan><tspan x="87" dy="11">Weit</tspan></text>
+    <text x="87" y="180"><tspan x="87" dy="0">Durch-</tspan><tspan x="87" dy="11">sprung</tspan></text>
+    <text x="87" y="241">Tonne</text>
+    <text x="95" y="292">Laufdiele</text>
+    <text x="91" y="358">Tunnel</text>
+    <text x="87" y="411">Oxer*</text>
+    <text x="87" y="471">Hürde</text>
+  </g>
+
+  <!-- Startbereich -->
+  <g fill="none" stroke="#777" stroke-width="1.1" stroke-dasharray="4 3">
+    <path d="M92 477 H140 V542 H92 Z"/>
+  </g>
+  <circle cx="92" cy="477" r="4" fill="#111"/>
+  <circle cx="140" cy="477" r="4" fill="#111"/>
+  <text x="116" y="520" text-anchor="middle" fill="#333" font-family="Arial, Helvetica, sans-serif" font-size="14">Start</text>
+
+  <!-- linke Maßkette -->
+  <g fill="none" stroke="#ff496f" stroke-width="1">
+    <path d="M37 22 V477" marker-start="url(#dimension-arrow)" marker-end="url(#dimension-arrow)"/>
+    <path d="M32 35 H92 M32 53 H91 M32 116 H91 M32 185 H92 M32 239 H92 M32 289 H100 M32 357 H96 M32 409 H90 M32 467 H91 M32 477 H92"/>
+  </g>
+  <g fill="#ff496f" font-family="Arial, Helvetica, sans-serif" font-size="11" text-anchor="middle">
+    <text x="31" y="44" transform="rotate(-90 31 44)">3,0</text>
+    <text x="31" y="84" transform="rotate(-90 31 84)">9,0</text>
+    <text x="31" y="151" transform="rotate(-90 31 151)">8,0</text>
+    <text x="31" y="212" transform="rotate(-90 31 212)">9,0</text>
+    <text x="31" y="264" transform="rotate(-90 31 264)">10,75</text>
+    <text x="31" y="323" transform="rotate(-90 31 323)">6,5</text>
+    <text x="31" y="383" transform="rotate(-90 31 383)">7,0</text>
+    <text x="31" y="438" transform="rotate(-90 31 438)">7,25</text>
+    <text x="31" y="472" transform="rotate(-90 31 472)">8,0</text>
+  </g>
+
+  <!-- rechte Maßkette und kumulierte Entfernungen -->
+  <g fill="none" stroke="#ff496f" stroke-width="1">
+    <path d="M196 35 V477" marker-start="url(#dimension-arrow)" marker-end="url(#dimension-arrow)"/>
+    <path d="M140 35 H201 M119 53 H196 M119 116 H196 M117 185 H196 M117 239 H196 M109 289 H196 M113 357 H196 M117 409 H196 M119 467 H196 M140 477 H201"/>
+  </g>
+  <g fill="#ff496f" font-family="Arial, Helvetica, sans-serif" font-size="11" text-anchor="middle">
+    <text x="188" y="51" transform="rotate(-90 188 51)">72</text>
+    <text x="188" y="115" transform="rotate(-90 188 115)">63</text>
+    <text x="188" y="184" transform="rotate(-90 188 184)">55</text>
+    <text x="188" y="238" transform="rotate(-90 188 238)">46</text>
+    <text x="188" y="289" transform="rotate(-90 188 289)">32</text>
+    <text x="188" y="357" transform="rotate(-90 188 357)">20</text>
+    <text x="188" y="409" transform="rotate(-90 188 409)">11</text>
+    <text x="188" y="467" transform="rotate(-90 188 467)">3</text>
+  </g>
+
+  <!-- Hinweis zum Oxer -->
+  <text x="228" y="438" transform="rotate(-90 228 438)" fill="#383838" font-family="Arial, Helvetica, sans-serif" font-size="8.5">Beim Oxer darf die oberste Stange nicht aufliegen</text>
+
+  <!-- Starttorbreite -->
+  <g fill="none" stroke="#ff496f" stroke-width="1">
+    <path d="M93 550 H140" marker-start="url(#dimension-arrow)" marker-end="url(#dimension-arrow)"/>
+    <path d="M93 542 V555 M140 542 V555"/>
+  </g>
+  <text x="116.5" y="558" text-anchor="middle" fill="#ff496f" font-family="Arial, Helvetica, sans-serif" font-size="11">2,0</text>
+</svg>
