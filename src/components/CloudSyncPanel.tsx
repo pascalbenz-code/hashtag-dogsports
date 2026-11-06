@@ -69,13 +69,65 @@ export function CloudSyncPanel({ cloud }: { cloud: CloudSyncController }) {
         <Card className="cloud-notice">
           <CloudOff aria-hidden="true" />
           <div>
-            <h3>Noch nicht mit Supabase verbunden</h3>
+            <h3>Anmeldung derzeit nicht verfügbar</h3>
             <p>
-              Die App arbeitet weiterhin vollständig lokal. Für die Cloud fehlen
-              in dieser Bereitstellung noch Projekt-URL und veröffentlichbarer
-              Schlüssel.
+              Die App bleibt gesperrt. In dieser Bereitstellung fehlen
+              Supabase-Projekt-URL und veröffentlichbarer Schlüssel.
             </p>
           </div>
+        </Card>
+      </>
+    );
+
+  if (cloud.user && cloud.accessStatus !== "ready")
+    return (
+      <>
+        <div>
+          <p className="eyebrow text-teal">#DOGSPORTS KONTO</p>
+          <h2>
+            {cloud.accessStatus === "checking"
+              ? "Kontozugriff wird vorbereitet"
+              : "Kontozugriff gesperrt"}
+          </h2>
+          <p className="mt-2 text-sm text-muted">
+            Angemeldet als <strong>{cloud.user.email}</strong>
+          </p>
+        </div>
+        <Card className="space-y-4">
+          <div
+            className={`cloud-state ${
+              cloud.accessStatus === "blocked" ? "error" : "syncing"
+            }`}
+            role="status"
+          >
+            {cloud.accessStatus === "checking" ? (
+              <LoaderCircle className="animate-spin" aria-hidden="true" />
+            ) : (
+              <LockKeyhole aria-hidden="true" />
+            )}
+            <div>
+              <strong>
+                {cloud.accessStatus === "checking"
+                  ? "Lokales Konto wird geprüft"
+                  : "Diese Installation ist einem anderen Konto zugeordnet"}
+              </strong>
+              <span>Die Fachmodule bleiben bis zur Freigabe gesperrt.</span>
+            </div>
+          </div>
+          {cloud.message ? (
+            <p className="cloud-message error" role="alert">
+              {cloud.message}
+            </p>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={() => void cloud.signOut()}
+          >
+            <LogOut aria-hidden="true" />
+            Abmelden
+          </Button>
         </Card>
       </>
     );
@@ -154,11 +206,10 @@ export function CloudSyncPanel({ cloud }: { cloud: CloudSyncController }) {
     <>
       <div>
         <p className="eyebrow text-teal">#DOGSPORTS CLOUD</p>
-        <h2>Anmelden und sichern</h2>
+        <h2>Anmelden und App öffnen</h2>
         <p className="mt-2 text-sm text-muted">
-          Deine vorhandenen lokalen Daten werden nach der ersten Anmeldung in
-          dein persönliches Konto übernommen. Offline-Eingaben bleiben jederzeit
-          möglich.
+          Nach erfolgreicher Anmeldung werden die Fachmodule freigeschaltet und
+          deine Daten mit deinem persönlichen Konto synchronisiert.
         </p>
       </div>
       <Card>
@@ -228,11 +279,11 @@ export function CloudSyncPanel({ cloud }: { cloud: CloudSyncController }) {
       <Card className="cloud-security">
         <ShieldCheck aria-hidden="true" />
         <div>
-          <h3>Deine lokalen Daten bleiben erhalten</h3>
+          <h3>Persönlicher und geschützter Zugang</h3>
           <p>
-            Die Anmeldung ersetzt keine Daten. Konflikte werden über den neuesten
-            Änderungszeitpunkt aufgelöst; nicht übertragene Änderungen bleiben in
-            einer sichtbaren Warteschlange.
+            Ohne aktive Sitzung bleiben Navigation, Module, Profile und
+            Leistungsdaten gesperrt. Nach einer früheren Anmeldung kann eine
+            gültige gespeicherte Sitzung auch offline wiederhergestellt werden.
           </p>
         </div>
       </Card>

@@ -10,7 +10,8 @@ Das visuelle System basiert auf dem #Dogsports-Banner in `public/dogsports-banne
 - CRUD für vollständige Ergebnisse und Entwürfe, eindeutige UUIDs und Zeitstempel
 - globale Hundeführer- und Hundeprofile mit Stammdaten, automatisch berechnetem Alter und geschützter Ergebniszuordnung
 - automatische Formular-Zwischenspeicherung sowie dauerhafte IndexedDB-Persistenz mit Dexie
-- optionale Supabase-Konten mit automatischer Offline-First-Synchronisation aller Ergebnisse sowie Hunde- und Hundeführerprofile
+- verpflichtende Supabase-Anmeldung mit automatischer Offline-First-Synchronisation aller Ergebnisse sowie Hunde- und Hundeführerprofile
+- geschützter App-Einstieg: Navigation, Module und lokale Leistungsdaten werden erst nach erfolgreicher Sitzungs- und Kontoprüfung geladen
 - sichtbare Sync-Warteschlange, manueller Abgleich, Wiederaufnahme nach Netzrückkehr, Lösch-Tombstones und deterministische Konfliktauflösung
 - kontogetrennte Cloud-Daten durch Supabase Row Level Security (RLS)
 - exakte FCI-VK1/2/3-Gesamtpunkteberechnung und kumulative Qualifikationen
@@ -28,7 +29,7 @@ Das visuelle System basiert auf dem #Dogsports-Banner in `public/dogsports-banne
 - interaktive Recharts-Diagramme mit Messpunkten, Tooltip, Mittelwert und Prognosepunkt
 - deutsches JSON-Backup mit Schema- und Konfliktprüfung sowie Excel-kompatibler CSV-Export
 - Hell-/Dunkelmodus entsprechend der Systemeinstellung
-- offlinefähige PWA ohne Tracking; ein Cloud-Konto ist optional und die lokale Nutzung bleibt jederzeit möglich
+- offlinefähige PWA ohne Tracking; nach einer erfolgreichen Anmeldung kann eine gültige gespeicherte Sitzung auch offline wiederhergestellt werden
 
 ## Fachlogik
 
@@ -50,6 +51,7 @@ Statistiklogik befindet sich in `src/domain/statistics.ts`. Die Standardabweichu
 ```text
 src/
   components/ui/       gemeinsame shadcn/ui-Primitiven
+  components/AuthGate  verpflichtender Anmelde- und Kontozuordnungs-Gate
   data/
     db.ts               Dexie-Datenbank, Profil-/Ergebnis-CRUD und Migrationen
     backup.ts           JSON-Validierung/-Import und JSON-/CSV-Export
@@ -73,7 +75,7 @@ Die Digitalen Leistungsrichter VDH-VK und FCI-IBGH liegen als interaktive Entwü
 
 Dexie aktualisiert bestehende Datenbanken beim ersten Start auf Version 6. Dabei werden globale Tabellen für Hundeführer und Hunde sowie eine Sync-Warteschlange und Sync-Metadaten ergänzt. Namen aus vorhandenen THS-Ergebnissen werden ohne Änderung der Leistungsdaten in gemeinsame Profile überführt und die Ergebnisse über stabile IDs verknüpft. Unbekannte Stammdaten werden sichtbar als noch zu ergänzen markiert.
 
-Die App bleibt offline-first: Jede Änderung wird zuerst atomar in IndexedDB gespeichert. Ist ein Supabase-Konto angemeldet, werden offene Änderungen anschließend übertragen. Beim ersten Abgleich werden auch alle schon vor der Cloud-Einführung vorhandenen lokalen Daten hochgeladen. Löschungen werden als Tombstones synchronisiert. Bei konkurrierenden Änderungen gewinnt der neuere Änderungszeitpunkt; eine während des Abgleichs neu entstandene lokale Änderung wird nicht überschrieben. Eine lokale Installation wird dauerhaft an die erste verwendete Benutzer-ID gebunden, damit Daten verschiedener Konten niemals vermischt werden.
+Die App bleibt nach der verpflichtenden Anmeldung offline-first: Jede Änderung wird zuerst atomar in IndexedDB gespeichert und anschließend übertragen. Beim ersten Abgleich werden auch alle schon vor der Cloud-Einführung vorhandenen lokalen Daten hochgeladen. Löschungen werden als Tombstones synchronisiert. Bei konkurrierenden Änderungen gewinnt der neuere Änderungszeitpunkt; eine während des Abgleichs neu entstandene lokale Änderung wird nicht überschrieben. Eine lokale Installation wird dauerhaft an die erste verwendete Benutzer-ID gebunden, damit Daten verschiedener Konten niemals vermischt werden. Ohne aktive oder gültig wiederhergestellte Sitzung werden die Fachdatenbank und sämtliche Module nicht in die Benutzeroberfläche eingebunden.
 
 Profile werden über **Profile** in der globalen Kopfzeile verwaltet und stehen unabhängig vom geöffneten Modul zur Verfügung. Bereits in Ergebnissen verwendete Profile können bearbeitet, aber nicht versehentlich gelöscht werden. JSON-Backups ab Version 2 enthalten Ergebnisse und beide Profilarten; Version 3 ergänzt die disziplinspezifischen HL-, DK- und S-VK-Daten. Ältere Backups werden beim Import automatisch in die aktuelle Struktur überführt.
 
@@ -95,7 +97,7 @@ npm run build
 npm run preview
 ```
 
-Die Tests decken FCI-Berechnung, Grenzwerte, kumulative Qualifikationen, Entwürfe, ungültige Werte, Statistik, Trend, Prognose, Filter, Sortierung, Bestleistungen, Backup-Konflikte und IndexedDB-Wiederherstellung ab. GitHub Actions führt Test, Lint und Build automatisch aus.
+Die Tests decken Auth-Gate und Kontozuordnung, FCI-Berechnung, Grenzwerte, kumulative Qualifikationen, Entwürfe, ungültige Werte, Statistik, Trend, Prognose, Filter, Sortierung, Bestleistungen, Backup-Konflikte und IndexedDB-Wiederherstellung ab. GitHub Actions führt Test, Lint und Build automatisch aus.
 
 ## Bereitstellung
 
@@ -106,11 +108,12 @@ HTTPS ist für Service Worker und Installation außerhalb von `localhost` erford
 ### Supabase einmalig einrichten
 
 1. Im Supabase-Projekt die Migration `supabase/migrations/20261106120000_create_dogsports_records.sql` ausführen (CLI oder SQL Editor).
-2. Unter **Authentication → URL Configuration** die Site URL `https://hashtag-dogsports.vercel.app` und für lokale Entwicklung `http://localhost:5173/**` als Redirect URL eintragen.
-3. In Vercel für Production, Preview und Development setzen:
+2. Unter **Authentication → Providers** die E-Mail-Anmeldung aktivieren.
+3. Unter **Authentication → URL Configuration** die Site URL `https://hashtag-dogsports.vercel.app` und für lokale Entwicklung `http://localhost:5173/**` als Redirect URL eintragen.
+4. In Vercel für Production, Preview und Development setzen:
    - `VITE_SUPABASE_URL`: Projekt-URL
    - `VITE_SUPABASE_PUBLISHABLE_KEY`: veröffentlichbarer Publishable Key (alternativ der ältere Anon Key)
-4. Niemals einen `service_role`-Schlüssel in Vite oder Vercel hinterlegen. Variablen mit Präfix `VITE_` sind absichtlich im Browser sichtbar; die Zugriffssicherheit kommt aus Auth und RLS.
+5. Niemals einen `service_role`-Schlüssel in Vite oder Vercel hinterlegen. Variablen mit Präfix `VITE_` sind absichtlich im Browser sichtbar; die Zugriffssicherheit kommt aus Auth und RLS.
 
 Die Migration legt ausschließlich die additive Tabelle `dogsports_records` an. Vier getrennte RLS-Policies erlauben angemeldeten Benutzern nur `select`, `insert`, `update` und `delete` ihrer eigenen Zeilen. Es gibt keine öffentliche `anon`-Berechtigung.
 
@@ -122,8 +125,4 @@ Die Migration legt ausschließlich die additive Tabelle `dogsports_records` an. 
 4. Namen bestätigen und **Hinzufügen** tippen.
 5. #Dogsports einmal vom Home-Bildschirm öffnen.
 
-Ohne Anmeldung bleiben alle Fachdaten ausschließlich lokal auf diesem Gerät. Mit Anmeldung werden sie zusätzlich im persönlichen Supabase-Konto gesichert und zwischen Geräten abgeglichen. Eine Neuinstallation oder das Löschen von Safari-Websitedaten kann noch nicht synchronisierte Eingaben entfernen. Deshalb vor dem Löschen auf den grünen Cloud-Status achten und ergänzend regelmäßig unter **Ergebnisse → JSON** ein Backup speichern. Wiederherstellung erfolgt über **Import**; bei ID-Konflikten kann Überspringen oder Ersetzen gewählt werden.
-
-## Bekannte technische Einschränkung
-
-Der JavaScript-Hauptchunk liegt wegen Recharts über Vites 500-kB-Warnschwelle. Dies beeinträchtigt Funktion und Offline-Nutzung nicht; bei Wachstum weiterer Module sollte routenbasiertes Code-Splitting ergänzt werden.
+Beim ersten Öffnen ist eine Anmeldung oder Kontoerstellung erforderlich. Ohne aktive beziehungsweise gültig wiederhergestellte Sitzung bleiben Navigation, Module und Leistungsdaten gesperrt. Nach einer erfolgreichen Anmeldung werden Daten im persönlichen Supabase-Konto gesichert und zwischen Geräten abgeglichen; eine gespeicherte gültige Sitzung ermöglicht anschließend auch den Offline-Start. Eine Neuinstallation oder das Löschen von Safari-Websitedaten kann noch nicht synchronisierte Eingaben entfernen. Deshalb vor dem Löschen auf den grünen Cloud-Status achten und ergänzend regelmäßig unter **Ergebnisse → JSON** ein Backup speichern. Wiederherstellung erfolgt über **Import**; bei ID-Konflikten kann Überspringen oder Ersetzen gewählt werden.

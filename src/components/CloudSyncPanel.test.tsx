@@ -10,6 +10,7 @@ const controller = (
   configured: true,
   user: null,
   loading: false,
+  accessStatus: "signed-out",
   online: true,
   status: "idle",
   pendingCount: 0,
@@ -27,19 +28,19 @@ const controller = (
 });
 
 describe("CloudSyncPanel", () => {
-  it("keeps the local fallback explicit when cloud config is absent", () => {
+  it("keeps the app locked when cloud config is absent", () => {
     const html = renderToStaticMarkup(
       <CloudSyncPanel cloud={controller({ configured: false })} />,
     );
-    expect(html).toContain("Noch nicht mit Supabase verbunden");
-    expect(html).toContain("vollständig lokal");
+    expect(html).toContain("Anmeldung derzeit nicht verfügbar");
+    expect(html).toContain("App bleibt gesperrt");
   });
 
   it("renders sign-in, sign-up and password recovery controls", () => {
     const html = renderToStaticMarkup(
       <CloudSyncPanel cloud={controller()} />,
     );
-    expect(html).toContain("Anmelden");
+    expect(html).toContain("Anmelden und App öffnen");
     expect(html).toContain("Konto erstellen");
     expect(html).toContain("Passwort vergessen?");
     expect(html).toContain('autoComplete="email"');
@@ -51,6 +52,7 @@ describe("CloudSyncPanel", () => {
       <CloudSyncPanel
         cloud={controller({
           user,
+          accessStatus: "ready",
           status: "synced",
           pendingCount: 2,
           lastSyncedAt: "2026-11-06T12:00:00.000Z",
@@ -61,5 +63,23 @@ describe("CloudSyncPanel", () => {
     expect(html).toContain("2 Änderung(en) warten");
     expect(html).toContain("Jetzt synchronisieren");
     expect(html).toContain("Abmelden");
+  });
+
+  it("blocks module access when the local installation belongs to another account", () => {
+    const user = { id: "user-2", email: "neu@example.de" } as User;
+    const html = renderToStaticMarkup(
+      <CloudSyncPanel
+        cloud={controller({
+          user,
+          accessStatus: "blocked",
+          status: "error",
+          message: "Zugriff gesperrt: anderes Konto",
+        })}
+      />,
+    );
+    expect(html).toContain("Kontozugriff gesperrt");
+    expect(html).toContain("Fachmodule bleiben bis zur Freigabe gesperrt");
+    expect(html).toContain("Abmelden");
+    expect(html).not.toContain("Jetzt synchronisieren");
   });
 });

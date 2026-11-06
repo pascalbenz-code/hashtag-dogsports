@@ -45,7 +45,11 @@ import { SlalomFaultDetails } from "./components/SlalomFaultDetails";
 import { ObstacleFaultDetails } from "./components/ObstacleFaultDetails";
 import { ProfilesManager } from "./components/ProfilesManager";
 import { CloudSyncPanel } from "./components/CloudSyncPanel";
-import { useCloudSync } from "./hooks/useCloudSync";
+import { AuthGate } from "./components/AuthGate";
+import {
+  useCloudSync,
+  type CloudSyncController,
+} from "./hooks/useCloudSync";
 import type { DogProfile, HandlerProfile } from "./domain/profiles";
 import {
   formatHurdleFaultDetail,
@@ -115,6 +119,16 @@ const download = (body: string, name: string, type: string) => {
   URL.revokeObjectURL(url);
 };
 export default function App() {
+  const cloud = useCloudSync();
+  const accessGranted =
+    cloud.user && cloud.accessStatus === "ready" && !cloud.recoveryMode;
+
+  if (!accessGranted) return <AuthGate cloud={cloud} />;
+
+  return <AuthenticatedApp cloud={cloud} />;
+}
+
+function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
   const results = useLiveQuery(() => db.results.toArray(), []) ?? [];
   const handlers = useLiveQuery(() => db.handlers.orderBy("name").toArray(), []) ?? [];
   const dogs = useLiveQuery(() => db.dogs.orderBy("callName").toArray(), []) ?? [];
@@ -123,7 +137,6 @@ export default function App() {
   const [showCloud, setShowCloud] = useState(false);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [editing, setEditing] = useState<CompetitionResult | null>(null);
-  const cloud = useCloudSync();
   const open = (r?: CompetitionResult) => {
     setEditing(structuredClone(r ?? loadNewResultForm()));
     setTab("new");

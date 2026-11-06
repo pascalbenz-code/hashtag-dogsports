@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { AuthChangeEvent, User } from "@supabase/supabase-js";
 import { synchronizeCloud, type CloudSyncSummary } from "../data/cloudSync";
-import { db, SYNC_META_KEYS } from "../data/db";
+import { bindDatabaseToUser, db, SYNC_META_KEYS } from "../data/db";
 import {
   isSupabaseConfigured,
   supabase,
@@ -16,10 +16,17 @@ export type CloudSyncStatus =
   | "synced"
   | "error";
 
+export type AccountAccessStatus =
+  | "signed-out"
+  | "checking"
+  | "ready"
+  | "blocked";
+
 export interface CloudSyncController {
   configured: boolean;
   user: User | null;
   loading: boolean;
+  accessStatus: AccountAccessStatus;
   online: boolean;
   status: CloudSyncStatus;
   pendingCount: number;
@@ -41,12 +48,15 @@ const errorText = (error: unknown) =>
 export function useCloudSync(): CloudSyncController {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(isSupabaseConfigured);
+  const [accessStatus, setAccessStatus] =
+    useState<AccountAccessStatus>("signed-out");
   const [online, setOnline] = useState(() => navigator.onLine);
   const [status, setStatus] = useState<CloudSyncStatus>(
     isSupabaseConfigured ? "idle" : "local",
   );
   const [message, setMessage] = useState("");
   const [recoveryMode, setRecoveryMode] = useState(false);
+  const sessionUserId = useRef<string | null>(null);
   const syncPromise = useRef<Promise<CloudSyncSummary | null> | null>(null);
   const pendingCount = useLiveQuery(() => db.syncQueue.count(), []) ?? 0;
   const lastSyncedAt =
@@ -55,9 +65,10 @@ export function useCloudSync(): CloudSyncController {
         (await db.syncMeta.get(SYNC_META_KEYS.lastSyncedAt))?.value ?? null,
       [],
     ) ?? null;
+  const userId = user?.id ?? null;
 
   const syncNow = useCallback(async () => {
-    if (!supabase || !user) return null;
+    if (!supabase || !user || accessStatus !== "ready") return null;
     if (!navigator.onLine) {
       setStatus("offline");
       setMessage(
@@ -88,20 +99,27 @@ export function useCloudSync(): CloudSyncController {
       });
     syncPromise.current = operation;
     return operation;
-  }, [user]);
+  }, [accessStatus, user]);
 
   useEffect(() => {
     if (!supabase) return;
     let active = true;
+    const updateSessionUser = (nextUser: User | null) => {
+      const nextUserId = nextUser?.id ?? null;
+      if (sessionUserId.current !== nextUserId)
+        setAccessStatus(nextUser ? "checking" : "signed-out");
+      sessionUserId.current = nextUserId;
+      setUser(nextUser);
+    };
     void supabase.auth.getSession().then(({ data, error }) => {
       if (!active) return;
       if (error) setMessage(`Anmeldung konnte nicht geladen werden: ${error.message}`);
-      setUser(data.session?.user ?? null);
+      updateSessionUser(data.session?.user ?? null);
       setLoading(false);
     });
     const { data } = supabase.auth.onAuthStateChange(
       (event: AuthChangeEvent, session) => {
-        setUser(session?.user ?? null);
+        updateSessionUser(session?.user ?? null);
         setLoading(false);
         if (event === "PASSWORD_RECOVERY") setRecoveryMode(true);
         if (event === "SIGNED_OUT") {
@@ -117,14 +135,40 @@ export function useCloudSync(): CloudSyncController {
   }, []);
 
   useEffect(() => {
+    if (!userId) return;
+
+    let active = true;
+    void bindDatabaseToUser(userId)
+      .then(() => {
+        if (!active) return;
+        setAccessStatus("ready");
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setAccessStatus("blocked");
+        setStatus("error");
+        setMessage(`Zugriff gesperrt: ${errorText(error)}`);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  useEffect(() => {
     const updateOnlineState = () => {
       const next = navigator.onLine;
       setOnline(next);
-      if (!next && user) setStatus("offline");
-      if (next && user) void syncNow();
+      if (!next && user && accessStatus === "ready") setStatus("offline");
+      if (next && user && accessStatus === "ready") void syncNow();
     };
     const syncOnFocus = () => {
-      if (document.visibilityState === "visible" && user) void syncNow();
+      if (
+        document.visibilityState === "visible" &&
+        user &&
+        accessStatus === "ready"
+      )
+        void syncNow();
     };
     window.addEventListener("online", updateOnlineState);
     window.addEventListener("offline", updateOnlineState);
@@ -134,17 +178,17 @@ export function useCloudSync(): CloudSyncController {
       window.removeEventListener("offline", updateOnlineState);
       document.removeEventListener("visibilitychange", syncOnFocus);
     };
-  }, [syncNow, user]);
+  }, [accessStatus, syncNow, user]);
 
   useEffect(() => {
-    if (!user || !online) return;
+    if (!user || !online || accessStatus !== "ready") return;
     const start = window.setTimeout(() => void syncNow(), 0);
     const interval = window.setInterval(() => void syncNow(), 120_000);
     return () => {
       window.clearTimeout(start);
       window.clearInterval(interval);
     };
-  }, [online, syncNow, user]);
+  }, [accessStatus, online, syncNow, user]);
 
   const signIn = async (email: string, password: string) => {
     if (!supabase) return false;
@@ -218,6 +262,7 @@ export function useCloudSync(): CloudSyncController {
     configured: isSupabaseConfigured,
     user,
     loading,
+    accessStatus,
     online,
     status,
     pendingCount,
