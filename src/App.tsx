@@ -1,10 +1,12 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
+  ArrowLeft,
   BarChart3,
   ChevronRight,
   ClipboardList,
   Download,
+  Eraser,
   Home,
   Medal,
   Plus,
@@ -58,6 +60,16 @@ import {
   isVierkampf,
   normalizedCrossCountryTime,
 } from "./domain/disciplines";
+import {
+  getBackNavigation,
+  type SportModule,
+  type Tab,
+} from "./domain/appNavigation";
+import {
+  loadNewResultForm,
+  resetResultForm,
+  RESULT_FORM_DRAFT_KEY,
+} from "./domain/resultForm";
 
 const PerformanceChart = lazy(() => import("./components/PerformanceChart"));
 const JudgeForm = lazy(() =>
@@ -70,51 +82,12 @@ const IbghJudgeForm = lazy(() =>
     default: IbghJudgeForm,
   })),
 );
-type SportModule = "ths" | "ibgh";
-type Tab = "dashboard" | "judge" | "results" | "new" | "stats";
 const tabTitles: Record<Tab, string> = {
   dashboard: "Dashboard",
   judge: "Digitaler Leistungsrichter",
   results: "Ergebnisse",
   new: "Neuer Eintrag",
   stats: "Statistik",
-};
-const now = () => new Date().toISOString();
-const blank = (): CompetitionResult => ({
-  id: crypto.randomUUID(),
-  date: new Date().toISOString().slice(0, 10),
-  competitionType: "Vereinsprüfung",
-  event: "",
-  handlerId: "",
-  handlerBirthDate: "",
-  handlerGender: "",
-  dogId: "",
-  dog: "",
-  handler: "",
-  className: "FCI-VK1",
-  obedience: null,
-  hurdles: { time: null, faults: null, faultDetails: [] },
-  hurdlesLeash: "on",
-  slalom: { time: null, faults: null, faultDetails: [] },
-  slalomLeash: "on",
-  obstacle: { time: null, faults: null, faultDetails: [] },
-  obstacleLeash: "on",
-  obstacle2: { time: null, faults: null, faultDetails: [] },
-  obstacle2Leash: "on",
-  crossCountry: { timeSeconds: null, distanceMeters: 1000, falseStart: false },
-  notes: "",
-  createdAt: now(),
-  updatedAt: now(),
-});
-const newForm = () => {
-  try {
-    const saved = localStorage.getItem("dogsport-form-draft");
-    return saved
-      ? { ...blank(), ...(JSON.parse(saved) as CompetitionResult) }
-      : blank();
-  } catch {
-    return blank();
-  }
 };
 const fmt = (v: number | null, digits = 2) =>
   v === null
@@ -142,7 +115,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [editing, setEditing] = useState<CompetitionResult | null>(null);
   const open = (r?: CompetitionResult) => {
-    setEditing(structuredClone(r ?? newForm()));
+    setEditing(structuredClone(r ?? loadNewResultForm()));
     setTab("new");
   };
   const navigate = (next: Tab) => {
@@ -159,10 +132,39 @@ export default function App() {
     setSportModule(null);
     navigate("dashboard");
   };
+  const backNavigation = getBackNavigation({ sportModule, tab, showProfiles });
+  const goBack = () => {
+    if (!backNavigation) return;
+    if (backNavigation.target === "close-profiles") {
+      setShowProfiles(false);
+      return;
+    }
+    if (backNavigation.target === "home") {
+      goHome();
+      return;
+    }
+    navigate("dashboard");
+  };
   return (
     <div className={`min-h-dvh ${sportModule ? "pb-28" : "pb-8"}`}>
       <header className="app-header">
-        <button type="button" onClick={goHome} aria-label="Zur Startseite">
+        {backNavigation ? (
+          <button
+            type="button"
+            className="header-back-button"
+            aria-label={backNavigation.label}
+            title={backNavigation.label}
+            onClick={goBack}
+          >
+            <ArrowLeft aria-hidden="true" />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="header-brand-button"
+          onClick={goHome}
+          aria-label="Zur Startseite"
+        >
           <span className="brand">#Dogsports</span>
           <span className="crumb">
             {showProfiles
@@ -194,8 +196,9 @@ export default function App() {
         {!showProfiles && sportModule === "ths" && tab === "new" ? (
           <Editor
             key={editing?.id ?? "new"}
-            initial={editing ?? newForm()}
+            initial={editing ?? loadNewResultForm()}
             close={() => navigate("results")}
+            onReset={setEditing}
             handlers={handlers}
             dogs={dogs}
             manageProfiles={() => setShowProfiles(true)}
@@ -783,12 +786,14 @@ function additionalResultSummary(result: CompetitionResult) {
 function Editor({
   initial,
   close,
+  onReset,
   handlers,
   dogs,
   manageProfiles,
 }: {
   initial: CompetitionResult;
   close: () => void;
+  onReset: (result: CompetitionResult) => void;
   handlers: HandlerProfile[];
   dogs: DogProfile[];
   manageProfiles: () => void;
@@ -807,25 +812,49 @@ function Editor({
   const persisted = useLiveQuery(() => db.results.get(form.id), [form.id]);
   useEffect(() => {
     const timer = setTimeout(
-      () => localStorage.setItem("dogsport-form-draft", JSON.stringify(form)),
+      () => localStorage.setItem(RESULT_FORM_DRAFT_KEY, JSON.stringify(form)),
       400,
     );
     return () => clearTimeout(timer);
   }, [form]);
+  const startWithEmptyForm = () => {
+    const next = resetResultForm();
+    setForm(next);
+    onReset(next);
+  };
+  const clearCurrentInputs = () => {
+    if (
+      !confirm(
+        "Aktuelle Eingaben wirklich löschen? Bereits gespeicherte Ergebnisse bleiben unverändert.",
+      )
+    )
+      return;
+    startWithEmptyForm();
+  };
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     await saveResult(form);
-    localStorage.removeItem("dogsport-form-draft");
-    setForm(blank());
+    startWithEmptyForm();
   };
   return (
     <form onSubmit={submit} className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="eyebrow text-teal">THS · PERFORMANCE TRACKER</p>
           <h2>Ergebnis erfassen</h2>
         </div>
-        <Button>Speichern</Button>
+        <div className="flex w-full gap-2 sm:w-auto">
+          <Button
+            type="button"
+            variant="ghost"
+            className="flex-1 sm:flex-none"
+            onClick={clearCurrentInputs}
+          >
+            <Eraser aria-hidden="true" />
+            Eingaben löschen
+          </Button>
+          <Button className="flex-1 sm:flex-none">Speichern</Button>
+        </div>
       </div>
       <Card>
         <div className="mb-4 flex items-center justify-between gap-3">

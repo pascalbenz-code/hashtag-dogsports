@@ -3,6 +3,7 @@ import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 import { makeResult } from "../test/factory";
 import type { DogProfile, HandlerProfile } from "../domain/profiles";
+import { resetResultForm } from "../domain/resultForm";
 import {
   deleteDogProfile,
   deleteHandlerProfile,
@@ -31,6 +32,27 @@ describe("Dexie persistence", () => {
     await reopened.results.delete(result.id);
     expect(await reopened.results.count()).toBe(0);
     reopened.close();
+  });
+
+  it("keeps persisted results unchanged when current form inputs are reset", async () => {
+    const name = `test-${crypto.randomUUID()}`;
+    names.push(name);
+    const database = new THSDatabase(name);
+    const stored = makeResult({ event: "Gespeichertes Ergebnis" });
+    await database.results.put(stored);
+
+    const cleared = resetResultForm(
+      { removeItem: () => undefined },
+      {
+        id: "new-form-id",
+        now: new Date("2026-11-06T08:30:00.000Z"),
+      },
+    );
+
+    expect(cleared.id).not.toBe(stored.id);
+    expect(await database.results.count()).toBe(1);
+    expect(await database.results.get(stored.id)).toEqual(stored);
+    database.close();
   });
 
   it("migrates an existing version-1 database without changing THS data", async () => {
