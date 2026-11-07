@@ -203,24 +203,48 @@ describe("VDH-VK judging", () => {
     expect(score.total).toBe(45);
   });
 
-  it("caps a partial assessment at Mangelhaft without inventing a deduction", () => {
-    const definition = JUDGING_DEFINITIONS["VDH-VK2"];
-    const stand = definition.exercises[3];
-    const cappedCriterion = stand.criteria.find(
-      (criterion) => criterion.inputKind === "rating-cap",
-    )!;
-    const score = calculateJudgingScore(
-      definition,
-      {},
-      { [cappedCriterion.id]: true },
-    );
+  it.each([
+    ["VDH-VK1", "Sitz mit Abholen", 3.5],
+    ["VDH-VK1", "Ablegen mit Herankommen", 5],
+    ["VDH-VK2", "Sitz mit Abholen", 3.5],
+    ["VDH-VK2", "Ablegen mit Herankommen", 5],
+    ["VDH-VK2", "Steh mit Herankommen", 5],
+    ["VDH-VK3", "Sitz mit Abholen", 3.5],
+    ["VDH-VK3", "Ablegen aus dem Laufschritt mit Herankommen", 5],
+    ["VDH-VK3", "Steh aus dem Laufschritt mit Herankommen", 5],
+  ] as const)(
+    "translates both Mangelhaft rules for %s / %s into a fixed %s-point deduction",
+    (level, exerciseLabel, expectedDeduction) => {
+      const definition = JUDGING_DEFINITIONS[level];
+      const exerciseIndex = definition.exercises.findIndex(
+        (exercise) => exercise.label === exerciseLabel,
+      );
+      const exercise = definition.exercises[exerciseIndex];
+      const deficientCriteria = exercise.criteria.filter(
+        (criterion) =>
+          criterion.id.endsWith("-position-verlassen") ||
+          criterion.id.endsWith("-nachlaufen-ueber-zehn"),
+      );
 
-    expect(score.exercises[3]).toMatchObject({
-      deductions: 0,
-      points: 15,
-      rating: "Mangelhaft",
-    });
-    expect(score.total).toBe(60);
-    expect(score.rating).toBe("Vorzüglich");
-  });
+      expect(deficientCriteria).toHaveLength(2);
+      for (const criterion of deficientCriteria) {
+        expect(criterion).toMatchObject({
+          inputKind: "fixed",
+          fixedDeduction: expectedDeduction,
+          maxFaults: expectedDeduction,
+        });
+        const score = calculateJudgingScore(
+          definition,
+          {},
+          { [criterion.id]: true },
+        );
+        expect(score.exercises[exerciseIndex]).toMatchObject({
+          deductions: expectedDeduction,
+          points: exercise.maxPoints - expectedDeduction,
+          rating: "Mangelhaft",
+        });
+        expect(score.total).toBe(definition.maxPoints - expectedDeduction);
+      }
+    },
+  );
 });

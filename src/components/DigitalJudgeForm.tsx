@@ -159,8 +159,7 @@ export function DigitalJudgeForm<TLevel extends string>({
                 const inputId = `fault-${criterion.id}`;
                 const triggerId = `rule-${criterion.id}`;
                 const inputKind = criterion.inputKind ?? "manual";
-                const showFaultInput =
-                  inputKind === "manual" || inputKind === "rating-cap";
+                const showFaultInput = inputKind === "manual";
                 const showTrigger = inputKind !== "manual";
                 return (
                   <div className="judge-criterion" key={criterion.id}>
@@ -220,9 +219,7 @@ export function DigitalJudgeForm<TLevel extends string>({
                           <span>
                             {inputKind === "fixed"
                               ? `−${points(criterion.fixedDeduction ?? 0)}`
-                              : inputKind === "exercise-zero"
-                                ? "0 Punkte"
-                                : "Mangelhaft"}
+                              : "0 Punkte"}
                           </span>
                         </label>
                       ) : null}

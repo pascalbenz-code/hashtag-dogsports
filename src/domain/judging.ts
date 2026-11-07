@@ -104,9 +104,8 @@ export interface JudgingCriterion {
   element?: "Primär" | "Sekundär" | "Teilbudget" | "Sonderregel";
   maxFaults?: number;
   provisional?: boolean;
-  inputKind?: "manual" | "fixed" | "exercise-zero" | "rating-cap";
+  inputKind?: "manual" | "fixed" | "exercise-zero";
   fixedDeduction?: number;
-  ratingCap?: PerformanceRating;
 }
 
 export interface JudgingExercise {
@@ -184,26 +183,12 @@ const exerciseZero = (
   inputKind: "exercise-zero",
 });
 
-const ratingCap = (
-  exerciseId: string,
-  id: string,
-  label: string,
-  description: string,
-): JudgingCriterion => ({
-  id: `${exerciseId}-${id}`,
-  label,
-  description,
-  element: "Sonderregel",
-  rule: "Teilbewertung · höchstens Mangelhaft",
-  inputKind: "rating-cap",
-  ratingCap: "Mangelhaft",
-});
-
 const positionSpecialRules = (
   exerciseId: string,
   position: "Sitz" | "Platz" | "Steh",
   wrongPositions: string,
   fixedDeduction: number,
+  deficientDeduction: 3.5 | 5,
   before: "Rückkehrbeginn" | "Abruf",
 ): JudgingCriterion[] => [
   fixed(
@@ -219,17 +204,19 @@ const positionSpecialRules = (
     "Sofortiges Nachlaufen ohne Ausführung des HZ",
     "Die Unteraufgabe wird vollständig mit 0 Punkten bewertet.",
   ),
-  ratingCap(
+  fixed(
     exerciseId,
     "position-verlassen",
     `Korrekte Position, danach Verlassen vor ${before}`,
-    "Die Prüfungsregel nennt eine mangelhafte Teilbewertung, aber keine feste verbleibende Punktzahl. Der konkrete Abzug bleibt eine manuelle Richterbewertung.",
+    `Die mangelhafte Teilbewertung wird direkt mit ${deficientDeduction.toLocaleString("de-DE")} Fehlerpunkten berücksichtigt.`,
+    deficientDeduction,
   ),
-  ratingCap(
+  fixed(
     exerciseId,
     "nachlaufen-ueber-zehn",
     `Mehr als 10 Schritte Nachlaufen, danach korrektes ${position}`,
-    "Die korrekte Position wird noch vor dem Umdrehen des Hundeführers eingenommen. Es gilt eine mangelhafte Teilbewertung, kein automatischer vollständiger Punkteverlust.",
+    `Die korrekte Position wird noch vor dem Umdrehen des Hundeführers eingenommen. Die mangelhafte Teilbewertung wird direkt mit ${deficientDeduction.toLocaleString("de-DE")} Fehlerpunkten berücksichtigt.`,
+    deficientDeduction,
   ),
   exerciseZero(
     exerciseId,
@@ -245,7 +232,7 @@ const sitCriteria = (exerciseId: string): JudgingCriterion[] => [
   qualitative(exerciseId, "sitz-hz", "Ausführung des Sitz-HZ", "Sofort und in Laufrichtung setzen; der HF geht ohne Gangartänderung oder Körperhilfe weiter."),
   qualitative(exerciseId, "positionshaltung", "Positionshaltung", "Ruhig, gerade und aufmerksam sitzen; der HF entfernt sich weitere mindestens 15 Schritte."),
   qualitative(exerciseId, "abholen-endgrundstellung", "Abholen und Endgrundstellung", "Rückkehr auf Richteranweisung; der HF tritt rechts neben den Hund. Herantreten von vorne oder hinten ist erlaubt."),
-  ...positionSpecialRules(exerciseId, "Sitz", "steht oder liegt", 5, "Rückkehrbeginn"),
+  ...positionSpecialRules(exerciseId, "Sitz", "steht oder liegt", 5, 3.5, "Rückkehrbeginn"),
 ];
 
 const downCriteria = (
@@ -264,7 +251,7 @@ const downCriteria = (
   qualitative(exerciseId, "herankommen", "Herankommen", "Auf Richteranweisung freudig, schnell und direkt ohne Tempoveränderung herankommen."),
   qualitative(exerciseId, "vorsitz", "Vorsitz", "Dicht und gerade; eine Grätschstellung des HF ist fehlerhaft."),
   qualitative(exerciseId, "endgrundstellung", "Endgrundstellung", "Auf „Fuß“ schnell und gerade links neben dem HF sitzen, Schulterblatt auf Kniehöhe."),
-  ...positionSpecialRules(exerciseId, "Platz", "sitzt oder steht", 7, "Abruf"),
+  ...positionSpecialRules(exerciseId, "Platz", "sitzt oder steht", 7, 5, "Abruf"),
 ];
 
 const standCriteria = (
@@ -278,7 +265,7 @@ const standCriteria = (
   qualitative(exerciseId, "herankommen", "Herankommen", "Auf Richteranweisung freudig, schnell und direkt ohne Tempoveränderung herankommen."),
   qualitative(exerciseId, "vorsitz", "Vorsitz", "Dicht und gerade; eine Grätschstellung des HF ist fehlerhaft."),
   qualitative(exerciseId, "endgrundstellung", "Endgrundstellung", "Auf „Fuß“ schnell und gerade links neben dem HF sitzen."),
-  ...positionSpecialRules(exerciseId, "Steh", "sitzt oder liegt", 7, "Abruf"),
+  ...positionSpecialRules(exerciseId, "Steh", "sitzt oder liegt", 7, 5, "Abruf"),
 ];
 
 const freeHeelworkCriteria = (
@@ -445,17 +432,11 @@ export function calculateJudgingScore(
     }, 0);
     const deductions = Math.min(exercise.maxPoints, enteredFaults);
     const points = Math.max(0, exercise.maxPoints - deductions);
-    const cappedAtMangelhaft = exercise.criteria.some(
-      (criterion) =>
-        criterion.inputKind === "rating-cap" && triggers[criterion.id],
-    );
     return {
       exerciseId: exercise.id,
       deductions,
       points,
-      rating: cappedAtMangelhaft
-        ? ("Mangelhaft" as const)
-        : calculateRating(exercise.maxPoints, points),
+      rating: calculateRating(exercise.maxPoints, points),
     };
   });
   const total = exercises.reduce((sum, exercise) => sum + exercise.points, 0);
