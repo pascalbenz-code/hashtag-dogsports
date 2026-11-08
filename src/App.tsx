@@ -21,12 +21,11 @@ import {
 import {
   db,
   deleteResult,
-  saveImportedData,
+  importBackup,
   saveResult,
 } from "./data/db";
 import {
-  mergeImport,
-  parseBackup,
+  readBackupFile,
   serializeBackup,
   toCsv,
 } from "./data/backup";
@@ -122,7 +121,8 @@ const fmt = (v: number | null, digits = 2) =>
         maximumFractionDigits: digits,
       });
 const dFmt = (d: string) =>
-  new Intl.DateTimeFormat("de-DE").format(new Date(`${d}T12:00:00`));
+  d && Number.isFinite(Date.parse(`${d}T12:00:00`))
+    ? new Intl.DateTimeFormat("de-DE").format(new Date(`${d}T12:00:00`)) : "–";
 const download = (body: string, name: string, type: string) => {
   const url = URL.createObjectURL(new Blob([body], { type })),
     a = document.createElement("a");
@@ -632,26 +632,21 @@ function Results({
     const input = e.target.files?.[0];
     if (!input) return;
     try {
-      const incoming = parseBackup(await input.text()),
-        dupes =
-          incoming.results.filter((r) => results.some((x) => x.id === r.id)).length +
-          incoming.handlers.filter((r) => handlers.some((x) => x.id === r.id)).length +
-          incoming.dogs.filter((r) => dogs.some((x) => x.id === r.id)).length,
+      const incoming = await readBackupFile(input);
+      const countConflicts = (existing: { id: string }[], imported: { id: string }[]) => {
+        const ids = new Set(existing.map((item) => item.id));
+        return imported.filter((item) => ids.has(item.id)).length;
+      };
+      const dupes = countConflicts(results, incoming.results) +
+          countConflicts(handlers, incoming.handlers) + countConflicts(dogs, incoming.dogs),
         replace = dupes
           ? confirm(
               `${dupes} ID-Konflikt(e) gefunden. Bestehende Datensätze ersetzen?\nAbbrechen = Konflikte überspringen.`,
             )
-          : false,
-        merged = mergeImport(results, incoming.results, replace),
-        mergedHandlers = mergeImport(handlers, incoming.handlers, replace),
-        mergedDogs = mergeImport(dogs, incoming.dogs, replace);
-      await saveImportedData(
-        merged.results,
-        mergedHandlers.results,
-        mergedDogs.results,
-      );
+          : false;
+      const summary = await importBackup(incoming, replace);
       alert(
-        `Import abgeschlossen: ${merged.added + mergedHandlers.added + mergedDogs.added} neu, ${merged.replaced + mergedHandlers.replaced + mergedDogs.replaced} ersetzt, ${merged.skipped + mergedHandlers.skipped + mergedDogs.skipped} übersprungen.`,
+        `Import abgeschlossen: ${summary.added} neu, ${summary.replaced} ersetzt, ${summary.skipped} übersprungen.`,
       );
     } catch (err) {
       alert(err instanceof Error ? err.message : "Import fehlgeschlagen.");

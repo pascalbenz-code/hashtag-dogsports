@@ -1,3 +1,4 @@
+import { MAX_BACKUP_BYTES, MAX_BACKUP_RECORDS, MAX_FAULT_DETAILS, isRecord, isTimestamp, isDate, isNullableNumber, hasMetadata, assertUniqueIds } from "./validation";
 import type { CompetitionResult } from "../domain/types";
 import { calculateScore, validateResult } from "../domain/scoring";
 import {
@@ -50,8 +51,19 @@ export const serializeBackup = (
   dogs: DogProfile[] = [],
 ) => JSON.stringify(createBackup(results, handlers, dogs), null, 2);
 const isRun = (x: unknown): boolean =>
-  !!x && typeof x === "object" && "time" in x && "faults" in x;
+  isRecord(x) && isNullableNumber(x.time) && isNullableNumber(x.faults) &&
+  (x.faultDetails === undefined || (Array.isArray(x.faultDetails) && x.faultDetails.length <= MAX_FAULT_DETAILS));
+const optionalString = (x: unknown) => x === undefined || typeof x === "string";
+const optionalLeash = (x: unknown) => x === undefined || x === "on" || x === "off";
+
+export async function readBackupFile(file: Pick<File, "size" | "text">): Promise<Backup> {
+  if (file.size > MAX_BACKUP_BYTES)
+    throw new Error("Das Backup ist zu groß (maximal 20 MiB). Bitte in kleinere Backups aufteilen.");
+  return parseBackup(await file.text());
+}
 export function parseBackup(text: string): Backup {
+  if (text.length > MAX_BACKUP_BYTES || new TextEncoder().encode(text).byteLength > MAX_BACKUP_BYTES)
+    throw new Error("Das Backup ist zu groß (maximal 20 MiB).");
   let data: unknown;
   try {
     data = JSON.parse(text);
@@ -69,17 +81,40 @@ export function parseBackup(text: string): Backup {
   )
     throw new Error("Die Datei ist kein gültiges #Dogsports-Backup.");
   const raw = data as Partial<Backup> & { results: CompetitionResult[] };
+  if ((raw.handlers !== undefined && !Array.isArray(raw.handlers)) ||
+      (raw.dogs !== undefined && !Array.isArray(raw.dogs)))
+    throw new Error("Die Profillisten haben ein ungültiges Schema.");
   const handlers = Array.isArray(raw.handlers) ? raw.handlers : [];
   const dogs = Array.isArray(raw.dogs) ? raw.dogs : [];
-  if (!handlers.every(isHandlerProfile) || !dogs.every(isDogProfile))
+  if (raw.results.length + handlers.length + dogs.length > MAX_BACKUP_RECORDS)
+    throw new Error("Das Backup enthält zu viele Datensätze (maximal 20.000).");
+  if (!handlers.every((p) => isHandlerProfile(p) && hasMetadata(p) && isDate(p.birthDate)) ||
+      !dogs.every((p) => isDogProfile(p) && hasMetadata(p) && isDate(p.birthDate)))
     throw new Error("Mindestens ein Profil hat ein ungültiges Schema.");
+  assertUniqueIds(handlers);
+  assertUniqueIds(dogs);
   const now = new Date().toISOString();
+  // Preserve the first matching legacy profile while avoiding quadratic scans.
+  const handlerNames = new Map([...handlers].reverse().map((p) => [p.name.toLocaleLowerCase("de-DE"), p]));
+  const dogNames = new Map([...dogs].reverse().map((p) => [p.callName.toLocaleLowerCase("de-DE"), p]));
+  const handlerIds = new Map(handlers.map((p) => [p.id, p]));
   for (const r of raw.results) {
     if (
       !r ||
       typeof r !== "object" ||
-      typeof r.id !== "string" ||
-      typeof r.date !== "string" ||
+      !hasMetadata(r) ||
+      !isDate(r.date) ||
+      typeof r.handler !== "string" || typeof r.dog !== "string" || typeof r.notes !== "string" ||
+      !optionalString(r.handlerId) || !optionalString(r.dogId) ||
+      (r.handlerBirthDate !== undefined && !isDate(r.handlerBirthDate)) ||
+      ![undefined, "", "male", "female"].includes(r.handlerGender) ||
+      ![undefined, "Vereinsprüfung", "Kreismeisterschaft", "Verbandsmeisterschaft", "dhv Deutsche Meisterschaft", "VDH Deutsche Meisterschaft"].includes(r.competitionType) ||
+      !isNullableNumber(r.obedience) ||
+      ![r.hurdlesLeash, r.slalomLeash, r.obstacleLeash, r.obstacle2Leash].every(optionalLeash) ||
+      (r.obstacle2 !== undefined && !isRun(r.obstacle2)) ||
+      (r.crossCountry !== undefined && (!isRecord(r.crossCountry) ||
+        !isNullableNumber(r.crossCountry.timeSeconds) || !isNullableNumber(r.crossCountry.distanceMeters) ||
+        typeof r.crossCountry.falseStart !== "boolean")) ||
       typeof r.event !== "string" ||
       !COMPETITION_CLASSES.includes(r.className) ||
       !isRun(r.hurdles) ||
@@ -123,32 +158,34 @@ export function parseBackup(text: string): Backup {
       );
     r.competitionType ??= "Vereinsprüfung";
     if (!r.handlerId && r.handler.trim()) {
-      let profile = handlers.find(
-        (item) => item.name.toLocaleLowerCase("de-DE") === r.handler.trim().toLocaleLowerCase("de-DE"),
-      );
+      const name = r.handler.trim().toLocaleLowerCase("de-DE");
+      let profile = handlerNames.get(name);
       if (!profile) {
         profile = { id: crypto.randomUUID(), name: r.handler.trim(), birthDate: "", gender: "", club: "", membershipNumber: "", createdAt: now, updatedAt: now };
         handlers.push(profile);
+        handlerNames.set(name, profile);
+        handlerIds.set(profile.id, profile);
       }
       r.handlerId = profile.id;
     }
-    const handlerProfile = handlers.find((item) => item.id === r.handlerId);
+    const handlerProfile = handlerIds.get(r.handlerId ?? "");
     if (handlerProfile) {
       r.handlerBirthDate ||= handlerProfile.birthDate;
       r.handlerGender ||= handlerProfile.gender;
     }
     if (!r.dogId && r.dog.trim()) {
-      let profile = dogs.find(
-        (item) => item.callName.toLocaleLowerCase("de-DE") === r.dog.trim().toLocaleLowerCase("de-DE"),
-      );
+      const name = r.dog.trim().toLocaleLowerCase("de-DE");
+      let profile = dogNames.get(name);
       if (!profile) {
         profile = { id: crypto.randomUUID(), callName: r.dog.trim(), kennelName: "", breed: "", birthDate: "", gender: "", performanceRecordId: "", chipNumber: "", studbookNumber: "", createdAt: now, updatedAt: now };
         dogs.push(profile);
+        dogNames.set(name, profile);
       }
       r.dogId = profile.id;
     }
   }
-  return { app: "#Dogsports", version: 3, exportedAt: raw.exportedAt ?? now, results: raw.results, handlers, dogs };
+  assertUniqueIds(raw.results);
+  return { app: "#Dogsports", version: 3, exportedAt: isTimestamp(raw.exportedAt) ? raw.exportedAt : now, results: raw.results, handlers, dogs };
 }
 export function toCsv(results: CompetitionResult[]) {
   const headers = [
@@ -185,7 +222,15 @@ export function toCsv(results: CompetitionResult[]) {
     "Erstellt",
     "Geändert",
   ];
-  const cell = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
+  const cell = (v: unknown) => {
+    const text = String(v ?? "");
+    // CSV quoting alone does not stop spreadsheet formula evaluation.
+    // Control prefixes are intentional: spreadsheets treat them as formula whitespace.
+    // eslint-disable-next-line no-control-regex
+    const safe = /^[\s\u0000-\u001f]*[=+@-]/u.test(text) || /^[\t\r\n]/u.test(text)
+      ? `'${text}` : text;
+    return `"${safe.replaceAll('"', '""')}"`;
+  };
   const num = (v: number | null) =>
     v === null
       ? ""

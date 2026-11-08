@@ -1,3 +1,4 @@
+import { mergeImport, type Backup } from "./backup";
 import Dexie, { type EntityTable } from "dexie";
 import {
   validateDogProfile,
@@ -378,6 +379,31 @@ export async function saveImportedData(
   );
 }
 
+/** Merge against current IndexedDB state under the same write transaction. */
+export async function importBackup(
+  backup: Backup,
+  replace = false,
+  database: THSDatabase = db,
+) {
+  return database.transaction("rw", [database.results, database.handlers, database.dogs,
+    database.syncQueue, database.syncMeta], async () => {
+    const [results, handlers, dogs] = await Promise.all([
+      database.results.toArray(), database.handlers.toArray(), database.dogs.toArray(),
+    ]);
+    const summaries = [mergeImport(results, backup.results, replace),
+      mergeImport(handlers, backup.handlers, replace), mergeImport(dogs, backup.dogs, replace)];
+    const accepted = <T extends { id: string }>(incoming: T[], existing: { id: string }[]) => {
+      const ids = new Set(existing.map((item) => item.id));
+      return incoming.filter((item) => replace || !ids.has(item.id));
+    };
+    await saveImportedData(accepted(backup.results, results), accepted(backup.handlers, handlers),
+      accepted(backup.dogs, dogs), database);
+    return summaries.reduce((total, item) => ({ added: total.added + item.added,
+      replaced: total.replaced + item.replaced, skipped: total.skipped + item.skipped }),
+      { added: 0, replaced: 0, skipped: 0 });
+  });
+}
+
 export async function bindDatabaseToUser(
   userId: string,
   database: THSDatabase = db,
@@ -446,7 +472,7 @@ export async function applyRemoteRecords(
         );
         if (
           queued &&
-          Date.parse(queued.updatedAt) > Date.parse(record.client_updated_at)
+          Date.parse(queued.updatedAt) >= Date.parse(record.client_updated_at)
         )
           continue;
         if (record.entity_type === "results") {
@@ -466,7 +492,7 @@ export async function applyRemoteRecords(
 }
 
 export async function removeQueueChangesIfUnchanged(
-  changes: Pick<QueuedSyncChange, "id" | "updatedAt" | "operation">[],
+  changes: QueuedSyncChange[],
   database: THSDatabase = db,
 ) {
   await database.transaction("rw", database.syncQueue, async () => {
@@ -474,7 +500,8 @@ export async function removeQueueChangesIfUnchanged(
       const current = await database.syncQueue.get(change.id);
       if (
         current?.updatedAt === change.updatedAt &&
-        current.operation === change.operation
+        current.operation === change.operation &&
+        JSON.stringify(current.payload) === JSON.stringify(change.payload)
       )
         await database.syncQueue.delete(change.id);
     }

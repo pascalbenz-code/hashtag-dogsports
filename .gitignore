@@ -3,3 +3,8 @@ dist
 .DS_Store
 *.local
 coverage
+
+.env
+.env.*
+!.env.example
+.vercel
