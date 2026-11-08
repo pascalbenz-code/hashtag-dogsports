@@ -2,19 +2,20 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   ArrowLeft,
+  ArrowRight,
   BarChart3,
   ChevronRight,
   ClipboardList,
   Cloud,
-  Download,
   Eraser,
   Home,
   Medal,
   Plus,
+  Save,
   Scale,
+  Settings,
   ShieldCheck,
   Trash2,
-  Upload,
   UsersRound,
 } from "lucide-react";
 import {
@@ -46,10 +47,17 @@ import { ObstacleFaultDetails } from "./components/ObstacleFaultDetails";
 import { ProfilesManager } from "./components/ProfilesManager";
 import { CloudSyncPanel } from "./components/CloudSyncPanel";
 import { AuthGate } from "./components/AuthGate";
+import { DashboardMetric } from "./components/DashboardMetric";
+import { ResultsTransferActions } from "./components/ResultsTransferActions";
+import { StatisticsForecastCard } from "./components/StatisticsForecastCard";
+import { ResultEntryProgress } from "./components/ResultEntryProgress";
+import { ThemeSettings } from "./components/ThemeSettings";
+import { useFeedback } from "./components/feedbackContext";
 import {
   useCloudSync,
   type CloudSyncController,
 } from "./hooks/useCloudSync";
+import { useStepSwipe } from "./hooks/useStepSwipe";
 import type { DogProfile, HandlerProfile } from "./domain/profiles";
 import {
   formatHurdleFaultDetail,
@@ -78,10 +86,15 @@ import {
   type Tab,
 } from "./domain/appNavigation";
 import {
+  clearResultFormStep,
   loadNewResultForm,
+  loadResultFormStep,
   resetResultForm,
   RESULT_FORM_DRAFT_KEY,
+  saveResultFormStep,
+  type ResultFormStep,
 } from "./domain/resultForm";
+import { detectResultAchievements } from "./domain/resultAchievements";
 
 const PerformanceChart = lazy(() => import("./components/PerformanceChart"));
 const JudgeForm = lazy(() =>
@@ -135,6 +148,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
   const [sportModule, setSportModule] = useState<SportModule | null>(null);
   const [showProfiles, setShowProfiles] = useState(false);
   const [showCloud, setShowCloud] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [editing, setEditing] = useState<CompetitionResult | null>(null);
   const open = (r?: CompetitionResult) => {
@@ -148,20 +162,28 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
   const openModule = (nextModule: SportModule) => {
     setShowProfiles(false);
     setShowCloud(false);
+    setShowSettings(false);
     setSportModule(nextModule);
     navigate("dashboard");
   };
   const goHome = () => {
     setShowProfiles(false);
     setShowCloud(false);
+    setShowSettings(false);
     setSportModule(null);
     navigate("dashboard");
   };
-  const backNavigation = showCloud
+  const backNavigation = showSettings
+    ? { target: "close-settings" as const, label: "Einstellungen schließen" }
+    : showCloud
     ? { target: "close-cloud" as const, label: "Cloud-Sicherung schließen" }
     : getBackNavigation({ sportModule, tab, showProfiles });
   const goBack = () => {
     if (!backNavigation) return;
+    if (backNavigation.target === "close-settings") {
+      setShowSettings(false);
+      return;
+    }
     if (backNavigation.target === "close-cloud") {
       setShowCloud(false);
       return;
@@ -176,7 +198,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
     }
     navigate("dashboard");
   };
-  const contentVisible = !showProfiles && !showCloud;
+  const contentVisible = !showProfiles && !showCloud && !showSettings;
   return (
     <div className={`min-h-dvh ${sportModule ? "pb-28" : "pb-8"}`}>
       <header className="app-header">
@@ -201,6 +223,8 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
           <span className="crumb">
             {showCloud
               ? "Cloud-Sicherung · alle Module"
+              : showSettings
+              ? "Einstellungen · alle Module"
               : showProfiles
               ? "Globale Profile · alle Module"
               : sportModule
@@ -214,6 +238,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
             className={`header-cloud-button ${showCloud ? "active" : ""} ${cloud.status}`}
             onClick={() => {
               setShowProfiles(false);
+              setShowSettings(false);
               setShowCloud((current) => !current);
             }}
             aria-label={
@@ -231,6 +256,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
             className={`header-profile-button ${showProfiles ? "active" : ""}`}
             onClick={() => {
               setShowCloud(false);
+              setShowSettings(false);
               setShowProfiles((current) => !current);
             }}
             aria-label="Hundeführer und Hunde verwalten"
@@ -238,11 +264,26 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
             <UsersRound aria-hidden="true" />
             <span>Profile</span>
           </button>
+          <button
+            type="button"
+            className={`header-settings-button ${showSettings ? "active" : ""}`}
+            onClick={() => {
+              setShowCloud(false);
+              setShowProfiles(false);
+              setShowSettings((current) => !current);
+            }}
+            aria-label="Darstellung einstellen"
+            title="Einstellungen"
+          >
+            <Settings aria-hidden="true" />
+            <span>Einstellungen</span>
+          </button>
         </div>
       </header>
       <main className="mx-auto max-w-6xl space-y-5 px-4 py-5">
         {showCloud ? <CloudSyncPanel cloud={cloud} /> : null}
         {showProfiles ? <ProfilesManager handlers={handlers} dogs={dogs} /> : null}
+        {showSettings ? <ThemeSettings /> : null}
         {contentVisible && !sportModule ? <StartPage openModule={openModule} /> : null}
         {contentVisible && sportModule === "ths" && tab === "dashboard" ? (
           <Dashboard results={results} open={open} />
@@ -255,9 +296,10 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
             key={editing?.id ?? "new"}
             initial={editing ?? loadNewResultForm()}
             close={() => navigate("results")}
-            onReset={setEditing}
+            onChange={setEditing}
             handlers={handlers}
             dogs={dogs}
+            results={results}
             manageProfiles={() => setShowProfiles(true)}
           />
         ) : null}
@@ -334,15 +376,16 @@ function StartPage({
   openModule: (sportModule: SportModule) => void;
 }) {
   return (
-    <>
-      <section className="hero-card" aria-label="#Dogsports">
+    <div className="start-page">
+      <section className="hero-card home-hero" aria-label="#Dogsports">
         <img
           className="hero-banner"
           src="/dogsports-banner.webp"
           alt="#Dogsports mit schwarzem Sporthund"
         />
+        <p className="home-claim">Track your progress, unlock your success!</p>
       </section>
-      <div>
+      <div className="home-intro">
         <p className="eyebrow text-teal">SPORTBEREICH AUSWÄHLEN</p>
         <h1 className="text-2xl font-black">
           Welches Modul möchtest du öffnen?
@@ -368,7 +411,7 @@ function StartPage({
           onClick={() => openModule("ibgh")}
         />
       </div>
-    </>
+    </div>
   );
 }
 
@@ -493,7 +536,7 @@ function Dashboard({
   };
   return (
     <>
-      <section className="hero-card" aria-label="#Dogsports">
+      <section className="hero-card dashboard-hero" aria-label="#Dogsports">
         <img
           className="hero-banner"
           src="/dogsports-banner.webp"
@@ -501,10 +544,10 @@ function Dashboard({
         />
       </section>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metric value={String(results.length)} label="Turniere" />
-        <Metric value={String(complete.length)} label="Vollständig" />
-        <Metric value={String(drafts)} label="Entwürfe" />
-        <Metric value={String(q)} label="Qualifikationen" accent />
+        <DashboardMetric value={String(results.length)} label="Turniere" />
+        <DashboardMetric value={String(complete.length)} label="Vollständig" />
+        <DashboardMetric value={String(drafts)} label="Entwürfe" />
+        <DashboardMetric value={String(q)} label="Qualifikationen" accent />
       </div>
       <section>
         <Title
@@ -583,7 +626,6 @@ function Results({
       includeDrafts: true,
       sort: "date-desc",
     }),
-    file = useRef<HTMLInputElement>(null),
     shown = useMemo(() => filterAndSort([...results], f), [results, f]),
     bests = useMemo(() => bestIds(results), [results]);
   const importFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -681,44 +723,6 @@ function Results({
             Entwürfe
           </label>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={() =>
-              download(
-                serializeBackup(results, handlers, dogs),
-                `dogsports-backup-${new Date().toISOString().slice(0, 10)}.json`,
-                "application/json",
-              )
-            }
-          >
-            <Download />
-            JSON
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() =>
-              download(
-                toCsv(results),
-                `dogsports-export-${new Date().toISOString().slice(0, 10)}.csv`,
-                "text/csv;charset=utf-8",
-              )
-            }
-          >
-            <Download />
-            CSV
-          </Button>
-          <Button variant="ghost" onClick={() => file.current?.click()}>
-            <Upload />
-            Import
-          </Button>
-          <input
-            ref={file}
-            className="hidden"
-            type="file"
-            accept="application/json,.json"
-            onChange={importFile}
-          />
-        </div>
       </Card>
       <p className="text-sm text-muted">{shown.length} Datensätze</p>
       <div className="space-y-3 md:hidden">
@@ -760,7 +764,18 @@ function Results({
             {shown.map((r) => {
               const s = calculateScore(r);
               return (
-                <tr key={r.id} onClick={() => open(r)}>
+                <tr
+                  key={r.id}
+                  tabIndex={0}
+                  onClick={() => open(r)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      open(r);
+                    }
+                  }}
+                  aria-label={`${r.event || "Unbenannter Entwurf"} bearbeiten`}
+                >
                   <td>{dFmt(r.date)}</td>
                   <td>{r.handler} / {r.dog}</td>
                   <td>{r.event}</td>
@@ -822,6 +837,23 @@ function Results({
         </table>
       </div>
       {!shown.length && <Hint text="Keine passenden Ergebnisse gefunden." />}
+      <ResultsTransferActions
+        onJsonExport={() =>
+          download(
+            serializeBackup(results, handlers, dogs),
+            `dogsports-backup-${new Date().toISOString().slice(0, 10)}.json`,
+            "application/json",
+          )
+        }
+        onCsvExport={() =>
+          download(
+            toCsv(results),
+            `dogsports-export-${new Date().toISOString().slice(0, 10)}.csv`,
+            "text/csv;charset=utf-8",
+          )
+        }
+        onImport={importFile}
+      />
     </>
   );
 }
@@ -840,19 +872,21 @@ function additionalResultSummary(result: CompetitionResult) {
 function Editor({
   initial,
   close,
-  onReset,
+  onChange,
   handlers,
   dogs,
+  results,
   manageProfiles,
 }: {
   initial: CompetitionResult;
   close: () => void;
-  onReset: (result: CompetitionResult) => void;
+  onChange: (result: CompetitionResult) => void;
   handlers: HandlerProfile[];
   dogs: DogProfile[];
+  results: CompetitionResult[];
   manageProfiles: () => void;
 }) {
-  const [form, setForm] = useState(() => {
+  const [form, setFormState] = useState(() => {
       const profile = handlers.find((item) => item.id === initial.handlerId);
       return profile
         ? {
@@ -862,19 +896,69 @@ function Editor({
           }
         : initial;
     }),
+    [step, setStepState] = useState<ResultFormStep>(() =>
+      loadResultFormStep(initial.id),
+    ),
+    [isSaving, setIsSaving] = useState(false),
     score = calculateScore(form);
+  const { notify } = useFeedback();
   const persisted = useLiveQuery(() => db.results.get(form.id), [form.id]);
+  const formRef = useRef(form);
+  const stepRef = useRef(step);
+  const stepHeading = useRef<HTMLHeadingElement>(null);
+  const setForm: ResultSetter = setFormState;
+  const persistLocalDraft = (value: CompetitionResult) => {
+    try {
+      localStorage.setItem(RESULT_FORM_DRAFT_KEY, JSON.stringify(value));
+    } catch {
+      // IndexedDB remains available for explicitly saved drafts. A blocked
+      // localStorage must not make the editor unusable.
+    }
+  };
+  const changeStep = (next: ResultFormStep) => {
+    stepRef.current = next;
+    setStepState(next);
+    saveResultFormStep(formRef.current.id, next);
+    window.requestAnimationFrame(() => stepHeading.current?.focus());
+  };
+  const swipeHandlers = useStepSwipe({
+    step,
+    onStepChange: changeStep,
+    disabled: isSaving,
+  });
+
   useEffect(() => {
     const timer = setTimeout(
-      () => localStorage.setItem(RESULT_FORM_DRAFT_KEY, JSON.stringify(form)),
+      () => persistLocalDraft(form),
       400,
     );
     return () => clearTimeout(timer);
   }, [form]);
+  useEffect(() => {
+    formRef.current = form;
+    onChange(form);
+  }, [form, onChange]);
+  useEffect(() => {
+    stepRef.current = step;
+    saveResultFormStep(form.id, step);
+  }, [form.id, step]);
+  useEffect(
+    () => () => {
+      persistLocalDraft(formRef.current);
+      saveResultFormStep(formRef.current.id, stepRef.current);
+    },
+    [],
+  );
+
   const startWithEmptyForm = () => {
+    clearResultFormStep(formRef.current.id);
     const next = resetResultForm();
-    setForm(next);
-    onReset(next);
+    formRef.current = next;
+    stepRef.current = 1;
+    setFormState(next);
+    setStepState(1);
+    onChange(next);
+    saveResultFormStep(next.id, 1);
   };
   const clearCurrentInputs = () => {
     if (
@@ -884,186 +968,287 @@ function Editor({
     )
       return;
     startWithEmptyForm();
+    notify({
+      kind: "cleared",
+      title: "Eingaben gelöscht",
+      message: "Gespeicherte Ergebnisse wurden nicht verändert.",
+    });
+  };
+  const saveDraft = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      await saveResult(formRef.current);
+      persistLocalDraft(formRef.current);
+      saveResultFormStep(formRef.current.id, stepRef.current);
+      notify({
+        kind: "saved",
+        title: "Entwurf gespeichert",
+        message: `Du kannst bei Schritt ${stepRef.current} weiterarbeiten.`,
+      });
+    } catch (error) {
+      notify({
+        kind: "error",
+        title: "Entwurf nicht gespeichert",
+        message: error instanceof Error ? error.message : "Bitte versuche es erneut.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await saveResult(form);
-    startWithEmptyForm();
+    if (isSaving) return;
+    if (!score.complete) {
+      notify({
+        kind: "error",
+        title: "Ergebnis noch unvollständig",
+        message: "Ergänze die markierten Angaben oder speichere den Zwischenstand als Entwurf.",
+      });
+      return;
+    }
+    setIsSaving(true);
+    const achievements = detectResultAchievements(results, formRef.current);
+    try {
+      await saveResult(formRef.current);
+      notify({
+        kind: "saved",
+        title: "Ergebnis gespeichert",
+        message: "Der Datensatz wurde sicher übernommen.",
+      });
+      if (achievements.firstResult)
+        notify({
+          kind: "first",
+          title: "Dein erstes Ergebnis!",
+          message: "Ein starker Start für deine #Dogsports-Historie.",
+        });
+      if (achievements.personalBest)
+        notify({
+          kind: "record",
+          title: "Neue persönliche Bestleistung",
+          message: `Bestwert in ${CLASS_LABELS[formRef.current.className]} erreicht.`,
+        });
+      if (achievements.newQualifications.length)
+        notify({
+          kind: "qualifications",
+          title: "Neue Qualifikation erreicht",
+          message: "Die neu erfüllten Kriterien wurden deinem Ergebnis zugeordnet.",
+          qualifications: achievements.newQualifications,
+        });
+      startWithEmptyForm();
+    } catch (error) {
+      notify({
+        kind: "error",
+        title: "Ergebnis nicht gespeichert",
+        message: error instanceof Error ? error.message : "Bitte versuche es erneut.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
   return (
     <form onSubmit={submit} className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="result-entry-header">
         <div>
           <p className="eyebrow text-teal">THS · PERFORMANCE TRACKER</p>
           <h2>Ergebnis erfassen</h2>
         </div>
-        <div className="flex w-full gap-2 sm:w-auto">
+        <div className="result-entry-header-actions">
           <Button
             type="button"
             variant="ghost"
-            className="flex-1 sm:flex-none"
+            size="sm"
             onClick={clearCurrentInputs}
+            disabled={isSaving}
           >
             <Eraser aria-hidden="true" />
             Eingaben löschen
           </Button>
-          <Button className="flex-1 sm:flex-none">Speichern</Button>
-        </div>
-      </div>
-      <Card>
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h3>Zuordnung</h3>
-          <Button type="button" variant="ghost" onClick={manageProfiles}>
-            <UsersRound /> Profile verwalten
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => void saveDraft()}
+            disabled={isSaving}
+          >
+            <Save aria-hidden="true" />
+            Entwurf speichern
           </Button>
         </div>
-        {!handlers.length || !dogs.length ? (
-          <Hint text="Lege zuerst mindestens einen Hundeführer und einen Hund in den globalen Profilen an." />
+      </div>
+      <ResultEntryProgress step={step} onStepChange={changeStep} />
+      <section
+        className="result-entry-step"
+        aria-labelledby={`result-step-${step}`}
+        {...swipeHandlers}
+      >
+        <h3
+          id={`result-step-${step}`}
+          className="sr-only"
+          tabIndex={-1}
+          ref={stepHeading}
+        >
+          Schritt {step}: {step === 1 ? "Zuordnung" : step === 2 ? "Prüfungsdaten" : "Leistungsdaten"}
+        </h3>
+        {step === 1 ? (
+          <Card>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3>Zuordnung</h3>
+              <Button type="button" variant="ghost" size="sm" onClick={manageProfiles}>
+                <UsersRound /> Profile verwalten
+              </Button>
+            </div>
+            {!handlers.length || !dogs.length ? (
+              <Hint text="Lege zuerst mindestens einen Hundeführer und einen Hund in den globalen Profilen an." />
+            ) : null}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Hundeführer">
+                <select
+                  required
+                  value={form.handlerId ?? ""}
+                  onChange={(e) => {
+                    const selected = handlers.find((item) => item.id === e.target.value);
+                    setForm({
+                      ...form,
+                      handlerId: selected?.id ?? "",
+                      handler: selected?.name ?? "",
+                      handlerBirthDate: selected?.birthDate ?? "",
+                      handlerGender: selected?.gender ?? "",
+                    });
+                  }}
+                >
+                  <option value="">Bitte auswählen</option>
+                  {handlers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Hund">
+                <select
+                  required
+                  value={form.dogId ?? ""}
+                  onChange={(e) => {
+                    const selected = dogs.find((item) => item.id === e.target.value);
+                    setForm({ ...form, dogId: selected?.id ?? "", dog: selected?.callName ?? "" });
+                  }}
+                >
+                  <option value="">Bitte auswählen</option>
+                  {dogs.map((item) => <option key={item.id} value={item.id}>{item.callName}</option>)}
+                </select>
+              </Field>
+            </div>
+          </Card>
         ) : null}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Hundeführer">
-            <select
-              required
-              value={form.handlerId ?? ""}
-              onChange={(e) => {
-                const selected = handlers.find((item) => item.id === e.target.value);
-                setForm({
-                  ...form,
-                  handlerId: selected?.id ?? "",
-                  handler: selected?.name ?? "",
-                  handlerBirthDate: selected?.birthDate ?? "",
-                  handlerGender: selected?.gender ?? "",
-                });
-              }}
-            >
-              <option value="">Bitte auswählen</option>
-              {handlers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Hund">
-            <select
-              required
-              value={form.dogId ?? ""}
-              onChange={(e) => {
-                const selected = dogs.find((item) => item.id === e.target.value);
-                setForm({ ...form, dogId: selected?.id ?? "", dog: selected?.callName ?? "" });
-              }}
-            >
-              <option value="">Bitte auswählen</option>
-              {dogs.map((item) => <option key={item.id} value={item.id}>{item.callName}</option>)}
-            </select>
-          </Field>
-        </div>
-      </Card>
-      <Card>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Datum">
-            <input
-              type="date"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-            />
-          </Field>
-          <Field label="Prüfungsstufe">
-            <select
-              value={form.className}
-              onChange={(e) => {
-                const className = e.target
-                  .value as CompetitionResult["className"];
-                const previousDetails = form.hurdles.faultDetails ?? [];
-                const faultDetails = previousDetails.filter((detail) =>
-                  isValidHurdleFaultDetail(
-                    detail,
-                    hurdleReferenceClass(className),
-                  ),
-                );
-                setForm({
-                  ...form,
-                  className,
-                  hurdles: {
-                    ...form.hurdles,
-                    faults:
-                      previousDetails.length === 0
-                        ? form.hurdles.faults
-                        : faultDetails.length
-                          ? hurdleFaultsTotal(faultDetails)
-                          : null,
-                    faultDetails,
-                  },
-                });
-              }}
-            >
-              {COMPETITION_CLASSES.map((value) => (
-                <option value={value} key={value}>
-                  {CLASS_LABELS[value]}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-        <Field label="Turnierart">
-          <select
-            value={form.competitionType ?? "Vereinsprüfung"}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                competitionType: e.target.value as CompetitionType,
-              })
-            }
-          >
-            <option>Vereinsprüfung</option>
-            <option>Kreismeisterschaft</option>
-            <option>Verbandsmeisterschaft</option>
-            <option>dhv Deutsche Meisterschaft</option>
-            <option>VDH Deutsche Meisterschaft</option>
-          </select>
-        </Field>
-        <Field label="Turnier / Verein">
-          <input
-            value={form.event}
-            onChange={(e) => setForm({ ...form, event: e.target.value })}
-          />
-        </Field>
-      </Card>
-      <PerformanceFields form={form} setForm={setForm} />
-      <Card className="score">
-        <span>
-          {score.complete
-            ? isTimeResult(form.className)
-              ? "Gesamtzeit inklusive Fehlern"
-              : "Gesamtpunkte"
-            : "Noch nicht berechenbar"}
-        </span>
-        {score.complete && (
-          <strong>
-            {fmt(score.total)}{isTimeResult(form.className) ? " s" : ""}
-          </strong>
+        {step === 2 ? (
+          <Card>
+            <h3 className="mb-4">Prüfungsdaten</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Datum">
+                <input
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                />
+              </Field>
+              <Field label="Prüfungsstufe">
+                <select
+                  value={form.className}
+                  onChange={(e) => {
+                    const className = e.target.value as CompetitionResult["className"];
+                    const previousDetails = form.hurdles.faultDetails ?? [];
+                    const faultDetails = previousDetails.filter((detail) =>
+                      isValidHurdleFaultDetail(detail, hurdleReferenceClass(className)),
+                    );
+                    setForm({
+                      ...form,
+                      className,
+                      hurdles: {
+                        ...form.hurdles,
+                        faults:
+                          previousDetails.length === 0
+                            ? form.hurdles.faults
+                            : faultDetails.length
+                              ? hurdleFaultsTotal(faultDetails)
+                              : null,
+                        faultDetails,
+                      },
+                    });
+                  }}
+                >
+                  {COMPETITION_CLASSES.map((value) => (
+                    <option value={value} key={value}>{CLASS_LABELS[value]}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <Field label="Turnierart">
+              <select
+                value={form.competitionType ?? "Vereinsprüfung"}
+                onChange={(e) =>
+                  setForm({ ...form, competitionType: e.target.value as CompetitionType })
+                }
+              >
+                <option>Vereinsprüfung</option>
+                <option>Kreismeisterschaft</option>
+                <option>Verbandsmeisterschaft</option>
+                <option>dhv Deutsche Meisterschaft</option>
+                <option>VDH Deutsche Meisterschaft</option>
+              </select>
+            </Field>
+            <Field label="Turnier / Verein">
+              <input value={form.event} onChange={(e) => setForm({ ...form, event: e.target.value })} />
+            </Field>
+          </Card>
+        ) : null}
+        {step === 3 ? (
+          <div className="space-y-5">
+            <PerformanceFields form={form} setForm={setForm} />
+            <Card className="score">
+              <span>
+                {score.complete
+                  ? isTimeResult(form.className)
+                    ? "Gesamtzeit inklusive Fehlern"
+                    : "Gesamtpunkte"
+                  : "Noch nicht berechenbar"}
+              </span>
+              {score.complete && (
+                <strong>{fmt(score.total)}{isTimeResult(form.className) ? " s" : ""}</strong>
+              )}
+              <Status score={score} />
+              <Qualis list={score.qualifications} />
+              {!score.complete && (
+                <ul className="errors">
+                  {score.errors.map((x) => <li key={x}>{x}</li>)}
+                </ul>
+              )}
+            </Card>
+            <Card>
+              <Field label="Notizen">
+                <textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              </Field>
+            </Card>
+          </div>
+        ) : null}
+      </section>
+      <div className="result-entry-navigation">
+        {step > 1 ? (
+          <Button type="button" variant="ghost" onClick={() => changeStep((step - 1) as ResultFormStep)} disabled={isSaving}>
+            <ArrowLeft aria-hidden="true" /> Zurück
+          </Button>
+        ) : <span />}
+        {step < 3 ? (
+          <Button type="button" onClick={() => changeStep((step + 1) as ResultFormStep)} disabled={isSaving}>
+            Weiter <ArrowRight aria-hidden="true" />
+          </Button>
+        ) : (
+          <Button type="submit" disabled={isSaving || !score.complete}>
+            <Save aria-hidden="true" /> {isSaving ? "Wird gespeichert …" : "Ergebnis speichern"}
+          </Button>
         )}
-        <Status score={score} />
-        <Qualis list={score.qualifications} />
-        {!score.complete && (
-          <ul className="errors">
-            {score.errors.map((x) => (
-              <li key={x}>{x}</li>
-            ))}
-          </ul>
-        )}
-      </Card>
-      <Card>
-        <Field label="Notizen">
-          <textarea
-            rows={3}
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          />
-        </Field>
-      </Card>
-      <div className="flex gap-2">
-        <Button className="flex-1">Speichern</Button>
         {persisted ? (
           <Button
             type="button"
             variant="danger"
+            size="icon"
+            aria-label="Datensatz löschen"
             onClick={async () => {
               if (confirm("Datensatz wirklich löschen?")) {
                 await deleteResult(form.id);
@@ -1076,8 +1261,8 @@ function Editor({
         ) : null}
       </div>
       <p className="text-center text-xs text-muted">
-        Änderungen werden zusätzlich lokal als Formularentwurf
-        zwischengespeichert.
+        Änderungen und der aktuelle Schritt werden zusätzlich lokal zwischengespeichert.
+        Mit „Entwurf speichern“ sicherst du den Zwischenstand dauerhaft.
       </p>
     </form>
   );
@@ -1495,34 +1680,11 @@ function Statistics({ results }: { results: CompetitionResult[] }) {
         <Mini label="Mittelwert" value={fmt(stats.mean)} />
         <Mini label="Standardabweichung" value={fmt(stats.standardDeviation)} />
       </div>
-      <Card>
-        <h3>Trend & Prognose</h3>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <Mini
-            label="Steigung (letzte 3)"
-            value={
-              stats.slope === null ? "Nicht genügend Daten" : fmt(stats.slope)
-            }
-          />
-          <Mini
-            label="Sportlicher Trend"
-            value={
-              {
-                improving: "Verbesserung",
-                worsening: "Verschlechterung",
-                unchanged: "Unverändert",
-                insufficient: "Nicht genügend Daten",
-              }[stats.trend]
-            }
-          />
-          <Mini label="Nächster Wert*" value={fmt(stats.forecast)} />
-          <Mini label="Datenpunkte" value={String(values.length)} />
-        </div>
-        <p className="mt-3 text-xs text-muted">
-          * Statistische Schätzung aus linearer Regression der letzten maximal
-          fünf Werte, keine Garantie.
-        </p>
-      </Card>
+      <StatisticsForecastCard
+        forecast={stats.forecast}
+        dataPoints={values.length}
+        formatValue={(value) => fmt(value)}
+      />
     </>
   );
 }
@@ -1554,7 +1716,7 @@ function ResultCard({
 }) {
   const s = calculateScore(result);
   return (
-    <button className="w-full text-left" onClick={onClick}>
+    <button type="button" className="w-full text-left" onClick={onClick}>
       <Card className="flex items-center gap-4">
         <div className="result-score">
           {s.total === null
@@ -1646,26 +1808,15 @@ function Nav({
   onClick: () => void;
 }) {
   return (
-    <button className={active ? "active" : ""} onClick={onClick}>
+    <button
+      type="button"
+      className={active ? "active" : ""}
+      aria-current={active ? "page" : undefined}
+      onClick={onClick}
+    >
       {icon}
       <span>{label}</span>
     </button>
-  );
-}
-function Metric({
-  value,
-  label,
-  accent = false,
-}: {
-  value: string;
-  label: string;
-  accent?: boolean;
-}) {
-  return (
-    <Card className="text-center">
-      <strong className={accent ? "text-teal" : ""}>{value}</strong>
-      <span>{label}</span>
-    </Card>
   );
 }
 function Mini({

@@ -1,0 +1,77 @@
+import { useRef, type TouchEventHandler } from "react";
+import type { ResultFormStep } from "../domain/resultForm";
+
+interface SwipePoint {
+  x: number;
+  y: number;
+}
+
+const INTERACTIVE_SELECTOR =
+  "input, select, textarea, button, a, [role='button'], [contenteditable='true'], [data-no-step-swipe]";
+
+export function isInteractiveSwipeTarget(target: EventTarget | null) {
+  if (!target || typeof target !== "object") return false;
+  const closest = (target as { closest?: (selector: string) => unknown }).closest;
+  return typeof closest === "function"
+    ? Boolean(closest.call(target, INTERACTIVE_SELECTOR))
+    : false;
+}
+
+export function resolveSwipeStep(
+  start: SwipePoint,
+  end: SwipePoint,
+  step: ResultFormStep,
+  minimumDistance = 64,
+): ResultFormStep | null {
+  const horizontal = end.x - start.x;
+  const vertical = end.y - start.y;
+  if (
+    Math.abs(horizontal) < minimumDistance ||
+    Math.abs(vertical) > Math.abs(horizontal) * 0.65
+  )
+    return null;
+  if (horizontal < 0 && step < 3) return (step + 1) as ResultFormStep;
+  if (horizontal > 0 && step > 1) return (step - 1) as ResultFormStep;
+  return null;
+}
+
+export function useStepSwipe({
+  step,
+  onStepChange,
+  disabled = false,
+}: {
+  step: ResultFormStep;
+  onStepChange: (step: ResultFormStep) => void;
+  disabled?: boolean;
+}): {
+  onTouchStart: TouchEventHandler<HTMLElement>;
+  onTouchEnd: TouchEventHandler<HTMLElement>;
+  onTouchCancel: TouchEventHandler<HTMLElement>;
+} {
+  const start = useRef<SwipePoint | null>(null);
+
+  const onTouchStart: TouchEventHandler<HTMLElement> = (event) => {
+    const touch = event.touches[0];
+    start.current =
+      disabled || !touch || isInteractiveSwipeTarget(event.target)
+        ? null
+        : { x: touch.clientX, y: touch.clientY };
+  };
+  const onTouchEnd: TouchEventHandler<HTMLElement> = (event) => {
+    const origin = start.current;
+    start.current = null;
+    const touch = event.changedTouches[0];
+    if (!origin || !touch || disabled) return;
+    const next = resolveSwipeStep(
+      origin,
+      { x: touch.clientX, y: touch.clientY },
+      step,
+    );
+    if (next !== null) onStepChange(next);
+  };
+  const onTouchCancel: TouchEventHandler<HTMLElement> = () => {
+    start.current = null;
+  };
+
+  return { onTouchStart, onTouchEnd, onTouchCancel };
+}

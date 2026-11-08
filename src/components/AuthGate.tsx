@@ -1,6 +1,7 @@
 import { LoaderCircle, LockKeyhole } from "lucide-react";
 import type { CloudSyncController } from "../hooks/useCloudSync";
 import { CloudSyncPanel } from "./CloudSyncPanel";
+import { ThemeSelector } from "./ThemeSettings";
 import { Card } from "./ui/card";
 
 export function AuthGate({ cloud }: { cloud: CloudSyncController }) {
@@ -46,6 +47,13 @@ export function AuthGate({ cloud }: { cloud: CloudSyncController }) {
               Abmeldung erhalten, sind dann aber nicht in der App zugänglich.
             </p>
           </div>
+        </Card>
+        <Card className="space-y-3">
+          <ThemeSelector />
+          <p className="text-sm text-muted">
+            Die Darstellung kann bereits vor der Anmeldung geändert werden und
+            bleibt auf diesem Gerät gespeichert.
+          </p>
         </Card>
       </main>
     </div>

@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { User } from "@supabase/supabase-js";
 import type { CloudSyncController } from "./hooks/useCloudSync";
+import { ThemeProvider } from "./theme/ThemeProvider";
 
 vi.mock("./hooks/useCloudSync", () => ({
   useCloudSync: vi.fn(),
@@ -39,7 +40,11 @@ describe("App authentication gate", () => {
   });
 
   it("does not mount modules or navigation without a signed-in account", () => {
-    const html = renderToStaticMarkup(<App />);
+    const html = renderToStaticMarkup(
+      <ThemeProvider initialPreference="system">
+        <App />
+      </ThemeProvider>,
+    );
     expect(html).toContain("Anmelden und App öffnen");
     expect(html).toContain("Geschützter Zugang");
     expect(html).not.toContain("Modul THS");
@@ -55,7 +60,11 @@ describe("App authentication gate", () => {
         recoveryMode: true,
       }),
     );
-    const html = renderToStaticMarkup(<App />);
+    const html = renderToStaticMarkup(
+      <ThemeProvider initialPreference="system">
+        <App />
+      </ThemeProvider>,
+    );
     expect(html).toContain("Neues Passwort festlegen");
     expect(html).not.toContain('aria-label="Navigation');
   });

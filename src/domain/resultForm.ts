@@ -1,6 +1,9 @@
 import type { CompetitionResult } from "./types";
 
 export const RESULT_FORM_DRAFT_KEY = "dogsport-form-draft";
+export const RESULT_FORM_STEP_KEY_PREFIX = "dogsport-form-step:";
+
+export type ResultFormStep = 1 | 2 | 3;
 
 interface ResultFormDefaults {
   id?: string;
@@ -9,6 +12,55 @@ interface ResultFormDefaults {
 
 type DraftReader = Pick<Storage, "getItem">;
 type DraftRemover = Pick<Storage, "removeItem">;
+type StepStorageReader = Pick<Storage, "getItem">;
+type StepStorageWriter = Pick<Storage, "setItem">;
+type StepStorageRemover = Pick<Storage, "removeItem">;
+
+const stepStorageKey = (resultId: string) =>
+  `${RESULT_FORM_STEP_KEY_PREFIX}${encodeURIComponent(resultId)}`;
+
+const isResultFormStep = (value: number): value is ResultFormStep =>
+  value === 1 || value === 2 || value === 3;
+
+export function loadResultFormStep(
+  resultId: string,
+  storage: StepStorageReader = localStorage,
+): ResultFormStep {
+  if (!resultId) return 1;
+  try {
+    const value = Number(storage.getItem(stepStorageKey(resultId)));
+    return isResultFormStep(value) ? value : 1;
+  } catch {
+    return 1;
+  }
+}
+
+export function saveResultFormStep(
+  resultId: string,
+  step: ResultFormStep,
+  storage: StepStorageWriter = localStorage,
+): boolean {
+  if (!resultId || !isResultFormStep(step)) return false;
+  try {
+    storage.setItem(stepStorageKey(resultId), String(step));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearResultFormStep(
+  resultId: string,
+  storage: StepStorageRemover = localStorage,
+): boolean {
+  if (!resultId) return false;
+  try {
+    storage.removeItem(stepStorageKey(resultId));
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export function createBlankResult(
   defaults: ResultFormDefaults = {},
@@ -67,6 +119,10 @@ export function resetResultForm(
   storage: DraftRemover = localStorage,
   defaults: ResultFormDefaults = {},
 ): CompetitionResult {
-  storage.removeItem(RESULT_FORM_DRAFT_KEY);
+  try {
+    storage.removeItem(RESULT_FORM_DRAFT_KEY);
+  } catch {
+    // A blocked localStorage must not prevent creating a clean form.
+  }
   return createBlankResult(defaults);
 }

@@ -18,5 +18,9 @@ describe("DigitalJudgeForm", () => {
     expect(html).toContain("−3,5");
     expect(html).toContain("−5,0");
     expect(html).not.toContain(">Mangelhaft</span>");
+    expect(html).toContain("numeric-value--hero");
+    expect(html).toContain("numeric-value--score");
+    expect(html).toContain("numeric-value--compact");
+    expect(html).toContain('class="numeric-input"');
   });
 });

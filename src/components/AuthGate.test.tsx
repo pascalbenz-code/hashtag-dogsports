@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { CloudSyncController } from "../hooks/useCloudSync";
+import { ThemeProvider } from "../theme/ThemeProvider";
 import { AuthGate } from "./AuthGate";
 
 const controller = (
@@ -29,7 +30,9 @@ const controller = (
 describe("AuthGate", () => {
   it("shows only a session check while the stored login is loading", () => {
     const html = renderToStaticMarkup(
-      <AuthGate cloud={controller({ loading: true })} />,
+      <ThemeProvider initialPreference="system">
+        <AuthGate cloud={controller({ loading: true })} />
+      </ThemeProvider>,
     );
     expect(html).toContain("Anmeldung wird geprüft");
     expect(html).toContain("App bleibt bis zum Abschluss gesperrt");
@@ -37,11 +40,20 @@ describe("AuthGate", () => {
   });
 
   it("shows the account controls but no application navigation when signed out", () => {
-    const html = renderToStaticMarkup(<AuthGate cloud={controller()} />);
+    const html = renderToStaticMarkup(
+      <ThemeProvider initialPreference="dark">
+        <AuthGate cloud={controller()} />
+      </ThemeProvider>,
+    );
     expect(html).toContain("Anmelden und App öffnen");
     expect(html).toContain("Konto erstellen");
     expect(html).toContain("Zugriff nur mit Anmeldung");
     expect(html).not.toContain("Digitaler Leistungsrichter");
     expect(html).not.toContain("Neuer Eintrag");
+    expect(html).toContain("Darstellung");
+    expect(html).toContain("System");
+    expect(html).toContain("Hell");
+    expect(html).toContain("Dunkel");
+    expect(html).toContain('class="theme-option active" aria-pressed="true"');
   });
 });

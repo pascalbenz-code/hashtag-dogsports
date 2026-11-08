@@ -11,13 +11,12 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg"],
       manifest: {
         name: "#Dogsports",
         short_name: "#Dogsports",
         description: "Modulare Offline-App für Hundesport",
         theme_color: "#111212",
-        background_color: "#f6f9fb",
+        background_color: "#111212",
         display: "standalone",
         orientation: "portrait",
         lang: "de-DE",
@@ -32,7 +31,8 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: "index.html",
-        globPatterns: ["**/*.{js,css,html,svg,png}"],
+        globPatterns: ["**/*.{js,css,html,svg,png,webp}"],
+        globIgnores: ["**/icon.svg"],
       },
     }),
   ],

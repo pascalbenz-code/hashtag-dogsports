@@ -13,6 +13,7 @@ import {
 } from "../domain/profiles";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
+import { useFeedback } from "./feedbackContext";
 
 const timestamp = () => new Date().toISOString();
 const emptyHandler = (): HandlerProfile => ({
@@ -51,6 +52,7 @@ export function ProfilesManager({
   const [handler, setHandler] = useState<HandlerProfile | null>(null);
   const [dog, setDog] = useState<DogProfile | null>(null);
   const [message, setMessage] = useState("");
+  const { notify } = useFeedback();
 
   const removeHandler = async (profile: HandlerProfile) => {
     if (!confirm(`${profile.name} wirklich löschen?`)) return;
@@ -97,9 +99,16 @@ export function ProfilesManager({
             onCancel={() => setHandler(null)}
             onSave={async (value) => {
               try {
+                const isNew = !handlers.some((item) => item.id === value.id);
                 await saveHandlerProfile(value);
                 setHandler(null);
                 setMessage("Hundeführer wurde gespeichert.");
+                if (isNew)
+                  notify({
+                    kind: "profile-handler",
+                    title: "Hundeführer angelegt",
+                    message: `${value.name} steht jetzt in allen Modulen zur Verfügung.`,
+                  });
               } catch (error) {
                 setMessage(error instanceof Error ? error.message : "Speichern fehlgeschlagen.");
               }
@@ -128,9 +137,16 @@ export function ProfilesManager({
           onCancel={() => setDog(null)}
           onSave={async (value) => {
             try {
+              const isNew = !dogs.some((item) => item.id === value.id);
               await saveDogProfile(value);
               setDog(null);
               setMessage("Hund wurde gespeichert.");
+              if (isNew)
+                notify({
+                  kind: "profile-dog",
+                  title: "Hund angelegt",
+                  message: `${value.callName} steht jetzt in allen Modulen zur Verfügung.`,
+                });
             } catch (error) {
               setMessage(error instanceof Error ? error.message : "Speichern fehlgeschlagen.");
             }

@@ -10,6 +10,7 @@ export function LocaleNumberInput({
   maxFractionDigits,
   allowNegative,
   ariaLabel,
+  className,
 }: {
   id?: string;
   value: number | null;
@@ -19,6 +20,7 @@ export function LocaleNumberInput({
   maxFractionDigits?: number;
   allowNegative?: boolean;
   ariaLabel?: string;
+  className?: string;
 }) {
   const [rawValue, setRawValue] = useState(
     value === null ? "" : String(value).replace(".", ","),
@@ -27,6 +29,7 @@ export function LocaleNumberInput({
   return (
     <input
       id={id}
+      className={className}
       type="text"
       inputMode="decimal"
       enterKeyHint="next"

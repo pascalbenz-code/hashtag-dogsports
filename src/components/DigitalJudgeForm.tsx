@@ -10,12 +10,7 @@ import {
 import { LocaleNumberInput } from "./LocaleNumberInput";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
-
-const points = (value: number) =>
-  value.toLocaleString("de-DE", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
+import { NumberValue } from "./ui/number-value";
 
 const ratingClasses: Record<PerformanceRating, string> = {
   Vorzüglich: "excellent",
@@ -111,8 +106,11 @@ export function DigitalJudgeForm<TLevel extends string>({
         </div>
         <div className="judge-total" aria-live="polite">
           <Scale aria-hidden="true" />
-          <strong>{points(score.total)}</strong>
-          <span>von {points(definition.maxPoints)} Punkten</span>
+          <NumberValue as="strong" value={score.total} variant="hero" />
+          <span>
+            von <NumberValue value={definition.maxPoints} variant="compact" />{" "}
+            Punkten
+          </span>
           <RatingBadge rating={score.rating} />
         </div>
       </Card>
@@ -148,8 +146,14 @@ export function DigitalJudgeForm<TLevel extends string>({
                 <h3>{exercise.label}</h3>
               </div>
               <div className="judge-exercise-score">
-                <strong>{points(exerciseScore.points)}</strong>
-                <span>/ {points(exercise.maxPoints)}</span>
+                <NumberValue
+                  as="strong"
+                  value={exerciseScore.points}
+                  variant="score"
+                />
+                <span>
+                  / <NumberValue value={exercise.maxPoints} variant="compact" />
+                </span>
                 <RatingBadge rating={exerciseScore.rating} />
               </div>
             </div>
@@ -190,6 +194,7 @@ export function DigitalJudgeForm<TLevel extends string>({
                             maxFractionDigits={1}
                             placeholder="0,0"
                             ariaLabel={`Fehlerpunkte ${exercise.label} ${criterion.label}`}
+                            className="numeric-input"
                             onValueChange={(value) =>
                               setFaults((current) => ({
                                 ...current,
@@ -218,7 +223,13 @@ export function DigitalJudgeForm<TLevel extends string>({
                           />
                           <span>
                             {inputKind === "fixed"
-                              ? `−${points(criterion.fixedDeduction ?? 0)}`
+                              ? (
+                                  <NumberValue
+                                    value={criterion.fixedDeduction ?? 0}
+                                    variant="compact"
+                                    prefix="−"
+                                  />
+                                )
                               : "0 Punkte"}
                           </span>
                         </label>
@@ -231,7 +242,12 @@ export function DigitalJudgeForm<TLevel extends string>({
 
             <div className="judge-exercise-footer">
               <span>Fehlerpunkte</span>
-              <strong>− {points(exerciseScore.deductions)}</strong>
+              <NumberValue
+                as="strong"
+                value={exerciseScore.deductions}
+                variant="compact"
+                prefix="− "
+              />
             </div>
           </Card>
         );
