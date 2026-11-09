@@ -55,7 +55,7 @@ export function useStepSwipe({
   const onTouchStart: TouchEventHandler<HTMLElement> = (event) => {
     const touch = event.touches[0];
     start.current =
-      disabled || !touch || isInteractiveSwipeTarget(event.target)
+      disabled || event.touches.length !== 1 || !touch || touch.clientX <= 24 || touch.clientX >= window.innerWidth - 24 || isInteractiveSwipeTarget(event.target)
         ? null
         : { x: touch.clientX, y: touch.clientY };
     horizontalGesture.current = false;
@@ -72,7 +72,7 @@ export function useStepSwipe({
     )
       return;
     horizontalGesture.current = true;
-    const offset = Math.max(-72, Math.min(72, horizontal * 0.3));
+    const offset = Math.max(-100, Math.min(100, horizontal * 0.65));
     event.currentTarget.classList.add("is-swiping");
     event.currentTarget.style.setProperty("--swipe-offset", `${offset}px`);
   };

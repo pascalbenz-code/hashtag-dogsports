@@ -230,6 +230,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
             : null,
         );
       });
+      window.scrollTo({ top: 0, behavior: "instant" });
     },
     [resolveEditor],
   );

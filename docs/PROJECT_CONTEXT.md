@@ -4,7 +4,7 @@ Stand: 2026-11-09, Branch `feature/ui-ux-modernization`; Basis-Commit `28fc5ac` 
 
 ## Ziel und Architektur
 
-#Dogsports ist eine deutschsprachige, mobile Offline-First-PWA zur Erfassung und Auswertung von Hundesportleistungen. Die App läuft als React-Single-Page-Anwendung. `App.tsx` steuert Navigation und Ansichten über React-State; React Router wird nicht verwendet. Top-Level-Wechsel erzeugen zusätzlich Einträge in der Browser-History und nutzen nach Möglichkeit die native View Transitions API mit CSS-Fallback.
+#Dogsports ist eine deutschsprachige, mobile Offline-First-PWA zur Erfassung und Auswertung von Hundesportleistungen. Die App läuft als React-Single-Page-Anwendung. `App.tsx` steuert Navigation und Ansichten über React-State; React Router wird nicht verwendet. Top-Level-Wechsel erzeugen Browser-History-Einträge und nutzen maßstabile CSS-Übergänge.
 
 | Schicht | Verantwortung |
 | --- | --- |

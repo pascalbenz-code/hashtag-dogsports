@@ -32,7 +32,7 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE || undefined,headless:true});
 const errors=[];const violations=[];
 try{
- const context=await browser.newContext({serviceWorkers:'block'});
+ const context=await browser.newContext({serviceWorkers:'block', viewport:{width:390,height:844}, isMobile:true, hasTouch:true});
  await context.route('**/*',async route=>{
   const url=new URL(route.request().url());
   if(url.hostname==='127.0.0.1')return route.continue();
@@ -60,6 +60,25 @@ try{
  console.log('AUTH_GATE_AND_SESSION_OK');
 
  await page.getByText('THS',{exact:true}).first().click();
+ await page.getByRole('button',{name:'Neuer Eintrag',exact:true}).click();
+ await page.getByRole('heading',{name:'Ergebnis erfassen'}).waitFor();
+ await page.waitForTimeout(300);
+ const editorSize=await page.evaluate(()=>({width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth,form:document.querySelector('.result-entry-step').getBoundingClientRect().width}));
+ assert(editorSize.scroll<=editorSize.width,`horizontal overflow: ${JSON.stringify(editorSize)}`);
+ assert(editorSize.form<=editorSize.width && editorSize.form>editorSize.width*0.7,`invalid form width: ${JSON.stringify(editorSize)}`);
+ await page.screenshot({path:'/tmp/dogsports-editor-mobile.png'});
+ const swipe=async(selector,start,end)=>page.locator(selector).evaluate((el,{start,end})=>{
+  const send=(type,x,y,ending=false)=>{const t=new Touch({identifier:1,target:el,clientX:x,clientY:y});el.dispatchEvent(new TouchEvent(type,{bubbles:true,cancelable:true,touches:ending?[]:[t],changedTouches:[t]}));};
+  send('touchstart',start,350);send('touchmove',(start+end)/2,350);send('touchmove',end,350);send('touchend',end,350,true);
+ },{start,end});
+ await swipe('.result-entry-step',300,110);
+ await page.getByRole('heading',{name:/Schritt 2:/}).waitFor();
+ await swipe('.result-entry-step',100,300);
+ await page.getByRole('heading',{name:/Schritt 1:/}).waitFor();
+ await page.getByRole('button',{name:'Dashboard',exact:true}).click();
+ await swipe('.app-swipe-surface',300,100);
+ await page.getByRole('heading',{name:/Unterordnung VDH-VK1/}).waitFor();
+ console.log('MOBILE_LAYOUT_AND_SWIPE_OK',JSON.stringify(editorSize));
  await page.getByRole('button',{name:'Ergebnisse',exact:true}).click();
  const stamp='2026-05-10T10:00:00Z';
  const result={id:'local-result',date:'2026-05-10',competitionType:'Vereinsprüfung',event:'=1+1',handlerId:'h',dogId:'d',dog:'Local Dog',handler:'Local Handler',className:'FCI-VK3',obedience:55,hurdles:{time:12.03,faults:0},slalom:{time:14.01,faults:4},obstacle:{time:9.44,faults:2},notes:'',createdAt:stamp,updatedAt:stamp};

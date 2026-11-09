@@ -99,6 +99,7 @@ export function useSwipeNavigation({
       (touch.clientX <= 24 || touch.clientX >= viewportWidth - 24);
     start.current =
       disabled ||
+      event.touches.length !== 1 ||
       !touch ||
       isNativeGestureEdge ||
       isAppSwipeInteractiveTarget(event.target)
@@ -120,7 +121,8 @@ export function useSwipeNavigation({
           : "vertical";
     if (axis.current !== "horizontal") return;
 
-    const offset = Math.max(-96, Math.min(96, horizontal * 0.34));
+    const canNavigate = horizontal < 0 ? onSwipeLeft : onSwipeRight;
+    const offset = Math.max(-120, Math.min(120, horizontal * (canNavigate ? 0.7 : 0.15)));
     event.currentTarget.classList.add("is-swiping");
     event.currentTarget.style.setProperty("--swipe-offset", `${offset}px`);
   };
@@ -135,12 +137,13 @@ export function useSwipeNavigation({
       resetSurface(event.currentTarget, wasHorizontal);
       return;
     }
-    const direction = resolveAppSwipe(origin, {
+    const direction = wasHorizontal ? resolveAppSwipe(origin, {
       x: touch.clientX,
       y: touch.clientY,
       time: performance.now(),
-    });
-    resetSurface(event.currentTarget, direction === null && wasHorizontal);
+    }) : null;
+    const canNavigate = direction === "left" ? onSwipeLeft : direction === "right" ? onSwipeRight : undefined;
+    resetSurface(event.currentTarget, !canNavigate && wasHorizontal);
     if (direction === "left") onSwipeLeft?.();
     if (direction === "right") onSwipeRight?.();
   };

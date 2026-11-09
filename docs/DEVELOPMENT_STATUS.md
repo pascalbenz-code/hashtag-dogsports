@@ -14,7 +14,7 @@ Stand: 2026-11-09. Basis ist der Branch `feature/ui-ux-modernization`; `28fc5ac`
 - Digitaler Leistungsrichter THS und IBGH mit Übungen, Detailkriterien, festen/manuellen Abzügen, Nullwertungen und Wertungstexten.
 - FCI-IBGH1/2/3 einschließlich der fünf IBGH3-Varianten im Leistungsrichter.
 - PWA-Installation/Offline-Assets, responsive mobile UI, System-/Hell-/Dunkel-Theme, Feedback-Center, Zurücknavigation und „Eingaben löschen“.
-- Richtungsabhängige Seitenübergänge mit View-Transitions-Fallback, Browser-Zurück und begrenzter horizontaler Wischsteuerung ohne Editor-/Diagramm-/Tabellenkonflikte.
+- Richtungsabhängige CSS-Seitenübergänge, Browser-Zurück und begrenzte horizontale Wischsteuerung ohne Editor-/Diagramm-/Tabellenkonflikte.
 - Einheitliche Leistungsrichteranzeige: Fehlerwerte als `FP`, erreichte Werte und Abzüge als `Punkte`, deutsche Dezimaldarstellung ohne unnötige Nachkommastellen.
 - CI mit Node 22, Test, Lint und Build.
 

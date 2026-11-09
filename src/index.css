@@ -189,20 +189,24 @@ h3 {
 
 .app-swipe-surface {
   min-width: 0;
-  transform: translate3d(var(--swipe-offset, 0), 0, 0);
-  will-change: auto;
 }
 .app-swipe-surface.is-swiping {
   will-change: transform;
+}
+.app-swipe-surface.is-swiping,
+.app-swipe-surface.is-swipe-returning {
+  transform: translate3d(var(--swipe-offset, 0px), 0, 0);
 }
 .app-swipe-surface.is-swipe-returning {
   transition: transform var(--motion-base) var(--ease-sport);
 }
 .app-view {
-  display: grid;
-  gap: 1.25rem;
   min-width: 0;
-  view-transition-name: app-view;
+}
+.app-view > * + * { margin-top: 1.25rem; }
+.app-view :is(h1, h2, h3, p),
+.app-view .app-card:not(:has(table, .recharts-wrapper, [role="slider"])) {
+  touch-action: pan-y;
 }
 .app-view--forward {
   animation: view-enter-forward var(--motion-base) var(--ease-sport) both;
@@ -212,9 +216,6 @@ h3 {
 }
 .app-view--lateral {
   animation: view-enter-lateral var(--motion-base) var(--ease-sport) both;
-}
-.view-transitions-supported .app-view {
-  animation: none;
 }
 
 .start-page {
@@ -418,10 +419,14 @@ h3 {
 .result-entry-step {
   min-height: 260px;
   touch-action: pan-y;
-  animation: step-enter var(--motion-base) var(--ease-sport) both;
-  transform: translate3d(var(--swipe-offset, 0), 0, 0);
+  animation: step-enter var(--motion-base) var(--ease-sport);
 }
 .result-entry-step.is-swiping { will-change: transform; }
+.result-entry-step.is-swiping,
+.result-entry-step.is-swipe-returning {
+  transform: translate3d(var(--swipe-offset, 0px), 0, 0);
+  animation: none;
+}
 .result-entry-step.is-swipe-returning {
   transition: transform var(--motion-base) var(--ease-sport);
 }
@@ -525,12 +530,12 @@ h3 {
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes step-enter {
-  from { opacity: 0; transform: translateX(8px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0.7; }
+  to { opacity: 1; }
 }
 @keyframes step-enter-backward {
-  from { opacity: 0; transform: translateX(-8px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0.7; }
+  to { opacity: 1; }
 }
 @keyframes dialog-enter {
   from { opacity: 0; transform: translateY(-4px) scale(0.99); }
