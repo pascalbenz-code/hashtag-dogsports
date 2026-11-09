@@ -1,7 +1,9 @@
+import { hasMetadata, isDate } from "./validation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isDogProfile, isHandlerProfile } from "../domain/profiles";
 import {
   decideSync,
+  syncRecordKey,
   type QueuedSyncChange,
   type RemoteSyncRecord,
 } from "../domain/cloudSync";
@@ -35,6 +37,10 @@ function validateRemoteRecord(value: unknown): RemoteSyncRecord {
   )
     throw new Error("Die Cloud enthält einen Datensatz mit ungültigem Schema.");
   if (!record.deleted_at) {
+    if ((record.entity_type === "handlers" || record.entity_type === "dogs") &&
+        (!record.payload || typeof record.payload !== "object" ||
+         !hasMetadata(record.payload) || !isDate((record.payload as { birthDate?: unknown }).birthDate)))
+      throw new Error("Ein Profil in der Cloud hat ungültige Metadaten.");
     if (record.entity_type === "handlers" && !isHandlerProfile(record.payload))
       throw new Error("Ein Hundeführerprofil in der Cloud ist beschädigt.");
     if (record.entity_type === "dogs" && !isDogProfile(record.payload))
@@ -66,10 +72,13 @@ async function fetchAllRemoteRecords(
       .from("dogsports_records")
       .select("*")
       .eq("user_id", userId)
-      .order("server_updated_at", { ascending: true })
+      .order("entity_type", { ascending: true })
+      .order("record_id", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
     if (error) throw error;
     const page = (data ?? []).map(validateRemoteRecord);
+    if (page.some((record) => record.user_id !== userId))
+      throw new Error("Die Cloud-Antwort enthält Daten eines anderen Kontos.");
     records.push(...page);
     if (page.length < PAGE_SIZE) break;
   }
@@ -104,18 +113,29 @@ export async function synchronizeCloud(
 
   const decision = decideSync(localRecords, queuedChanges, remoteRecords);
   if (decision.upload.length) {
-    const rows = decision.upload.map((change) => ({
-      user_id: userId,
-      entity_type: change.entity,
-      record_id: change.recordId,
-      payload: change.operation === "delete" ? null : change.payload,
-      client_updated_at: change.updatedAt,
-      deleted_at: change.operation === "delete" ? change.updatedAt : null,
-    }));
-    const { error } = await client.from("dogsports_records").upsert(rows, {
-      onConflict: "user_id,entity_type,record_id",
-    });
-    if (error) throw error;
+    const remoteById = new Map(remoteRecords.map((record) =>
+      [syncRecordKey(record.entity_type, record.record_id), record]));
+    // Compare-and-swap prevents a stale device from overwriting a concurrent edit.
+    for (const change of decision.upload) {
+      const row = {
+        user_id: userId,
+        entity_type: change.entity,
+        record_id: change.recordId,
+        payload: change.operation === "delete" ? null : change.payload,
+        client_updated_at: change.updatedAt,
+        deleted_at: change.operation === "delete" ? change.updatedAt : null,
+      };
+      const previous = remoteById.get(syncRecordKey(change.entity, change.recordId));
+      const query = previous
+        ? client.from("dogsports_records").update(row)
+          .eq("user_id", userId).eq("entity_type", change.entity)
+          .eq("record_id", change.recordId).eq("server_updated_at", previous.server_updated_at)
+        : client.from("dogsports_records").insert(row);
+      const { data, error } = await query.select("record_id");
+      if (error) throw error;
+      if (data?.length !== 1)
+        throw new Error("Ein Cloud-Datensatz wurde gleichzeitig geändert. Lokale Änderungen bleiben vorgemerkt. Bitte erneut synchronisieren.");
+    }
   }
 
   if (decision.download.length)
