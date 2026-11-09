@@ -200,3 +200,7 @@ Die Vorgabe im Audit-Auftrag lautet: „Bei Änderungen mit Migrationsbedarf, m�
 4. **DS-06 – Upstream-Updates verfolgen.** Deepmerge/Workbox/Glob/Minimatch gezielt aktualisieren, sobald kompatible Fixes existieren, oder eine bewusst getestete Ablösung der Build-Kette beschließen. Keine pauschalen Overrides über inkompatible Major-Versionen zur bloßen Audit-Beruhigung.
 
 5. **Betrieb:** Änderungen reviewen und erst in einem getrennt autorisierten Deployment ausrollen. Headerwirkung, echte Auth-Flows, Sync zwischen zwei Testgeräten, Preview-Trennung (Preview/Development verwenden derzeit dasselbe Supabase-Projekt), Aufbewahrung/Löschung und Secret-/Domainrestriktion des ungenutzten MapTiler-Keys prüfen. Ein späterer Produktionsrelease ist nicht Bestandteil dieses Auftrags.
+
+## Freigabe und Veröffentlichung – 9. November 2026
+
+Der Nutzer hat das Verwerfen alter IFH-Daten und das produktive Deployment der implementierten Sicherheitsupdates ausdrücklich freigegeben. DS-09 ist damit als akzeptiertes historisches Löschverhalten geschlossen; eine zusätzliche IFH-Archivmigration ist nicht erforderlich. DS-07 (Datenbankrechte) und DS-08 (Auth-Passwortschutz) bleiben separate offene Konfigurationsmaßnahmen. Diese Deployment-Freigabe betrifft die implementierten App-Updates.
