@@ -8,6 +8,9 @@ function client() {
     throw new Error("Community benötigt eine Verbindung zur Cloud.");
   return supabase;
 }
+function communityChanged() {
+  window.dispatchEvent(new Event('dogsports-community-changed'));
+}
 function check(error: { message: string; code?: string } | null) {
   if (!error) return;
   if (error.code === "23505")
@@ -65,6 +68,7 @@ export async function joinClub(clubId: string, userId: string) {
     .from("dogsports_club_members")
     .insert({ club_id: clubId, user_id: userId });
   check(error);
+  communityChanged();
 }
 export async function leaveClub(clubId: string, userId: string) {
   const { error } = await client()
@@ -73,6 +77,7 @@ export async function leaveClub(clubId: string, userId: string) {
     .eq("club_id", clubId)
     .eq("user_id", userId);
   check(error);
+  communityChanged();
 }
 export async function loadFeed(clubIds: string[], offset = 0) {
   if (!clubIds.length) return [];
@@ -101,6 +106,7 @@ export async function publishResult(
       caption: caption.trim(),
     });
   check(error);
+  communityChanged();
 }
 export async function withdrawPost(id: string, userId: string) {
   const { error } = await client()
@@ -109,4 +115,5 @@ export async function withdrawPost(id: string, userId: string) {
     .eq("id", id)
     .eq("user_id", userId);
   check(error);
+  communityChanged();
 }

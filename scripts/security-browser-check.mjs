@@ -34,6 +34,10 @@ const errors=[];const violations=[];
 const communityUser='11111111-1111-4111-8111-111111111111';
 const communityClub={id:'44444444-4444-4444-8444-444444444444',name:'Mobile Testverein',city:'Teststadt',description:'Gemeinsam trainieren',created_by:communityUser,created_at:new Date().toISOString()};
 let testClubs=[], testMembers=[], testPosts=[];
+let notificationRead=null;
+let failNextShare=false;
+const notificationTime=new Date().toISOString();
+const notificationEvents=[{id:'event-1',club_id:communityClub.id,kind:'post_created',created_at:notificationTime,dogsports_clubs:{name:communityClub.name}},{id:'event-2',club_id:communityClub.id,kind:'member_joined',created_at:notificationTime,dogsports_clubs:{name:communityClub.name}}];
 try{
  const context=await browser.newContext({serviceWorkers:'block', viewport:{width:390,height:844}, isMobile:true, hasTouch:true});
  await context.route('**/*',async route=>{
@@ -42,6 +46,15 @@ try{
   if(url.hostname==='eeuugnoccfdkgslvphql.supabase.co'){
    const table=url.pathname.split('/').at(-1),method=route.request().method();
    const json=body=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
+   if(table==='dogsports_notification_reads'){
+    if(method==='POST')notificationRead=route.request().postDataJSON().read_through;
+    return json(method==='GET'?(notificationRead?{read_through:notificationRead}:null):[]);
+   }
+   if(table==='dogsports_community_events'){
+    const events=testMembers.length?notificationEvents:[];
+    if(method==='HEAD')return route.fulfill({status:200,headers:{'content-range':`*/${notificationRead?0:events.length}`,'access-control-expose-headers':'content-range'},body:''});
+    return json(events);
+   }
    if(table==='dogsports_create_club') {testClubs=[communityClub];testMembers=[{club_id:communityClub.id,user_id:communityUser}];return json(communityClub.id);}
    if(table==='dogsports_clubs')return json(testClubs);
    if(table==='dogsports_club_members'){
@@ -50,6 +63,7 @@ try{
     return json(method==='GET'?testMembers:[]);
    }
    if(table==='dogsports_club_posts'){
+    if(method==='POST' && failNextShare){failNextShare=false;return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Offline test',code:'TEST_OFFLINE'})});}
     if(method==='POST')testPosts=[{...route.request().postDataJSON(),id:'test-post',created_at:new Date().toISOString()}];
     if(method==='DELETE')testPosts=[];
     return json(method==='GET'?testPosts:[]);
@@ -199,6 +213,38 @@ try{
  await page.getByRole('button',{name:'Verein beitreten',exact:true}).click();
  await page.getByRole('button',{name:'Verein verlassen',exact:true}).waitFor();
  console.log('COMMUNITY_CREATE_SHARE_WITHDRAW_LEAVE_JOIN_MOBILE_OK');
+
+ await page.getByRole('button',{name:'Zur Startseite',exact:true}).click();
+ await page.getByText('THS',{exact:true}).first().click();
+ await page.getByRole('button',{name:'Ergebnisse',exact:true}).click();
+ await page.getByRole('button',{name:'Im Verein teilen',exact:true}).first().click();
+ const shareDialog=page.getByRole('dialog',{name:'Im Verein teilen',exact:true});
+ await shareDialog.getByRole('button',{name:'Jetzt teilen',exact:true}).click();
+ await shareDialog.getByText('Dein Ergebnis wurde im Vereinsfeed veröffentlicht.',{exact:true}).waitFor();
+ await shareDialog.getByRole('button',{name:'Fertig',exact:true}).click();
+ await page.getByRole('button',{name:'Benachrichtigungen öffnen, 2 ungelesen',exact:true}).click();
+ const notifications=page.getByRole('dialog',{name:'Benachrichtigungen',exact:true});
+ await notifications.getByText('Ein neues Mitglied ist dem Verein beigetreten.',{exact:true}).waitFor();
+ await notifications.getByText('Ein neues Ergebnis wurde im Verein geteilt.',{exact:true}).waitFor();
+ await page.screenshot({path:'/tmp/dogsports-notifications-mobile.png'});
+ await notifications.getByRole('button',{name:'Alle als gelesen markieren',exact:true}).click();
+ await page.getByRole('button',{name:'Benachrichtigungen öffnen, 0 ungelesen',exact:true}).waitFor();
+ await notifications.getByRole('button',{name:'Schließen',exact:true}).click();
+ await resultCard.tap();
+ await page.getByRole('button',{name:/Leistungsdaten/}).click();
+ await page.getByRole('button',{name:'Speichern & im Verein teilen',exact:true}).click();
+ await shareDialog.waitFor();
+ await page.screenshot({path:'/tmp/dogsports-share-mobile.png'});
+ failNextShare=true;
+ await shareDialog.getByRole('button',{name:'Jetzt teilen',exact:true}).click();
+ await shareDialog.getByRole('alert').waitFor();
+ await shareDialog.getByRole('button',{name:'Abbrechen',exact:true}).click();
+ await page.getByRole('heading',{name:/Schritt 1:/}).waitFor();
+ await page.getByRole('button',{name:'Ergebnisse',exact:true}).click();
+ await page.getByText('1 Datensätze',{exact:true}).waitFor();
+ await page.reload();
+ await page.getByRole('button',{name:'Benachrichtigungen öffnen, 0 ungelesen',exact:true}).waitFor();
+ console.log('QUICK_SHARE_SAVE_AND_SHARE_NOTIFICATION_READ_OK');
 
  violations.push(...await page.evaluate(()=>window.__cspViolations));
  console.log('CSP',JSON.stringify(violations));

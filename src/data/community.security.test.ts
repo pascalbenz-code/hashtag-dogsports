@@ -29,6 +29,12 @@ beforeAll(async () => {
   await pg.exec(`reset role; insert into public.dogsports_club_members(club_id,user_id) values('${club}','${bob}');
     insert into public.dogsports_club_posts(club_id,user_id,result_id,author_name,dog_name,event_name,result_date,discipline,total,source_updated_at)
     values('${club}','${alice}','r','Alice','Dog','Prüfung','2026-11-09','FCI-VK3',278.52,now());`);
+  await pg.exec(
+    readFileSync(
+      "supabase/migrations/20261109213230_community_notifications.sql",
+      "utf8",
+    ),
+  );
 }, 30000);
 afterAll(() => pg.close());
 async function asUser<T>(id: string, fn: () => Promise<T>) {
@@ -132,4 +138,86 @@ it("anonymous users cannot access community tables or create clubs", async () =>
       await pg.exec("rollback");
     }
   }
+});
+it("creates one notification per post, excludes own actions and outsiders, removes withdrawn events", async () => {
+  await asUser(bob, async () => {
+    await pg.exec(`insert into public.dogsports_club_posts(club_id,user_id,result_id,author_name,dog_name,event_name,result_date,discipline,total,source_updated_at)
+      values('${club}','${bob}','notify','Bob','Dog','Event','2026-11-09','FCI-VK1',260,now())`);
+    expect(
+      (await pg.query("select * from public.dogsports_community_events")).rows,
+    ).toHaveLength(0);
+    await pg.exec(`set local request.jwt.claim.sub='${alice}'`);
+    expect(
+      (await pg.query("select kind from public.dogsports_community_events"))
+        .rows,
+    ).toEqual([{ kind: "post_created" }]);
+    await pg.exec(`set local request.jwt.claim.sub='${outsider}'`);
+    expect(
+      (await pg.query("select * from public.dogsports_community_events")).rows,
+    ).toHaveLength(0);
+    await pg.exec(
+      `set local request.jwt.claim.sub='${bob}'; delete from public.dogsports_club_posts where result_id='notify'; set local request.jwt.claim.sub='${alice}'`,
+    );
+    expect(
+      (await pg.query("select * from public.dogsports_community_events")).rows,
+    ).toHaveLength(0);
+  });
+});
+it("announces new members only to existing members, and revokes visibility on leaving", async () => {
+  await asUser(outsider, async () => {
+    await pg.exec(
+      `insert into public.dogsports_club_members(club_id,user_id) values('${club}','${outsider}')`,
+    );
+    expect(
+      (await pg.query("select * from public.dogsports_community_events")).rows,
+    ).toHaveLength(0);
+    await pg.exec(`set local request.jwt.claim.sub='${alice}'`);
+    expect(
+      (await pg.query("select kind from public.dogsports_community_events"))
+        .rows,
+    ).toEqual([{ kind: "member_joined" }]);
+    await pg.exec(
+      `delete from public.dogsports_club_members where user_id='${alice}'`,
+    );
+    expect(
+      (await pg.query("select * from public.dogsports_community_events")).rows,
+    ).toHaveLength(0);
+  });
+});
+it("persists only own read cursor and blocks client-forged notification events", async () => {
+  await asUser(alice, async () => {
+    await pg.exec(
+      `insert into public.dogsports_notification_reads(user_id,read_through) values('${alice}',now())`,
+    );
+    expect(
+      (await pg.query("select * from public.dogsports_notification_reads"))
+        .rows,
+    ).toHaveLength(1);
+    await pg.exec(`set local request.jwt.claim.sub='${bob}'`);
+    expect(
+      (await pg.query("select * from public.dogsports_notification_reads"))
+        .rows,
+    ).toHaveLength(0);
+    expect(
+      (
+        await pg.query(
+          `update public.dogsports_notification_reads set read_through=now() where user_id='${alice}' returning user_id`,
+        )
+      ).rows,
+    ).toHaveLength(0);
+  });
+  await asUser(bob, async () => {
+    await expect(
+      pg.exec(
+        `insert into public.dogsports_community_events(club_id,actor_id,kind) values('${club}','${bob}','member_joined')`,
+      ),
+    ).rejects.toThrow(/permission denied/);
+  });
+  await asUser(bob, async () => {
+    await expect(
+      pg.exec(
+        `insert into public.dogsports_notification_reads(user_id,read_through) values('${alice}',now())`,
+      ),
+    ).rejects.toThrow(/row-level security/);
+  });
 });

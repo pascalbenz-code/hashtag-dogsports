@@ -20,6 +20,10 @@ Stand: 2026-11-09. Basis ist der Branch `feature/ui-ux-modernization`; `28fc5ac`
 
 ## Letzte relevante Änderungen
 
+Direktes Teilen: Aktion an vollständigen Ergebnissen (Dashboard, Ergebnisliste/-tabelle), zusätzlich „Speichern & im Verein teilen“ in Schritt 3. Gemeinsamer Dialog mit Vereinsauswahl und expliziter Veröffentlichung. Globale Benachrichtigungsglocke für neue Vereinsbeiträge/Beitritte mit serverseitigen Ereignissen, kontogebundenem Lesecursor und 30-Sekunden-Abfrage bei sichtbarer App. Keine System-Pushs. Additive Migration `20261109213230_community_notifications.sql`; Details in `docs/COMMUNITY.md`.
+
+Prüfung dieser Erweiterung: 308 Tests, Lint und Build erfolgreich. Mobiler Browser-Harness prüft Direktteilen, Speichern mit anschließendem Teilen, sichtbaren Fehler bei fehlgeschlagenem Teilen bei weiterhin gespeichertem Ergebnis, Lesestatus nach Neuladen sowie bestehende Navigation/Community-Abläufe; keine CSP- oder Laufzeitfehler.
+
 Community-Erweiterung: globale Navigation, Vereinssuche/-anlage, Vereinsseiten, offener Beitritt/Austritt und Mitgliederfeed. Vollständige THS-Ergebnisse können nach expliziter Zustimmung als Zusammenfassung geteilt und zurückgezogen werden. Additive Supabase-Migration für drei RLS-geschützte Tabellen, atomare Vereinserstellung. Details und verbleibende Grenzen: `docs/COMMUNITY.md`. Geprüft mit 305 Unit-/Datenbanktests und mobilem Browser-Harness einschließlich Erstellung, Teilen, Zurückziehen, Austritt und Wiederbeitritt.
 
 Commit `28fc5ac` modernisierte die Oberfläche ohne beabsichtigte Fachlogikänderung:

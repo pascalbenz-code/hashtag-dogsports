@@ -20,6 +20,7 @@ import {
   Medal,
   Plus,
   Save,
+  Share2,
   Scale,
   Settings,
   ShieldCheck,
@@ -52,6 +53,8 @@ import { HurdleFaultDetails } from "./components/HurdleFaultDetails";
 import { SlalomFaultDetails } from "./components/SlalomFaultDetails";
 import { ObstacleFaultDetails } from "./components/ObstacleFaultDetails";
 import { ProfilesManager } from "./components/ProfilesManager";
+import { ShareResultDialog } from "./components/ShareResultDialog";
+import { NotificationBell } from "./components/NotificationBell";
 import { CloudSyncPanel } from "./components/CloudSyncPanel";
 import { AuthGate } from "./components/AuthGate";
 import { DashboardMetric } from "./components/DashboardMetric";
@@ -188,6 +191,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
   const [showCloud, setShowCloud] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCommunity, setShowCommunity] = useState(false);
+  const [shareResult, setShareResult] = useState<CompetitionResult | null>(null);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [editing, setEditing] = useState<CompetitionResult | null>(null);
   const [transitionDirection, setTransitionDirection] =
@@ -427,6 +431,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
           </span>
         </button>
         <div className="header-actions">
+          {cloud.user ? <NotificationBell userId={cloud.user.id} openCommunity={() => togglePanel("community")} /> : null}
           <button
             type="button"
             className={`header-cloud-button ${showCloud ? "active" : ""} ${cloud.status}`}
@@ -462,6 +467,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
           </button>
         </div>
       </header>
+      {shareResult && cloud.user ? <ShareResultDialog result={shareResult} userId={cloud.user.id} close={() => setShareResult(null)} openCommunity={() => { setShareResult(null); togglePanel("community"); }} /> : null}
       <main className="mx-auto max-w-6xl px-4 py-5">
         <div className="app-swipe-surface" {...swipeHandlers}>
           <div
@@ -475,10 +481,10 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
         {contentVisible ? <Button variant="secondary" onClick={() => togglePanel("community")}><UsersRound size={18} /> Community · Meine Vereine</Button> : null}
         {contentVisible && !sportModule ? <StartPage openModule={openModule} /> : null}
         {contentVisible && sportModule === "ths" && tab === "dashboard" ? (
-          <Dashboard results={results} open={open} />
+          <Dashboard results={results} open={open} share={setShareResult} />
         ) : null}
         {contentVisible && sportModule === "ths" && tab === "results" ? (
-          <Results results={results} handlers={handlers} dogs={dogs} open={open} />
+          <Results results={results} handlers={handlers} dogs={dogs} open={open} share={setShareResult} />
         ) : null}
         {contentVisible && sportModule === "ths" && tab === "new" ? (
           <Editor
@@ -492,6 +498,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
             manageProfiles={() => togglePanel("profiles")}
             previousPage={() => navigate("results", "backward")}
             nextPage={() => navigate("stats", "forward")}
+            share={setShareResult}
           />
         ) : null}
         {contentVisible && sportModule === "ths" && tab === "stats" ? (
@@ -697,9 +704,11 @@ function ModulePlaceholder({
 function Dashboard({
   results,
   open,
+  share,
 }: {
   results: CompetitionResult[];
   open: (r?: CompetitionResult) => void;
+  share: (r: CompetitionResult) => void;
 }) {
   const complete = results.filter((r) => calculateScore(r).complete),
     drafts = results.length - complete.length,
@@ -794,6 +803,7 @@ function Dashboard({
           <ResultCard
             result={latest}
             onClick={() => open(latest)}
+            onShare={() => share(latest)}
             best={bests.total.has(latest.id)}
           />
         </>
@@ -806,11 +816,13 @@ function Results({
   handlers,
   dogs,
   open,
+  share,
 }: {
   results: CompetitionResult[];
   handlers: HandlerProfile[];
   dogs: DogProfile[];
   open: (r: CompetitionResult) => void;
+  share: (r: CompetitionResult) => void;
 }) {
   const [f, setF] = useState<ResultFilters>({
       query: "",
@@ -919,6 +931,7 @@ function Results({
             key={r.id}
             result={r}
             onClick={() => open(r)}
+            onShare={() => share(r)}
             best={bests.total.has(r.id)}
           />
         ))}
@@ -1017,7 +1030,7 @@ function Results({
                   <td>
                     <Qualis list={s.qualifications} />
                   </td>
-                  <td>{s.complete ? "Vollständig" : "Entwurf"}</td>
+                  <td>{s.complete ? <><span>Vollständig</span><Button size="sm" variant="secondary" onClick={e => { e.stopPropagation(); share(r); }} onKeyDown={e => e.stopPropagation()}><Share2 size={16} /> Im Verein teilen</Button></> : "Entwurf"}</td>
                 </tr>
               );
             })}
@@ -1067,6 +1080,7 @@ function Editor({
   dogs,
   results,
   manageProfiles,
+  share,
 }: {
   previousPage: () => void;
   nextPage: () => void;
@@ -1077,6 +1091,7 @@ function Editor({
   dogs: DogProfile[];
   results: CompetitionResult[];
   manageProfiles: () => void;
+  share: (r: CompetitionResult) => void;
 }) {
   const [form, setFormState] = useState(() => {
       const profile = handlers.find((item) => item.id === initial.handlerId);
@@ -1197,6 +1212,7 @@ function Editor({
   };
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const shareAfterSave = (e.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'share';
     if (isSaving) return;
     if (!score.complete) {
       notify({
@@ -1209,7 +1225,8 @@ function Editor({
     setIsSaving(true);
     const achievements = detectResultAchievements(results, formRef.current);
     try {
-      await saveResult(formRef.current);
+      const savedId = await saveResult(formRef.current);
+      const saved = shareAfterSave ? await db.results.get(savedId) : undefined;
       notify({
         kind: "saved",
         title: "Ergebnis gespeichert",
@@ -1235,6 +1252,7 @@ function Editor({
           qualifications: achievements.newQualifications,
         });
       startWithEmptyForm();
+      if (shareAfterSave && saved) share(saved);
     } catch (error) {
       notify({
         kind: "error",
@@ -1444,6 +1462,7 @@ function Editor({
             <Save aria-hidden="true" /> {isSaving ? "Wird gespeichert …" : "Ergebnis speichern"}
           </Button>
         )}
+        {step === 3 ? <Button type="submit" value="share" variant="secondary" disabled={isSaving || !score.complete}><Share2 size={18} /> Speichern & im Verein teilen</Button> : null}
         {persisted ? (
           <Button
             type="button"
@@ -1909,15 +1928,17 @@ function Chart({
 function ResultCard({
   result,
   onClick,
+  onShare,
   best = false,
 }: {
   result: CompetitionResult;
   onClick: () => void;
+  onShare: () => void;
   best?: boolean;
 }) {
   const s = calculateScore(result);
   return (
-    <button type="button" className="w-full text-left" data-swipe-card onClick={onClick}>
+    <div className="space-y-2"><button type="button" className="w-full text-left" data-swipe-card onClick={onClick}>
       <Card className="flex items-center gap-4">
         <div className="result-score">
           {s.total === null
@@ -1976,7 +1997,7 @@ function ResultCard({
         </div>
         <Status score={s} />
       </Card>
-    </button>
+    </button>{s.complete ? <Button type="button" size="sm" variant="secondary" onClick={onShare}><Share2 size={16} /> Im Verein teilen</Button> : null}</div>
   );
 }
 function Status({ score }: { score: ReturnType<typeof calculateScore> }) {
