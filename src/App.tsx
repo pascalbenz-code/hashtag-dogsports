@@ -373,8 +373,10 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
   };
   const contentVisible = !showProfiles && !showCloud && !showSettings;
   const nextSwipeTab = sportModule ? getNextSwipeTab(tab) : null;
+  const viewKey = `${panel ?? sportModule ?? "home"}-${tab}-${editing?.id ?? "none"}`;
   const swipeHandlers = useSwipeNavigation({
     disabled: !contentVisible || !sportModule || tab === "new",
+    viewKey,
     onSwipeLeft: nextSwipeTab
       ? () => navigate(nextSwipeTab, "forward")
       : undefined,
@@ -382,7 +384,6 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
       if (historyIndex.current > 0) window.history.back();
     },
   });
-  const viewKey = `${panel ?? sportModule ?? "home"}-${tab}-${editing?.id ?? "none"}`;
   return (
     <div className={`min-h-dvh ${sportModule ? "pb-28" : "pb-8"}`}>
       <header className="app-header">

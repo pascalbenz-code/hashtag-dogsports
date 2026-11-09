@@ -101,8 +101,26 @@ try{
  }
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  await page.getByText('Statistiken vergleichen ausschließlich',{exact:false}).waitFor();
+ await page.waitForTimeout(250);
  await page.screenshot({path:'/tmp/dogsports-swipe-statistics.png'});
- await page.getByRole('button',{name:'Ergebnisse',exact:true}).click();
+ const headingBox=await page.getByRole('heading',{name:'Statistik THS'}).boundingBox();
+ assert(headingBox);
+ const reverseY=Math.round(headingBox.y+headingBox.height/2);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:80,y:reverseY}]});
+ for(const x of [120,160,200,240,280]){
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:reverseY}]});
+  await page.waitForTimeout(20);
+ }
+ const scale=await page.locator('.app-swipe-surface').evaluate(el=>{
+  const matrix=new DOMMatrixReadOnly(getComputedStyle(el).transform);
+  return {x:matrix.a,y:matrix.d};
+ });
+ assert.equal(scale.x,1);
+ assert.equal(scale.y,1);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await resultCard.waitFor();
+ console.log('REVERSE_SWIPE_PRESERVES_SCALE',JSON.stringify(scale));
+ await page.waitForTimeout(300);
  await resultCard.tap();
  await page.getByRole('heading',{name:'Ergebnis erfassen'}).waitFor();
  await page.getByRole('button',{name:'Ergebnisse',exact:true}).click();
