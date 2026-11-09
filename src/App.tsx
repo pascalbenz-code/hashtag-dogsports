@@ -1,4 +1,12 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   ArrowLeft,
@@ -57,6 +65,7 @@ import {
   type CloudSyncController,
 } from "./hooks/useCloudSync";
 import { useStepSwipe } from "./hooks/useStepSwipe";
+import { useSwipeNavigation } from "./hooks/useSwipeNavigation";
 import type { DogProfile, HandlerProfile } from "./domain/profiles";
 import {
   formatHurdleFaultDetail,
@@ -81,6 +90,8 @@ import {
 } from "./domain/disciplines";
 import {
   getBackNavigation,
+  getNextSwipeTab,
+  getTabTransitionDirection,
   type SportModule,
   type Tab,
 } from "./domain/appNavigation";
@@ -94,6 +105,10 @@ import {
   type ResultFormStep,
 } from "./domain/resultForm";
 import { detectResultAchievements } from "./domain/resultAchievements";
+import {
+  runViewTransition,
+  type ViewTransitionDirection,
+} from "./lib/viewTransition";
 
 const PerformanceChart = lazy(() => import("./components/PerformanceChart"));
 const JudgeForm = lazy(() =>
@@ -113,6 +128,25 @@ const tabTitles: Record<Tab, string> = {
   new: "Neuer Eintrag",
   stats: "Statistik",
 };
+type AppPanel = "profiles" | "cloud" | "settings" | null;
+interface AppHistoryState {
+  dogsportsNavigation: true;
+  index: number;
+  sportModule: SportModule | null;
+  tab: Tab;
+  panel: AppPanel;
+  editingId: string | null;
+}
+const isAppHistoryState = (value: unknown): value is AppHistoryState =>
+  Boolean(
+    value &&
+      typeof value === "object" &&
+      (value as Partial<AppHistoryState>).dogsportsNavigation === true &&
+      typeof (value as Partial<AppHistoryState>).index === "number",
+  );
+const EMPTY_RESULTS: CompetitionResult[] = [];
+const EMPTY_HANDLERS: HandlerProfile[] = [];
+const EMPTY_DOGS: DogProfile[] = [];
 const fmt = (v: number | null, digits = 2) =>
   v === null
     ? "–"
@@ -142,36 +176,174 @@ export default function App() {
 }
 
 function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
-  const results = useLiveQuery(() => db.results.toArray(), []) ?? [];
-  const handlers = useLiveQuery(() => db.handlers.orderBy("name").toArray(), []) ?? [];
-  const dogs = useLiveQuery(() => db.dogs.orderBy("callName").toArray(), []) ?? [];
+  const results = useLiveQuery(() => db.results.toArray(), []) ?? EMPTY_RESULTS;
+  const handlers =
+    useLiveQuery(() => db.handlers.orderBy("name").toArray(), []) ??
+    EMPTY_HANDLERS;
+  const dogs =
+    useLiveQuery(() => db.dogs.orderBy("callName").toArray(), []) ?? EMPTY_DOGS;
   const [sportModule, setSportModule] = useState<SportModule | null>(null);
   const [showProfiles, setShowProfiles] = useState(false);
   const [showCloud, setShowCloud] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [editing, setEditing] = useState<CompetitionResult | null>(null);
-  const open = (r?: CompetitionResult) => {
-    setEditing(structuredClone(r ?? loadNewResultForm()));
-    setTab("new");
+  const [transitionDirection, setTransitionDirection] =
+    useState<ViewTransitionDirection>("lateral");
+  const historyIndex = useRef(0);
+  const historyReady = useRef(false);
+  const panel: AppPanel = showProfiles
+    ? "profiles"
+    : showCloud
+      ? "cloud"
+      : showSettings
+        ? "settings"
+        : null;
+
+  const resolveEditor = useCallback(
+    (editingId: string | null) => {
+      if (!editingId) return null;
+      const localDraft = loadNewResultForm();
+      if (localDraft.id === editingId) return localDraft;
+      const persisted = results.find((result) => result.id === editingId);
+      return persisted ? structuredClone(persisted) : localDraft;
+    },
+    [results],
+  );
+  const applyView = useCallback(
+    (
+      view: Omit<AppHistoryState, "dogsportsNavigation" | "index">,
+      direction: ViewTransitionDirection,
+    ) => {
+      runViewTransition(direction, () => {
+        setTransitionDirection(direction);
+        setSportModule(view.sportModule);
+        setTab(view.tab);
+        setShowProfiles(view.panel === "profiles");
+        setShowCloud(view.panel === "cloud");
+        setShowSettings(view.panel === "settings");
+        setEditing((current) =>
+          view.tab === "new"
+            ? current?.id === view.editingId
+              ? current
+              : resolveEditor(view.editingId)
+            : null,
+        );
+      });
+    },
+    [resolveEditor],
+  );
+  const changeView = (
+    view: Omit<AppHistoryState, "dogsportsNavigation" | "index">,
+    direction: ViewTransitionDirection,
+    mode: "push" | "replace" = "push",
+  ) => {
+    const index =
+      mode === "push" ? historyIndex.current + 1 : historyIndex.current;
+    const state: AppHistoryState = {
+      ...view,
+      dogsportsNavigation: true,
+      index,
+    };
+    historyIndex.current = index;
+    window.history[mode === "push" ? "pushState" : "replaceState"](
+      state,
+      "",
+    );
+    applyView(view, direction);
   };
-  const navigate = (next: Tab) => {
-    setEditing(null);
-    setTab(next);
+  const navigate = (
+    next: Tab,
+    direction = getTabTransitionDirection(tab, next),
+    mode: "push" | "replace" = "push",
+  ) => {
+    if (next === tab && panel === null && mode === "push") return;
+    changeView(
+      {
+        sportModule,
+        tab: next,
+        panel: null,
+        editingId: null,
+      },
+      direction,
+      mode,
+    );
+  };
+  const open = (result?: CompetitionResult) => {
+    const next = structuredClone(result ?? loadNewResultForm());
+    changeView(
+      {
+        sportModule: sportModule ?? "ths",
+        tab: "new",
+        panel: null,
+        editingId: next.id,
+      },
+      "forward",
+    );
   };
   const openModule = (nextModule: SportModule) => {
-    setShowProfiles(false);
-    setShowCloud(false);
-    setShowSettings(false);
-    setSportModule(nextModule);
-    navigate("dashboard");
+    changeView(
+      {
+        sportModule: nextModule,
+        tab: "dashboard",
+        panel: null,
+        editingId: null,
+      },
+      "forward",
+    );
   };
   const goHome = () => {
-    setShowProfiles(false);
-    setShowCloud(false);
-    setShowSettings(false);
-    setSportModule(null);
-    navigate("dashboard");
+    if (!sportModule && panel === null) return;
+    changeView(
+      {
+        sportModule: null,
+        tab: "dashboard",
+        panel: null,
+        editingId: null,
+      },
+      "backward",
+    );
+  };
+
+  useEffect(() => {
+    const initialState: AppHistoryState = {
+      dogsportsNavigation: true,
+      index: 0,
+      sportModule: null,
+      tab: "dashboard",
+      panel: null,
+      editingId: null,
+    };
+    window.history.replaceState(initialState, "");
+    historyIndex.current = 0;
+    historyReady.current = true;
+  }, []);
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (!historyReady.current || !isAppHistoryState(event.state)) return;
+      const direction =
+        event.state.index < historyIndex.current ? "backward" : "forward";
+      historyIndex.current = event.state.index;
+      applyView(event.state, direction);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [applyView]);
+
+  const togglePanel = (nextPanel: Exclude<AppPanel, null>) => {
+    if (panel === nextPanel && historyIndex.current > 0) {
+      window.history.back();
+      return;
+    }
+    changeView(
+      {
+        sportModule,
+        tab,
+        panel: nextPanel,
+        editingId: editing?.id ?? null,
+      },
+      "forward",
+    );
   };
   const backNavigation = showSettings
     ? { target: "close-settings" as const, label: "Einstellungen schließen" }
@@ -181,15 +353,15 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
   const goBack = () => {
     if (!backNavigation) return;
     if (backNavigation.target === "close-settings") {
-      setShowSettings(false);
+      togglePanel("settings");
       return;
     }
     if (backNavigation.target === "close-cloud") {
-      setShowCloud(false);
+      togglePanel("cloud");
       return;
     }
     if (backNavigation.target === "close-profiles") {
-      setShowProfiles(false);
+      togglePanel("profiles");
       return;
     }
     if (backNavigation.target === "home") {
@@ -199,6 +371,17 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
     navigate("dashboard");
   };
   const contentVisible = !showProfiles && !showCloud && !showSettings;
+  const nextSwipeTab = sportModule ? getNextSwipeTab(tab) : null;
+  const swipeHandlers = useSwipeNavigation({
+    disabled: !contentVisible || !sportModule || tab === "new",
+    onSwipeLeft: nextSwipeTab
+      ? () => navigate(nextSwipeTab, "forward")
+      : undefined,
+    onSwipeRight: () => {
+      if (historyIndex.current > 0) window.history.back();
+    },
+  });
+  const viewKey = `${panel ?? sportModule ?? "home"}-${tab}-${editing?.id ?? "none"}`;
   return (
     <div className={`min-h-dvh ${sportModule ? "pb-28" : "pb-8"}`}>
       <header className="app-header">
@@ -236,11 +419,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
           <button
             type="button"
             className={`header-cloud-button ${showCloud ? "active" : ""} ${cloud.status}`}
-            onClick={() => {
-              setShowProfiles(false);
-              setShowSettings(false);
-              setShowCloud((current) => !current);
-            }}
+            onClick={() => togglePanel("cloud")}
             aria-label={
               cloud.user
                 ? `Cloud-Sicherung öffnen, ${cloud.pendingCount} Änderung(en) warten`
@@ -254,11 +433,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
           <button
             type="button"
             className={`header-profile-button ${showProfiles ? "active" : ""}`}
-            onClick={() => {
-              setShowCloud(false);
-              setShowSettings(false);
-              setShowProfiles((current) => !current);
-            }}
+            onClick={() => togglePanel("profiles")}
             aria-label="Hundeführer und Hunde verwalten"
           >
             <UsersRound aria-hidden="true" />
@@ -267,11 +442,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
           <button
             type="button"
             className={`header-settings-button ${showSettings ? "active" : ""}`}
-            onClick={() => {
-              setShowCloud(false);
-              setShowProfiles(false);
-              setShowSettings((current) => !current);
-            }}
+            onClick={() => togglePanel("settings")}
             aria-label="Darstellung einstellen"
             title="Einstellungen"
           >
@@ -280,7 +451,12 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
           </button>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl space-y-5 px-4 py-5">
+      <main className="mx-auto max-w-6xl px-4 py-5">
+        <div className="app-swipe-surface" {...swipeHandlers}>
+          <div
+            className={`app-view app-view--${transitionDirection}`}
+            key={viewKey}
+          >
         {showCloud ? <CloudSyncPanel cloud={cloud} /> : null}
         {showProfiles ? <ProfilesManager handlers={handlers} dogs={dogs} /> : null}
         {showSettings ? <ThemeSettings /> : null}
@@ -295,12 +471,12 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
           <Editor
             key={editing?.id ?? "new"}
             initial={editing ?? loadNewResultForm()}
-            close={() => navigate("results")}
+            close={() => navigate("results", "backward", "replace")}
             onChange={setEditing}
             handlers={handlers}
             dogs={dogs}
             results={results}
-            manageProfiles={() => setShowProfiles(true)}
+            manageProfiles={() => togglePanel("profiles")}
           />
         ) : null}
         {contentVisible && sportModule === "ths" && tab === "stats" ? (
@@ -328,6 +504,8 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
         {contentVisible && sportModule === "ibgh" && tab === "stats" ? (
           <ModulePlaceholder module="IBGH" title="Statistik" />
         ) : null}
+          </div>
+        </div>
       </main>
       {sportModule && contentVisible ? (
         <nav
@@ -894,6 +1072,9 @@ function Editor({
     [step, setStepState] = useState<ResultFormStep>(() =>
       loadResultFormStep(initial.id),
     ),
+    [stepDirection, setStepDirection] = useState<"forward" | "backward">(
+      "forward",
+    ),
     [isSaving, setIsSaving] = useState(false),
     score = calculateScore(form);
   const { notify } = useFeedback();
@@ -911,6 +1092,7 @@ function Editor({
     }
   };
   const changeStep = (next: ResultFormStep) => {
+    setStepDirection(next > stepRef.current ? "forward" : "backward");
     stepRef.current = next;
     setStepState(next);
     saveResultFormStep(formRef.current.id, next);
@@ -950,6 +1132,7 @@ function Editor({
     const next = resetResultForm();
     formRef.current = next;
     stepRef.current = 1;
+    setStepDirection("backward");
     setFormState(next);
     setStepState(1);
     onChange(next);
@@ -1073,8 +1256,9 @@ function Editor({
       </div>
       <ResultEntryProgress step={step} onStepChange={changeStep} />
       <section
-        className="result-entry-step"
+        className={`result-entry-step step-${stepDirection}`}
         aria-labelledby={`result-step-${step}`}
+        key={step}
         {...swipeHandlers}
       >
         <h3
@@ -1807,7 +1991,9 @@ function Nav({
       type="button"
       className={active ? "active" : ""}
       aria-current={active ? "page" : undefined}
-      onClick={onClick}
+      onClick={() => {
+        if (!active) onClick();
+      }}
     >
       {icon}
       <span>{label}</span>

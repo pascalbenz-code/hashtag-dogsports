@@ -14,9 +14,12 @@ describe("DigitalJudgeForm", () => {
         note="Test"
       />,
     );
+    const text = html.replace(/<[^>]+>/g, "");
 
-    expect(html).toContain("−3,5");
-    expect(html).toContain("−5,0");
+    expect(text).toContain("−3,5 Punkte");
+    expect(text).toContain("−5 Punkte");
+    expect(text).toContain("0 FP");
+    expect(text).toContain("60 Punkte");
     expect(html).not.toContain(">Mangelhaft</span>");
     expect(html).toContain("numeric-value--hero");
     expect(html).toContain("numeric-value--score");

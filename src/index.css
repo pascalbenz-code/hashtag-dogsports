@@ -187,8 +187,34 @@ h3 {
 .app-button-sm { min-height: 40px; padding: 0.45rem 0.7rem; font-size: 0.74rem; }
 .app-button-icon { width: 44px; padding: 0; }
 
-main > * {
-  animation: page-enter var(--motion-base) var(--ease-sport) both;
+.app-swipe-surface {
+  min-width: 0;
+  transform: translate3d(var(--swipe-offset, 0), 0, 0);
+  will-change: auto;
+}
+.app-swipe-surface.is-swiping {
+  will-change: transform;
+}
+.app-swipe-surface.is-swipe-returning {
+  transition: transform var(--motion-base) var(--ease-sport);
+}
+.app-view {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+  view-transition-name: app-view;
+}
+.app-view--forward {
+  animation: view-enter-forward var(--motion-base) var(--ease-sport) both;
+}
+.app-view--backward {
+  animation: view-enter-backward var(--motion-base) var(--ease-sport) both;
+}
+.app-view--lateral {
+  animation: view-enter-lateral var(--motion-base) var(--ease-sport) both;
+}
+.view-transitions-supported .app-view {
+  animation: none;
 }
 
 .start-page {
@@ -393,6 +419,14 @@ main > * {
   min-height: 260px;
   touch-action: pan-y;
   animation: step-enter var(--motion-base) var(--ease-sport) both;
+  transform: translate3d(var(--swipe-offset, 0), 0, 0);
+}
+.result-entry-step.is-swiping { will-change: transform; }
+.result-entry-step.is-swipe-returning {
+  transition: transform var(--motion-base) var(--ease-sport);
+}
+.result-entry-step.step-backward {
+  animation-name: step-enter-backward;
 }
 .result-entry-navigation {
   position: sticky;
@@ -467,17 +501,40 @@ main > * {
   font-variant-numeric: tabular-nums lining-nums;
   letter-spacing: -0.025em;
 }
+.numeric-value .numeric-unit {
+  margin-left: 0.05em;
+  font-size: 0.78em;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+.numeric-value--hero .numeric-unit { font-size: 0.34em; }
 .numeric-value--hero { font-size: clamp(2rem, 8vw, 3.5rem); font-weight: 900; line-height: 1; }
 .numeric-value--score { font-size: 1.25rem; font-weight: 850; line-height: 1.1; }
 .numeric-value--compact { font-size: 0.78rem; font-weight: 800; }
 
-@keyframes page-enter {
-  from { opacity: 0; transform: translateY(5px); }
+@keyframes view-enter-forward {
+  from { opacity: 0; transform: translate3d(20px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes view-enter-backward {
+  from { opacity: 0; transform: translate3d(-20px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes view-enter-lateral {
+  from { opacity: 0; transform: translate3d(0, 5px, 0); }
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes step-enter {
   from { opacity: 0; transform: translateX(8px); }
   to { opacity: 1; transform: translateX(0); }
+}
+@keyframes step-enter-backward {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes dialog-enter {
+  from { opacity: 0; transform: translateY(-4px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes feedback-enter {
   0% { opacity: 0; transform: translateY(18px) scale(0.97); }
@@ -488,6 +545,44 @@ main > * {
   60% { transform: scale(1.12) rotate(4deg); }
   100% { transform: scale(1) rotate(0); }
 }
+
+::view-transition-old(app-view),
+::view-transition-new(app-view) {
+  animation-duration: var(--motion-base);
+  animation-timing-function: var(--ease-sport);
+}
+html[data-navigation-direction="forward"]::view-transition-old(app-view) {
+  animation-name: view-old-forward;
+}
+html[data-navigation-direction="forward"]::view-transition-new(app-view) {
+  animation-name: view-new-forward;
+}
+html[data-navigation-direction="backward"]::view-transition-old(app-view) {
+  animation-name: view-old-backward;
+}
+html[data-navigation-direction="backward"]::view-transition-new(app-view) {
+  animation-name: view-new-backward;
+}
+html[data-navigation-direction="lateral"]::view-transition-old(app-view) {
+  animation-name: view-old-lateral;
+}
+html[data-navigation-direction="lateral"]::view-transition-new(app-view) {
+  animation-name: view-new-lateral;
+}
+@keyframes view-old-forward {
+  to { opacity: 0; transform: translate3d(-5%, 0, 0); }
+}
+@keyframes view-new-forward {
+  from { opacity: 0; transform: translate3d(9%, 0, 0); }
+}
+@keyframes view-old-backward {
+  to { opacity: 0; transform: translate3d(9%, 0, 0); }
+}
+@keyframes view-new-backward {
+  from { opacity: 0; transform: translate3d(-5%, 0, 0); }
+}
+@keyframes view-old-lateral { to { opacity: 0; } }
+@keyframes view-new-lateral { from { opacity: 0; } }
 
 .app-header {
   position: sticky;
@@ -1133,6 +1228,7 @@ main > * {
   background: var(--primary-soft);
   padding: 0.75rem;
   color: var(--text-soft);
+  animation: dialog-enter var(--motion-base) var(--ease-sport) both;
 }
 .judge-info-box > strong {
   font-size: 0.76rem;
@@ -1926,6 +2022,10 @@ html[data-theme="dark"] {
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  ::view-transition-old(app-view),
+  ::view-transition-new(app-view) {
+    animation-duration: 0.01ms !important;
+  }
   *,
   *::before,
   *::after {

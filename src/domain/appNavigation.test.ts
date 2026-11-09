@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getBackNavigation, type SportModule, type Tab } from "./appNavigation";
+import {
+  getBackNavigation,
+  getNextSwipeTab,
+  getTabTransitionDirection,
+  type SportModule,
+  type Tab,
+} from "./appNavigation";
 
 describe("app back navigation", () => {
   it("does not show a back action on the start page", () => {
@@ -50,5 +56,14 @@ describe("app back navigation", () => {
       target: "close-profiles",
       label: "Zurück zur vorherigen Ansicht",
     });
+  });
+
+  it("orders top-level transitions without enabling app swipes in the editor", () => {
+    expect(getTabTransitionDirection("dashboard", "results")).toBe("forward");
+    expect(getTabTransitionDirection("stats", "judge")).toBe("backward");
+    expect(getNextSwipeTab("dashboard")).toBe("judge");
+    expect(getNextSwipeTab("results")).toBe("stats");
+    expect(getNextSwipeTab("new")).toBeNull();
+    expect(getNextSwipeTab("stats")).toBeNull();
   });
 });

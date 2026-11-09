@@ -45,10 +45,12 @@ export function useStepSwipe({
   disabled?: boolean;
 }): {
   onTouchStart: TouchEventHandler<HTMLElement>;
+  onTouchMove: TouchEventHandler<HTMLElement>;
   onTouchEnd: TouchEventHandler<HTMLElement>;
   onTouchCancel: TouchEventHandler<HTMLElement>;
 } {
   const start = useRef<SwipePoint | null>(null);
+  const horizontalGesture = useRef(false);
 
   const onTouchStart: TouchEventHandler<HTMLElement> = (event) => {
     const touch = event.touches[0];
@@ -56,22 +58,72 @@ export function useStepSwipe({
       disabled || !touch || isInteractiveSwipeTarget(event.target)
         ? null
         : { x: touch.clientX, y: touch.clientY };
+    horizontalGesture.current = false;
+  };
+  const onTouchMove: TouchEventHandler<HTMLElement> = (event) => {
+    const origin = start.current;
+    const touch = event.touches[0];
+    if (!origin || !touch || disabled) return;
+    const horizontal = touch.clientX - origin.x;
+    const vertical = touch.clientY - origin.y;
+    if (
+      Math.abs(horizontal) < 8 ||
+      Math.abs(vertical) > Math.abs(horizontal) * 0.65
+    )
+      return;
+    horizontalGesture.current = true;
+    const offset = Math.max(-72, Math.min(72, horizontal * 0.3));
+    event.currentTarget.classList.add("is-swiping");
+    event.currentTarget.style.setProperty("--swipe-offset", `${offset}px`);
   };
   const onTouchEnd: TouchEventHandler<HTMLElement> = (event) => {
     const origin = start.current;
     start.current = null;
     const touch = event.changedTouches[0];
-    if (!origin || !touch || disabled) return;
+    const element = event.currentTarget;
+    if (!origin || !touch || disabled) {
+      element.classList.remove("is-swiping");
+      element.style.removeProperty("--swipe-offset");
+      horizontalGesture.current = false;
+      return;
+    }
     const next = resolveSwipeStep(
       origin,
       { x: touch.clientX, y: touch.clientY },
       step,
     );
+    if (next === null && horizontalGesture.current) {
+      element.classList.add("is-swipe-returning");
+      window.requestAnimationFrame(() =>
+        element.style.removeProperty("--swipe-offset"),
+      );
+      window.setTimeout(
+        () => element.classList.remove("is-swipe-returning"),
+        240,
+      );
+    } else {
+      element.style.removeProperty("--swipe-offset");
+    }
+    element.classList.remove("is-swiping");
+    horizontalGesture.current = false;
     if (next !== null) onStepChange(next);
   };
-  const onTouchCancel: TouchEventHandler<HTMLElement> = () => {
+  const onTouchCancel: TouchEventHandler<HTMLElement> = (event) => {
+    const element = event.currentTarget;
     start.current = null;
+    element.classList.toggle(
+      "is-swipe-returning",
+      horizontalGesture.current,
+    );
+    element.classList.remove("is-swiping");
+    element.style.removeProperty("--swipe-offset");
+    if (horizontalGesture.current)
+      window.setTimeout(
+        () => element.classList.remove("is-swipe-returning"),
+        240,
+      );
+    horizontalGesture.current = false;
   };
 
-  return { onTouchStart, onTouchEnd, onTouchCancel };
+  return { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel };
 }
