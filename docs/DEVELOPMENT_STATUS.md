@@ -20,6 +20,8 @@ Stand: 2026-11-09. Basis ist der Branch `feature/ui-ux-modernization`; `28fc5ac`
 
 ## Letzte relevante Änderungen
 
+Community-Erweiterung: globale Navigation, Vereinssuche/-anlage, Vereinsseiten, offener Beitritt/Austritt und Mitgliederfeed. Vollständige THS-Ergebnisse können nach expliziter Zustimmung als Zusammenfassung geteilt und zurückgezogen werden. Additive Supabase-Migration für drei RLS-geschützte Tabellen, atomare Vereinserstellung. Details und verbleibende Grenzen: `docs/COMMUNITY.md`. Geprüft mit 305 Unit-/Datenbanktests und mobilem Browser-Harness einschließlich Erstellung, Teilen, Zurückziehen, Austritt und Wiederbeitritt.
+
 Commit `28fc5ac` modernisierte die Oberfläche ohne beabsichtigte Fachlogikänderung:
 
 - einheitliche Design-Tokens und manuelle Theme-Auswahl;

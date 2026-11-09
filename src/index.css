@@ -695,6 +695,20 @@ html[data-navigation-direction="lateral"]::view-transition-new(app-view) {
   align-items: center;
   gap: 0.4rem;
 }
+.community-club {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 64px;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.community-club > span:first-of-type { flex: 1; min-width: 0; }
+.community-club small { display: block; color: var(--text-soft); }
 .header-cloud-button {
   position: relative;
   display: grid;

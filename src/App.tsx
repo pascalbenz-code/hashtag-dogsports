@@ -111,6 +111,7 @@ import {
 } from "./lib/viewTransition";
 
 const PerformanceChart = lazy(() => import("./components/PerformanceChart"));
+const Community = lazy(() => import("./components/Community").then(({ Community }) => ({ default: Community })));
 const JudgeForm = lazy(() =>
   import("./components/JudgeForm").then(({ JudgeForm }) => ({
     default: JudgeForm,
@@ -128,7 +129,7 @@ const tabTitles: Record<Tab, string> = {
   new: "Neuer Eintrag",
   stats: "Statistik",
 };
-type AppPanel = "profiles" | "cloud" | "settings" | null;
+type AppPanel = "profiles" | "cloud" | "settings" | "community" | null;
 interface AppHistoryState {
   dogsportsNavigation: true;
   index: number;
@@ -186,13 +187,14 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
   const [showProfiles, setShowProfiles] = useState(false);
   const [showCloud, setShowCloud] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCommunity, setShowCommunity] = useState(false);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [editing, setEditing] = useState<CompetitionResult | null>(null);
   const [transitionDirection, setTransitionDirection] =
     useState<ViewTransitionDirection>("lateral");
   const historyIndex = useRef(0);
   const historyReady = useRef(false);
-  const panel: AppPanel = showProfiles
+  const panel: AppPanel = showCommunity ? "community" : showProfiles
     ? "profiles"
     : showCloud
       ? "cloud"
@@ -222,6 +224,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
         setShowProfiles(view.panel === "profiles");
         setShowCloud(view.panel === "cloud");
         setShowSettings(view.panel === "settings");
+        setShowCommunity(view.panel === "community");
         setEditing((current) =>
           view.tab === "new"
             ? current?.id === view.editingId
@@ -346,13 +349,19 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
       "forward",
     );
   };
-  const backNavigation = showSettings
+  const backNavigation = showCommunity
+    ? { target: "close-community" as const, label: "Community schließen" }
+    : showSettings
     ? { target: "close-settings" as const, label: "Einstellungen schließen" }
     : showCloud
     ? { target: "close-cloud" as const, label: "Cloud-Sicherung schließen" }
     : getBackNavigation({ sportModule, tab, showProfiles });
   const goBack = () => {
     if (!backNavigation) return;
+    if (backNavigation.target === "close-community") {
+      togglePanel("community");
+      return;
+    }
     if (backNavigation.target === "close-settings") {
       togglePanel("settings");
       return;
@@ -371,7 +380,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
     }
     navigate("dashboard");
   };
-  const contentVisible = !showProfiles && !showCloud && !showSettings;
+  const contentVisible = !showProfiles && !showCloud && !showSettings && !showCommunity;
   const nextSwipeTab = sportModule ? getNextSwipeTab(tab) : null;
   const viewKey = `${panel ?? sportModule ?? "home"}-${tab}-${editing?.id ?? "none"}`;
   const swipeHandlers = useSwipeNavigation({
@@ -406,7 +415,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
         >
           <span className="brand">#Dogsports</span>
           <span className="crumb">
-            {showCloud
+            {showCommunity ? "Community · Vereine & Neuigkeiten" : showCloud
               ? "Cloud-Sicherung · alle Module"
               : showSettings
               ? "Einstellungen · alle Module"
@@ -460,8 +469,10 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
             key={viewKey}
           >
         {showCloud ? <CloudSyncPanel cloud={cloud} /> : null}
-        {showProfiles ? <ProfilesManager handlers={handlers} dogs={dogs} /> : null}
+        {showProfiles ? <><Button variant="secondary" onClick={() => togglePanel("community")}>Verein suchen oder beitreten</Button><ProfilesManager handlers={handlers} dogs={dogs} /></> : null}
         {showSettings ? <ThemeSettings /> : null}
+        {showCommunity && cloud.user ? <Suspense fallback={<Card>Community wird geladen …</Card>}><Community userId={cloud.user.id} results={results} suggestedClubs={[...new Set(handlers.map(h => h.club.trim()).filter(Boolean))]} /></Suspense> : null}
+        {contentVisible ? <Button variant="secondary" onClick={() => togglePanel("community")}><UsersRound size={18} /> Community · Meine Vereine</Button> : null}
         {contentVisible && !sportModule ? <StartPage openModule={openModule} /> : null}
         {contentVisible && sportModule === "ths" && tab === "dashboard" ? (
           <Dashboard results={results} open={open} />
