@@ -100,6 +100,12 @@ try{
   await page.waitForTimeout(20);
  }
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await page.getByRole('heading',{name:'Ergebnis erfassen'}).waitFor();
+ for(const step of [2,3]){
+  await swipe('.result-entry-step',300,110);
+  await page.getByRole('heading',{name:new RegExp(`Schritt ${step}:`)}).waitFor();
+ }
+ await swipe('.result-entry-step',300,110);
  await page.getByText('Statistiken vergleichen ausschließlich',{exact:false}).waitFor();
  await page.waitForTimeout(250);
  await page.screenshot({path:'/tmp/dogsports-swipe-statistics.png'});
@@ -118,6 +124,8 @@ try{
  assert.equal(scale.x,1);
  assert.equal(scale.y,1);
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await page.getByRole('heading',{name:'Ergebnis erfassen'}).waitFor();
+ await page.getByRole('button',{name:'Ergebnisse',exact:true}).click();
  await resultCard.waitFor();
  console.log('REVERSE_SWIPE_PRESERVES_SCALE',JSON.stringify(scale));
  await page.waitForTimeout(300);
@@ -136,6 +144,12 @@ try{
  await page.getByText('DIGITALER LEISTUNGSRICHTER',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Zur Startseite',exact:true}).click();
  await page.getByText('IBGH',{exact:true}).first().click();
+ await page.getByRole('button',{name:'Ergebnisse',exact:true}).click();
+ await swipe('.app-swipe-surface',300,110);
+ await page.getByRole('heading',{name:'Neuer Eintrag',exact:true}).waitFor();
+ await swipe('.app-swipe-surface',300,110);
+ await page.getByRole('heading',{name:'Statistik',exact:true}).waitFor();
+ console.log('THS_IBGH_NEW_ENTRY_SWIPE_ORDER_OK');
  await page.getByRole('button',{name:'Leistungsrichter',exact:true}).click();
  await page.getByText('DIGITALER LEISTUNGSRICHTER',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Hundeführer und Hunde verwalten',exact:true}).click();

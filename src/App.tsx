@@ -375,10 +375,10 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
   const nextSwipeTab = sportModule ? getNextSwipeTab(tab) : null;
   const viewKey = `${panel ?? sportModule ?? "home"}-${tab}-${editing?.id ?? "none"}`;
   const swipeHandlers = useSwipeNavigation({
-    disabled: !contentVisible || !sportModule || tab === "new",
+    disabled: !contentVisible || !sportModule,
     viewKey,
     onSwipeLeft: nextSwipeTab
-      ? () => navigate(nextSwipeTab, "forward")
+      ? () => nextSwipeTab === "new" && sportModule === "ths" ? open() : navigate(nextSwipeTab, "forward")
       : undefined,
     onSwipeRight: () => {
       if (historyIndex.current > 0) window.history.back();
@@ -479,6 +479,8 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
             dogs={dogs}
             results={results}
             manageProfiles={() => togglePanel("profiles")}
+            previousPage={() => navigate("results", "backward")}
+            nextPage={() => navigate("stats", "forward")}
           />
         ) : null}
         {contentVisible && sportModule === "ths" && tab === "stats" ? (
@@ -1045,6 +1047,8 @@ function additionalResultSummary(result: CompetitionResult) {
   return "–";
 }
 function Editor({
+  previousPage,
+  nextPage,
   initial,
   close,
   onChange,
@@ -1053,6 +1057,8 @@ function Editor({
   results,
   manageProfiles,
 }: {
+  previousPage: () => void;
+  nextPage: () => void;
   initial: CompetitionResult;
   close: () => void;
   onChange: (result: CompetitionResult) => void;
@@ -1103,6 +1109,8 @@ function Editor({
   const swipeHandlers = useStepSwipe({
     step,
     onStepChange: changeStep,
+    onPreviousPage: previousPage,
+    onNextPage: nextPage,
     disabled: isSaving,
   });
 
@@ -1259,6 +1267,7 @@ function Editor({
       <ResultEntryProgress step={step} onStepChange={changeStep} />
       <section
         className={`result-entry-step step-${stepDirection}`}
+        data-no-app-swipe
         aria-labelledby={`result-step-${step}`}
         key={step}
         {...swipeHandlers}

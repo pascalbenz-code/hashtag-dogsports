@@ -50,7 +50,7 @@ Backups verwenden JSON-Schema-Version 3 und enthalten Ergebnisse sowie Profile. 
 - Auth-Gate blockiert die komplette Fachanwendung ohne gültige Sitzung.
 - Startseite: THS-/IBGH-Auswahl und globale Profilverwaltung.
 - THS-Erfassung: Zuordnung → Prüfungsdaten → Leistungsdaten; Zwischenspeichern/Wiederaufnehmen und Wischgesten.
-- Begrenzte App-Wischsteuerung: Dashboard → Leistungsrichter → Ergebnisse → Statistik nach links; nach rechts entlang des Browser-Verlaufs. Editor, Diagramme, Tabellen, Formfelder und Bildschirmränder sind ausgeschlossen.
+- App-Wischsteuerung: Dashboard → Leistungsrichter → Ergebnisse → Neuer Eintrag → Statistik nach links; nach rechts entlang des Browser-Verlaufs. Innerhalb des THS-Formulars wechseln Gesten zunächst die drei Eingabeschritte; am ersten/letzten Schritt führen sie zur Ergebnisliste/Statistik. Formfelder, Diagramme, Tabellen und Bildschirmränder bleiben geschützt.
 - Ergebnisbearbeitung wird aus der Ergebnisliste geöffnet; finales Speichern leert die Maske.
 - Referenzgrafiken für Hürde, Slalom und Hindernislauf sind interaktiv überlagert; hinterlegte Fehler werden rot markiert.
 - System/Hell/Dunkel ist über CSS-Tokens umgesetzt und in `dogsports-theme` gespeichert.

@@ -39,10 +39,14 @@ export function useStepSwipe({
   step,
   onStepChange,
   disabled = false,
+  onPreviousPage,
+  onNextPage,
 }: {
   step: ResultFormStep;
   onStepChange: (step: ResultFormStep) => void;
   disabled?: boolean;
+  onPreviousPage?: () => void;
+  onNextPage?: () => void;
 }): {
   onTouchStart: TouchEventHandler<HTMLElement>;
   onTouchMove: TouchEventHandler<HTMLElement>;
@@ -107,6 +111,10 @@ export function useStepSwipe({
     element.classList.remove("is-swiping");
     horizontalGesture.current = false;
     if (next !== null) onStepChange(next);
+    else if (resolveSwipeStep(origin, { x: touch.clientX, y: touch.clientY }, 2) === 1 && step === 1)
+      onPreviousPage?.();
+    else if (resolveSwipeStep(origin, { x: touch.clientX, y: touch.clientY }, 2) === 3 && step === 3)
+      onNextPage?.();
   };
   const onTouchCancel: TouchEventHandler<HTMLElement> = (event) => {
     const element = event.currentTarget;

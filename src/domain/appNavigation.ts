@@ -12,6 +12,7 @@ const SWIPE_TAB_ORDER: readonly Tab[] = [
   "dashboard",
   "judge",
   "results",
+  "new",
   "stats",
 ];
 

@@ -62,8 +62,8 @@ describe("app back navigation", () => {
     expect(getTabTransitionDirection("dashboard", "results")).toBe("forward");
     expect(getTabTransitionDirection("stats", "judge")).toBe("backward");
     expect(getNextSwipeTab("dashboard")).toBe("judge");
-    expect(getNextSwipeTab("results")).toBe("stats");
-    expect(getNextSwipeTab("new")).toBeNull();
+    expect(getNextSwipeTab("results")).toBe("new");
+    expect(getNextSwipeTab("new")).toBe("stats");
     expect(getNextSwipeTab("stats")).toBeNull();
   });
 });
