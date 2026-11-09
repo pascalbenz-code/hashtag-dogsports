@@ -88,6 +88,25 @@ try{
  await page.locator('input[type=file]').setInputFiles({name:'test.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(backup))});
  await page.getByText('1 Datensätze',{exact:true}).waitFor();
  assert(dialogs.some(x=>x.includes('3 neu')));
+ const resultCard=page.locator('button[data-swipe-card]').first();
+ await resultCard.scrollIntoViewIfNeeded();
+ const box=await resultCard.boundingBox();
+ assert(box && box.width>150);
+ const cdp=await context.newCDPSession(page);
+ const touchY=Math.round(box.y+box.height/2);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:300,y:touchY}]});
+ for(const x of [260,220,180,140,100]){
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:touchY}]});
+  await page.waitForTimeout(20);
+ }
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await page.getByText('Statistiken vergleichen ausschließlich',{exact:false}).waitFor();
+ await page.screenshot({path:'/tmp/dogsports-swipe-statistics.png'});
+ await page.getByRole('button',{name:'Ergebnisse',exact:true}).click();
+ await resultCard.tap();
+ await page.getByRole('heading',{name:'Ergebnis erfassen'}).waitFor();
+ await page.getByRole('button',{name:'Ergebnisse',exact:true}).click();
+ console.log('RESULT_CARD_SWIPE_AND_TAP_OK');
  const downloadPromise=page.waitForEvent('download');
  await page.getByRole('button',{name:/CSV/}).click();
  const download=await downloadPromise;

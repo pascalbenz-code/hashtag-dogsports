@@ -1,4 +1,4 @@
-import { useRef, type TouchEventHandler } from "react";
+import { useEffect, useRef, type MouseEventHandler, type TouchEventHandler } from "react";
 
 interface SwipePoint {
   x: number;
@@ -12,10 +12,9 @@ const INTERACTIVE_SELECTOR = [
   "input",
   "select",
   "textarea",
-  "button",
+  "button:not([data-swipe-card])",
   "a",
   "canvas",
-  "svg",
   "table",
   "[role='button']",
   "[role='dialog']",
@@ -87,9 +86,17 @@ export function useSwipeNavigation({
   onTouchMove: TouchEventHandler<HTMLElement>;
   onTouchEnd: TouchEventHandler<HTMLElement>;
   onTouchCancel: TouchEventHandler<HTMLElement>;
+  onClickCapture: MouseEventHandler<HTMLElement>;
 } {
   const start = useRef<SwipePoint | null>(null);
   const axis = useRef<"horizontal" | "vertical" | null>(null);
+  const committing = useRef(false);
+  const suppressClickUntil = useRef(0);
+  const swipeCard = useRef<Element | null>(null);
+  const commitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (commitTimer.current !== null) clearTimeout(commitTimer.current);
+  }, []);
 
   const onTouchStart: TouchEventHandler<HTMLElement> = (event) => {
     const touch = event.touches[0];
@@ -97,8 +104,11 @@ export function useSwipeNavigation({
     const isNativeGestureEdge =
       Boolean(touch) &&
       (touch.clientX <= 24 || touch.clientX >= viewportWidth - 24);
+    swipeCard.current = event.target instanceof Element
+      ? event.target.closest("[data-swipe-card]") : null;
     start.current =
       disabled ||
+      committing.current ||
       event.touches.length !== 1 ||
       !touch ||
       isNativeGestureEdge ||
@@ -143,9 +153,28 @@ export function useSwipeNavigation({
       time: performance.now(),
     }) : null;
     const canNavigate = direction === "left" ? onSwipeLeft : direction === "right" ? onSwipeRight : undefined;
-    resetSurface(event.currentTarget, !canNavigate && wasHorizontal);
-    if (direction === "left") onSwipeLeft?.();
-    if (direction === "right") onSwipeRight?.();
+    if (!canNavigate) {
+      resetSurface(event.currentTarget, wasHorizontal);
+      return;
+    }
+    const element = event.currentTarget;
+    committing.current = true;
+    suppressClickUntil.current = performance.now() + 700;
+    element.classList.remove("is-swiping", "is-swipe-returning");
+    element.classList.add("is-swipe-committing");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!reducedMotion)
+      requestAnimationFrame(() => {
+        if (committing.current)
+          element.style.setProperty("--swipe-offset", `${direction === "left" ? -window.innerWidth : window.innerWidth}px`);
+      });
+    commitTimer.current = setTimeout(() => {
+      element.classList.remove("is-swipe-committing");
+      element.style.removeProperty("--swipe-offset");
+      committing.current = false;
+      commitTimer.current = null;
+      canNavigate();
+    }, reducedMotion ? 0 : 160);
   };
 
   const onTouchCancel: TouchEventHandler<HTMLElement> = (event) => {
@@ -155,5 +184,13 @@ export function useSwipeNavigation({
     resetSurface(event.currentTarget, shouldAnimate);
   };
 
-  return { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel };
+  const onClickCapture: MouseEventHandler<HTMLElement> = (event) => {
+    if (event.detail !== 0 && event.target instanceof Node && swipeCard.current?.contains(event.target) && performance.now() < suppressClickUntil.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      suppressClickUntil.current = 0;
+    }
+  };
+
+  return { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, onClickCapture };
 }

@@ -1896,7 +1896,7 @@ function ResultCard({
 }) {
   const s = calculateScore(result);
   return (
-    <button type="button" className="w-full text-left" onClick={onClick}>
+    <button type="button" className="w-full text-left" data-swipe-card onClick={onClick}>
       <Card className="flex items-center gap-4">
         <div className="result-score">
           {s.total === null

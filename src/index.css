@@ -194,8 +194,14 @@ h3 {
   will-change: transform;
 }
 .app-swipe-surface.is-swiping,
-.app-swipe-surface.is-swipe-returning {
+.app-swipe-surface.is-swipe-returning,
+.app-swipe-surface.is-swipe-committing {
   transform: translate3d(var(--swipe-offset, 0px), 0, 0);
+}
+.app-swipe-surface.is-swipe-committing {
+  transition: transform 160ms ease-in;
+  pointer-events: none;
+  will-change: transform;
 }
 .app-swipe-surface.is-swipe-returning {
   transition: transform var(--motion-base) var(--ease-sport);
@@ -205,17 +211,18 @@ h3 {
 }
 .app-view > * + * { margin-top: 1.25rem; }
 .app-view :is(h1, h2, h3, p),
+.app-view [data-swipe-card],
 .app-view .app-card:not(:has(table, .recharts-wrapper, [role="slider"])) {
   touch-action: pan-y;
 }
 .app-view--forward {
-  animation: view-enter-forward var(--motion-base) var(--ease-sport) both;
+  animation: view-enter-forward var(--motion-base) var(--ease-sport);
 }
 .app-view--backward {
-  animation: view-enter-backward var(--motion-base) var(--ease-sport) both;
+  animation: view-enter-backward var(--motion-base) var(--ease-sport);
 }
 .app-view--lateral {
-  animation: view-enter-lateral var(--motion-base) var(--ease-sport) both;
+  animation: view-enter-lateral var(--motion-base) var(--ease-sport);
 }
 
 .start-page {
