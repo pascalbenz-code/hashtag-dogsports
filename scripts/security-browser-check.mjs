@@ -32,7 +32,7 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE || undefined,headless:true});
 const errors=[];const violations=[];
 const communityUser='11111111-1111-4111-8111-111111111111';
-const communityClub={id:'44444444-4444-4444-8444-444444444444',name:'Mobile Testverein',city:'Teststadt',description:'Gemeinsam trainieren',created_by:communityUser,created_at:new Date().toISOString()};
+const communityClub={id:'44444444-4444-4444-8444-444444444444',public_id:'*A000001',name:'Mobile Testverein',city:'Teststadt',description:'Gemeinsam trainieren',created_by:communityUser,created_at:new Date().toISOString()};
 let testClubs=[], testMembers=[], testPosts=[];
 let notificationRead=null;
 let failNextShare=false;
@@ -46,6 +46,8 @@ try{
   if(url.hostname==='eeuugnoccfdkgslvphql.supabase.co'){
    const table=url.pathname.split('/').at(-1),method=route.request().method();
    const json=body=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
+   if(table==='dogsports_user_ids')return json({public_id:'#A000001'});
+   if(table==='dogsports_dog_ids')return json([{record_id:'d',public_id:'+A000001'}]);
    if(table==='dogsports_notification_reads'){
     if(method==='POST')notificationRead=route.request().postDataJSON().read_through;
     return json(method==='GET'?(notificationRead?{read_through:notificationRead}:null):[]);
@@ -245,6 +247,30 @@ try{
  await page.reload();
  await page.getByRole('button',{name:'Benachrichtigungen öffnen, 0 ungelesen',exact:true}).waitFor();
  console.log('QUICK_SHARE_SAVE_AND_SHARE_NOTIFICATION_READ_OK');
+
+ await page.getByRole('button',{name:'Darstellung einstellen',exact:true}).click();
+ await page.getByText('#A000001',{exact:true}).waitFor();
+ await page.getByRole('checkbox',{name:'IBGH anzeigen',exact:true}).uncheck();
+ await page.getByRole('button',{name:'Zur Startseite',exact:true}).click();
+ assert.equal(await page.getByText('IBGH',{exact:true}).count(),0);
+ await page.reload();
+ await page.getByText('THS',{exact:true}).waitFor();
+ assert.equal(await page.getByText('IBGH',{exact:true}).count(),0);
+ await page.getByRole('button',{name:'Darstellung einstellen',exact:true}).click();
+ await page.getByRole('button',{name:'Alle Module anzeigen',exact:true}).click();
+ await page.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{window.__invite=data;}}));
+ await page.getByRole('button',{name:'Freunde zur App einladen',exact:true}).click();
+ assert.equal(await page.evaluate(()=>window.__invite.url),'https://hashtag-dogsports.vercel.app');
+ await page.evaluate(()=>{Object.defineProperty(navigator,'share',{configurable:true,value:undefined});Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.__copiedInvite=text;}}});});
+ await page.getByRole('button',{name:'Freunde zur App einladen',exact:true}).click();
+ assert.equal(await page.evaluate(()=>window.__copiedInvite),'https://hashtag-dogsports.vercel.app');
+ await page.screenshot({path:'/tmp/dogsports-settings-personalization.png',fullPage:true});
+ await page.getByRole('button',{name:'Zur Startseite',exact:true}).click();
+ await page.getByText('IBGH',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Hundeführer und Hunde verwalten',exact:true}).click();
+ await page.getByRole('tab',{name:'Hunde (1)',exact:true}).click();
+ await page.getByText(/Hund-ID: \+A000001/).waitFor();
+ console.log('MODULE_PREFERENCES_INVITE_NATIVE_AND_FALLBACK_IDENTIFIERS_OK');
 
  violations.push(...await page.evaluate(()=>window.__cspViolations));
  console.log('CSP',JSON.stringify(violations));

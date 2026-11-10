@@ -23,10 +23,11 @@ function check(error: { message: string; code?: string } | null) {
 }
 export async function searchClubs(search: string) {
   const term = search.trim().replace(/[\\%_]/g, "\\$&");
-  const { data, error } = await client()
+  let query = client()
     .from("dogsports_clubs")
-    .select("*")
-    .ilike("name", `%${term}%`)
+    .select("*");
+  query = search.trim().startsWith('*') ? query.eq('public_id', search.trim().toUpperCase()) : query.ilike("name", `%${term}%`);
+  const { data, error } = await query
     .order("name")
     .limit(50);
   check(error);

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Building2, Newspaper, Search, UsersRound } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
+import { InviteFriendsButton } from './InviteFriendsButton';
 import * as api from "../data/community";
 import type { Club, ClubPost } from "../domain/community";
 import { calculateScore } from "../domain/scoring";
@@ -139,6 +140,7 @@ export function Community({
         <h1>Community</h1>
         <p className="text-muted mt-2">Deine Vereine. Eure Erfolge.</p>
       </div>
+      <InviteFriendsButton />
       <nav className="flex flex-wrap gap-2" aria-label="Community">
         <Button
           variant={tab === "feed" ? "default" : "secondary"}
@@ -193,6 +195,7 @@ export function Community({
             VEREINSSEITE · OFFENE COMMUNITY-GRUPPE
           </p>
           <h2>{selected.name}</h2>
+          <p className="text-sm text-muted">Vereins-ID: {selected.public_id}</p>
           <p>{selected.city || "Kein Ort angegeben"}</p>
           <p className="whitespace-pre-wrap break-words">
             {selected.description || "Noch keine Beschreibung."}
@@ -247,7 +250,7 @@ export function Community({
           <Card className="space-y-3">
             <h2>Vereine suchen</h2>
             <label className="field">
-              Vereinsname
+              Vereinsname oder Vereins-ID
               <input
                 type="search"
                 maxLength={100}
@@ -287,6 +290,7 @@ export function Community({
                   <Building2 aria-hidden="true" />
                   <span>
                     <strong>{c.name}</strong>
+                    <small>{c.public_id}</small>
                     <small>
                       {c.city || "Ohne Ortsangabe"}
                       {clubs.some((m) => m.id === c.id) ? " · Beigetreten" : ""}
@@ -376,6 +380,7 @@ export function Community({
                     <UsersRound aria-hidden="true" />
                     <span>
                       <strong>{c.name}</strong>
+                      <small>{c.public_id}</small>
                       <small>{c.city}</small>
                     </span>
                     <span aria-hidden="true">→</span>

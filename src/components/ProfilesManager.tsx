@@ -13,6 +13,7 @@ import {
 } from "../domain/profiles";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
+import type { DogIdentifier } from '../data/identifiers';
 import { useFeedback } from "./feedbackContext";
 
 const timestamp = () => new Date().toISOString();
@@ -44,9 +45,15 @@ const today = new Date().toISOString().slice(0, 10);
 export function ProfilesManager({
   handlers,
   dogs,
+  userCode,
+  dogCodes,
+  identifierError,
 }: {
   handlers: HandlerProfile[];
   dogs: DogProfile[];
+  userCode?: string;
+  dogCodes: DogIdentifier[];
+  identifierError: string;
 }) {
   const [kind, setKind] = useState<"handlers" | "dogs">("handlers");
   const [handler, setHandler] = useState<HandlerProfile | null>(null);
@@ -78,6 +85,8 @@ export function ProfilesManager({
       <div>
         <p className="eyebrow text-teal">GLOBAL · ALLE MODULE</p>
         <h2>Hundeführer & Hunde</h2>
+        <p className="text-sm text-muted">Deine User-ID: {userCode ?? 'Nach Cloud-Verbindung verfügbar'}</p>
+        {identifierError ? <p role="alert">{identifierError}</p> : null}
         <p className="mt-2 text-sm text-muted">
           Profile stehen im THS- und IBGH-Modul gemeinsam zur Verfügung.
         </p>
@@ -132,7 +141,7 @@ export function ProfilesManager({
           </>
         )
       ) : dog ? (
-        <DogForm
+        <><p className="text-sm text-muted">Hund-ID: {dogCodes.find(c => c.record_id === dog.id)?.public_id ?? 'Wird nach dem Cloud-Abgleich vergeben'}</p><DogForm
           value={dog}
           onCancel={() => setDog(null)}
           onSave={async (value) => {
@@ -151,7 +160,7 @@ export function ProfilesManager({
               setMessage(error instanceof Error ? error.message : "Speichern fehlgeschlagen.");
             }
           }}
-        />
+        /></>
       ) : (
         <>
           <Button onClick={() => setDog(emptyDog())}><Plus /> Hund anlegen</Button>
@@ -160,7 +169,7 @@ export function ProfilesManager({
               <ProfileRow
                 key={item.id}
                 title={item.callName}
-                subtitle={`${item.breed || "Rasse noch offen"} · ${calculateAge(item.birthDate) ?? "–"} Jahre`}
+                subtitle={`${item.breed || "Rasse noch offen"} · ${calculateAge(item.birthDate) ?? "–"} Jahre · Hund-ID: ${dogCodes.find(c => c.record_id === item.id)?.public_id ?? 'nach Cloud-Abgleich verfügbar'}`}
                 incomplete={!item.birthDate || !item.gender || !item.breed}
                 onEdit={() => setDog({ ...item })}
                 onDelete={() => void removeDog(item)}

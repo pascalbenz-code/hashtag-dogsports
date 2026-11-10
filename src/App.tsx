@@ -55,6 +55,8 @@ import { ObstacleFaultDetails } from "./components/ObstacleFaultDetails";
 import { ProfilesManager } from "./components/ProfilesManager";
 import { ShareResultDialog } from "./components/ShareResultDialog";
 import { NotificationBell } from "./components/NotificationBell";
+import { loadOwnIdentifiers, type DogIdentifier } from "./data/identifiers";
+import { dashboardPreferenceKey, readHiddenModules } from "./domain/dashboardPreferences";
 import { CloudSyncPanel } from "./components/CloudSyncPanel";
 import { AuthGate } from "./components/AuthGate";
 import { DashboardMetric } from "./components/DashboardMetric";
@@ -180,6 +182,22 @@ export default function App() {
 }
 
 function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
+  const accountId = cloud.user!.id;
+  const [hiddenModules, setHiddenModules] = useState(() => readHiddenModules(accountId, localStorage));
+  const [preferenceError, setPreferenceError] = useState('');
+  const [identifiers, setIdentifiers] = useState<{userId?: string; dogs: DogIdentifier[]}>({dogs:[]});
+  const [identifierError,setIdentifierError] = useState('');
+  useEffect(() => {
+    let active=true;
+    loadOwnIdentifiers(accountId).then(value => { if(active) { setIdentifiers(value); setIdentifierError(''); } })
+      .catch(e => { if(active) setIdentifierError(e instanceof Error ? e.message : 'Kennungen nicht erreichbar.'); });
+    return () => { active=false; };
+  },[accountId,cloud.lastSyncedAt]);
+  const configureModules = (next: SportModule[]) => {
+    setHiddenModules(next);
+    try { localStorage.setItem(dashboardPreferenceKey(accountId),JSON.stringify(next)); setPreferenceError(''); }
+    catch { setPreferenceError('Die Auswahl gilt für diese Sitzung, konnte aber auf diesem Gerät nicht gespeichert werden.'); }
+  };
   const results = useLiveQuery(() => db.results.toArray(), []) ?? EMPTY_RESULTS;
   const handlers =
     useLiveQuery(() => db.handlers.orderBy("name").toArray(), []) ??
@@ -475,11 +493,11 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
             key={viewKey}
           >
         {showCloud ? <CloudSyncPanel cloud={cloud} /> : null}
-        {showProfiles ? <><Button variant="secondary" onClick={() => togglePanel("community")}>Verein suchen oder beitreten</Button><ProfilesManager handlers={handlers} dogs={dogs} /></> : null}
-        {showSettings ? <ThemeSettings /> : null}
+        {showProfiles ? <><Button variant="secondary" onClick={() => togglePanel("community")}>Verein suchen oder beitreten</Button><ProfilesManager handlers={handlers} dogs={dogs} userCode={identifiers.userId} dogCodes={identifiers.dogs} identifierError={identifierError} /></> : null}
+        {showSettings ? <ThemeSettings hiddenModules={hiddenModules} configureModules={configureModules} preferenceError={preferenceError} userCode={identifiers.userId} identifierError={identifierError} /> : null}
         {showCommunity && cloud.user ? <Suspense fallback={<Card>Community wird geladen …</Card>}><Community userId={cloud.user.id} results={results} suggestedClubs={[...new Set(handlers.map(h => h.club.trim()).filter(Boolean))]} /></Suspense> : null}
         {contentVisible ? <Button variant="secondary" onClick={() => togglePanel("community")}><UsersRound size={18} /> Community · Meine Vereine</Button> : null}
-        {contentVisible && !sportModule ? <StartPage openModule={openModule} /> : null}
+        {contentVisible && !sportModule ? <StartPage openModule={openModule} hiddenModules={hiddenModules} openSettings={() => togglePanel("settings")} /> : null}
         {contentVisible && sportModule === "ths" && tab === "dashboard" ? (
           <Dashboard results={results} open={open} share={setShareResult} />
         ) : null}
@@ -572,8 +590,12 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
 
 function StartPage({
   openModule,
+  hiddenModules,
+  openSettings,
 }: {
   openModule: (sportModule: SportModule) => void;
+  hiddenModules: SportModule[];
+  openSettings: () => void;
 }) {
   return (
     <div className="start-page">
@@ -596,21 +618,22 @@ function StartPage({
         </p>
       </div>
       <div className="module-selection">
-        <ModuleChoice
+        {!hiddenModules.includes('ths') ? <ModuleChoice
           title="THS"
           description="Turnierhundsport mit Performance Tracker und VDH-VK Leistungsrichter."
           details="Performance Tracker aktiv · Leistungsrichter aktiv"
           icon={<ShieldCheck aria-hidden="true" />}
           onClick={() => openModule("ths")}
-        />
-        <ModuleChoice
+        /> : null}
+        {!hiddenModules.includes('ibgh') ? <ModuleChoice
           title="IBGH"
           description="Begleithundesport mit dem Digitalen Leistungsrichter FCI-IBGH."
           details="Leistungsrichter aktiv · weitere Bereiche vorbereitet"
           icon={<Medal aria-hidden="true" />}
           onClick={() => openModule("ibgh")}
-        />
+        /> : null}
       </div>
+      {hiddenModules.length ? <Card className="space-y-3"><p>Du hast Module auf deiner Startseite ausgeblendet. Deine gespeicherten Daten bleiben erhalten.</p><Button variant="secondary" onClick={openSettings}>Dashboard konfigurieren</Button></Card> : null}
     </div>
   );
 }

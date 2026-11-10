@@ -2,6 +2,10 @@ import { MonitorCog, Moon, Sun } from "lucide-react";
 import { useTheme } from "../theme/ThemeContext";
 import type { ThemePreference } from "../theme/theme";
 import { Card } from "./ui/card";
+import { Button } from "./ui/button";
+import { InviteFriendsButton } from "./InviteFriendsButton";
+import { DASHBOARD_MODULES } from "../domain/dashboardPreferences";
+import type { SportModule } from "../domain/appNavigation";
 
 const options: ReadonlyArray<{
   value: ThemePreference;
@@ -60,24 +64,75 @@ export function ThemeSelector() {
   );
 }
 
-export function ThemeSettings() {
+export function ThemeSettings({
+  hiddenModules,
+  configureModules,
+  preferenceError,
+  userCode,
+  identifierError,
+}: {
+  hiddenModules: SportModule[];
+  configureModules: (next: SportModule[]) => void;
+  preferenceError: string;
+  userCode?: string;
+  identifierError: string;
+}) {
   const { resolvedTheme } = useTheme();
 
   return (
     <>
       <div>
         <p className="eyebrow text-teal">#DOGSPORTS EINSTELLUNGEN</p>
-        <h2>Darstellung</h2>
+        <h2>App-Einstellungen</h2>
         <p className="mt-2 text-sm text-muted">
           Wähle die Darstellung der gesamten App. Deine Auswahl bleibt auf
           diesem Gerät gespeichert.
         </p>
       </div>
       <Card className="space-y-4">
+        <h3>Dashboard konfigurieren</h3>
+        <p className="text-sm text-muted">
+          Welche Module sollen auf deiner Startseite erscheinen? Die Auswahl
+          gilt für dein Konto auf diesem Gerät. Standard: alle Module.
+        </p>
+        {DASHBOARD_MODULES.map((m) => (
+          <label
+            key={m.id}
+            className="flex items-center gap-3 rounded-xl border p-3"
+          >
+            <input
+              type="checkbox"
+              checked={!hiddenModules.includes(m.id)}
+              onChange={(e) =>
+                configureModules(
+                  e.target.checked
+                    ? hiddenModules.filter((id) => id !== m.id)
+                    : [...hiddenModules, m.id],
+                )
+              }
+            />
+            <span>{m.label} anzeigen</span>
+          </label>
+        ))}
+        <Button variant="secondary" onClick={() => configureModules([])}>
+          Alle Module anzeigen
+        </Button>
+        {preferenceError ? <p role="alert">{preferenceError}</p> : null}
+      </Card>
+      <Card className="space-y-4">
         <ThemeSelector />
         <p className="theme-resolution" role="status">
           Aktive Darstellung: {resolvedTheme === "dark" ? "Dunkel" : "Hell"}
         </p>
+      </Card>
+      <Card className="space-y-3">
+        <h3>Dein Konto</h3>
+        <p>
+          User-ID:{" "}
+          <strong>{userCode ?? "Wird bei Cloud-Verbindung geladen …"}</strong>
+        </p>
+        {identifierError ? <p role="alert">{identifierError}</p> : null}
+        <InviteFriendsButton />
       </Card>
     </>
   );

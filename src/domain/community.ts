@@ -3,6 +3,7 @@ import { calculateScore } from "./scoring";
 
 export interface Club {
   id: string;
+  public_id: string;
   name: string;
   city: string;
   description: string;

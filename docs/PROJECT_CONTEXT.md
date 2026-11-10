@@ -31,6 +31,8 @@ Globale Ansichten verwalten Hundeführer- und Hundeprofile. Ergebnisse werden ü
 
 ## Datenmodelle und Speicherung
 
+Kontogebundene Dashboard-Ausblendungen, native App-Einladung und zentral vergebene Benutzer-/Hunde-/Vereinskennungen: `docs/PERSONALIZATION_AND_IDS.md`. Die neuen lesbaren Kennungen ergänzen technische IDs; sie ersetzen keine Zuordnungen.
+
 Globale Community mit Vereinen, offenen Kontomitgliedschaften und explizit geteilten Ergebniszusammenfassungen: siehe `docs/COMMUNITY.md` für Architektur, Tabellen, Zugriffsrechte und Grenzen. Bestehende Profil-Vereinsangaben werden als Suchvorschläge verwendet.
 
 `CompetitionResult` enthält Veranstaltung, Disziplin, Hundeführer-/Hundreferenz, Unterordnung, Laufzeiten, Fehler, optionale Detailfehler, Leinenstatus, 1000-m-Daten, Notizen und Zeitstempel. `HandlerProfile` und `DogProfile` enthalten Stammdaten und optionale Vereins- beziehungsweise LU-Daten. Maßgeblich sind `src/domain/types.ts` und `src/domain/profiles.ts`.
