@@ -89,7 +89,7 @@ export function FeedbackCenter({
                 {feedback.qualifications.map((qualification) => (
                   <span
                     className={`badge q-${qualification.color}`}
-                    key={qualification.key}
+                    key={`${qualification.key}:${qualification.year ?? ""}`}
                   >
                     {qualification.label}
                   </span>

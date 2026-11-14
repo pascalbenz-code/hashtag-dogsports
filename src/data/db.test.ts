@@ -3,6 +3,7 @@ import Dexie from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 import { makeResult } from "../test/factory";
 import type { DogProfile, HandlerProfile } from "../domain/profiles";
+import { calculateScore } from "../domain/scoring";
 import { resetResultForm } from "../domain/resultForm";
 import {
   applyRemoteRecords,
@@ -36,6 +37,31 @@ describe("Dexie persistence", () => {
     await reopened.results.delete(result.id);
     expect(await reopened.results.count()).toBe(0);
     reopened.close();
+  });
+
+  it("recalculates annual flags for existing stored results without rewriting records or sync state", async () => {
+    const name = `test-${crypto.randomUUID()}`;
+    names.push(name);
+    const database = new THSDatabase(name);
+    const eligible = makeResult({ id: "existing-eligible", date: "2026-11-14", competitionType: "Verbandsmeisterschaft" });
+    const outsidePeriod = makeResult({ id: "existing-outside", date: "2028-11-14", competitionType: "Verbandsmeisterschaft" });
+    const draft = makeResult({ id: "existing-draft", date: "2026-11-14", obedience: null });
+    const originals = [eligible, outsidePeriod, draft];
+    await database.results.bulkPut(originals);
+    database.close();
+
+    const reopened = new THSDatabase(name);
+    try {
+      const restored = await reopened.results.get(eligible.id);
+      expect(calculateScore(restored!).qualifications.map(flag => flag.label))
+        .toEqual(["SWHV-QUALI-27", "DHV-QUALI-26", "VDH-QUALI-27"]);
+      expect(calculateScore((await reopened.results.get(outsidePeriod.id))!).qualifications).toEqual([]);
+      expect(calculateScore((await reopened.results.get(draft.id))!).qualifications).toEqual([]);
+      for (const original of originals) expect(await reopened.results.get(original.id)).toEqual(original);
+      expect(await reopened.syncQueue.count()).toBe(0);
+    } finally {
+      reopened.close();
+    }
   });
 
   it("keeps persisted results unchanged when current form inputs are reset", async () => {

@@ -143,6 +143,8 @@ export type QualificationKey =
   | "dhv"
   | "vdh";
 export interface Qualification {
+  /** Meisterschaftsjahr; bei zeitunabhängigen Aufstiegen nicht gesetzt. */
+  year?: number;
   key: QualificationKey;
   label: string;
   color: "gray" | "green" | "blue" | "red";

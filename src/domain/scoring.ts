@@ -1,3 +1,4 @@
+import { matchingQualificationPeriods } from "./thsRules/qualificationPeriods";
 import { THS_QUALIFICATION_RULES } from "./thsRules";
 import type { AgeGroup } from "./thsRules/types";
 import type {
@@ -126,7 +127,10 @@ function resultQualifications(result: CompetitionResult, total: number): Qualifi
     for (const included of definition?.includes ?? []) matched.add(included);
   }
   return THS_QUALIFICATION_RULES.filter(({ flag }) => matched.has(flag.key))
-    .map(({ flag }) => ({ ...flag }));
+    .flatMap(({ flag, periods }) => periods === undefined
+      ? [{ ...flag }]
+      : matchingQualificationPeriods(result.date, periods)
+        .map(({ year, label }) => ({ ...flag, year, label })));
 }
 
 export function calculateScore(result: CompetitionResult): ScoreBreakdown {

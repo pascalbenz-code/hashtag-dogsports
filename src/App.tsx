@@ -2034,7 +2034,7 @@ function Qualis({ list }: { list: Qualification[] }) {
   return (
     <div className="flex flex-wrap gap-1">
       {list.map((q) => (
-        <span className={`badge q-${q.color}`} key={q.key}>
+        <span className={`badge q-${q.color}`} key={`${q.key}:${q.year ?? ""}`}>
           {q.label}
         </span>
       ))}

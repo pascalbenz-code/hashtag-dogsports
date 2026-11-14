@@ -10,8 +10,17 @@ export interface QualificationCondition {
   minTotal: number | SprintThresholds;
 }
 
+export interface QualificationPeriod {
+  year: number;
+  /** Inklusive Grenzen, Datum im Format JJJJ-MM-TT. */
+  startDate: string;
+  endDate: string;
+  label: string;
+}
+
 export interface QualificationDefinition {
   flag: Qualification;
+  periods?: readonly QualificationPeriod[];
   conditions: readonly QualificationCondition[];
   /** Zusätzlich vergebene Flags, auch wenn deren eigene Bedingungen nicht erfüllt sind. */
   includes?: readonly QualificationKey[];

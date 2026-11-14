@@ -62,16 +62,18 @@ describe("extracted THS rules", () => {
     if (typeof condition.minTotal === "number") throw new Error("Sprint matrix missing");
     const previous = condition.minTotal;
     const flag = { ...VDH_RULE.flag };
+    const periods = VDH_RULE.periods;
     const existing = sprintResult(275);
     try {
       condition.minTotal = { ...previous, male: { ...previous.male, active: 280 } };
       expect(calculateScore(existing).qualifications).toEqual([]);
-      VDH_RULE.flag.label = "VDH-Test";
+      VDH_RULE.periods = periods!.map(period => ({ ...period, label: "VDH-Test" }));
       VDH_RULE.flag.color = "green";
-      expect(calculateScore(sprintResult(280)).qualifications).toEqual([{ key: "vdh", label: "VDH-Test", color: "green" }]);
+      expect(calculateScore(sprintResult(280)).qualifications).toEqual([{ key: "vdh", year: 2026, label: "VDH-Test", color: "green" }]);
     } finally {
       condition.minTotal = previous;
       Object.assign(VDH_RULE.flag, flag);
+      VDH_RULE.periods = periods;
     }
   });
 
@@ -87,9 +89,9 @@ describe("extracted THS rules", () => {
 
   it("keeps configured flag labels and colors for VK and sprint", () => {
     const expected = [
-      { key: "swhv", label: "swhv-Quali", color: "green" },
-      { key: "dhv", label: "dhv-Quali", color: "blue" },
-      { key: "vdh", label: "VDH-Quali", color: "red" },
+      { key: "swhv", year: 2026, label: "SWHV-QUALI-26", color: "green" },
+      { key: "dhv", year: 2026, label: "DHV-QUALI-26", color: "blue" },
+      { key: "vdh", year: 2026, label: "VDH-QUALI-26", color: "red" },
     ];
     expect(calculateScore(makeResult({ competitionType: "Verbandsmeisterschaft" })).qualifications).toEqual(expected);
     expect(calculateScore(sprintResult(280, "Verbandsmeisterschaft")).qualifications).toEqual(expected);

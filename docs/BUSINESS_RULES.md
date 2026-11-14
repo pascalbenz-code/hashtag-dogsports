@@ -34,7 +34,7 @@ Altersklasse am Veranstaltungsdatum: bis einschließlich 14 Jüngstenklasse, 15�
 
 ## Qualifikationen und Aufstiege
 
-Qualifikationen werden nur für vollständige Ergebnisse vergeben und können kumulativ sein. Bedingungen und Flag-Konfiguration liegen in den vier Dateien unter `src/domain/thsRules/`; `scoring.ts` wertet sie zentral aus. Pflege und Anwendung: `docs/THS_RULE_CONFIGURATION.md`. Die folgenden Tabellen dokumentieren den unverändert übernommenen Ausgangsstand.
+Qualifikationen werden nur für vollständige Ergebnisse vergeben und können kumulativ sein. Bedingungen und Flag-Konfiguration liegen in den vier Dateien unter `src/domain/thsRules/`; `scoring.ts` wertet sie zentral aus. Pflege und Anwendung: `docs/THS_RULE_CONFIGURATION.md`. Die folgenden Tabellen dokumentieren die Leistungsbedingungen. Zusätzlich ist für Meisterschaftsflags ein passender Zeitraum erforderlich; angezeigt wird ausschließlich das Jahresflag (z. B. `SWHV-QUALI-27`). Die vom Auftraggeber am 14.11.2026 definierten Zeiträume 2025–2027 sind in `docs/THS_RULE_CONFIGURATION.md` dokumentiert und in den drei Meisterschaftsdateien konfiguriert. DHV erfordert eine Verbandsmeisterschaft im jeweiligen Kalenderjahr. Start- und Endtag sind eingeschlossen, das Veranstaltungsdatum ist maßgeblich.
 
 | Klasse/Badge | Voraussetzungen |
 | --- | --- |
@@ -44,7 +44,7 @@ Qualifikationen werden nur für vollständige Ergebnisse vergeben und können ku
 | VK3 „dhv-Quali“ | Unterordnung ≥ 48, Gesamt ≥ 265; Verbandsmeisterschaft |
 | VK3 „VDH-Quali“ | Unterordnung ≥ 54, Gesamt ≥ 270; alle Veranstaltungsarten |
 
-Bei erfüllter VK3-dhv-Qualifikation wird swhv ebenfalls angezeigt. VDH-HL und VDH-DK haben keine Qualifikations- oder Aufstiegslogik.
+Bei erfüllter VK3-dhv-Leistungsbedingung gilt die swhv-Leistungsbedingung kumulativ als erfüllt; ein swhv-Jahresflag wird nur innerhalb eines passenden swhv-Zeitraums angezeigt. VDH-HL und VDH-DK haben keine Qualifikations- oder Aufstiegslogik.
 
 VDH-S-VK-Schwellen nach Geschlecht und Altersklasse:
 
@@ -54,7 +54,7 @@ VDH-S-VK-Schwellen nach Geschlecht und Altersklasse:
 | dhv | Verband | 225 / 230 / 245 / 240 | 220 / 225 / 240 / 235 |
 | VDH | alle | 250 / 260 / 270 / 260 | 240 / 250 / 263 / 250 |
 
-J/Ju/A/S = Jüngsten-, Jugend-, Aktiven-, Seniorenklasse. Eine dhv-Qualifikation ergänzt kumulativ swhv.
+J/Ju/A/S = Jüngsten-, Jugend-, Aktiven-, Seniorenklasse. Eine dhv-Leistungsbedingung ergänzt kumulativ swhv; die jeweiligen Zeiträume werden separat geprüft.
 
 ## Detailfehler der Laufdisziplinen
 

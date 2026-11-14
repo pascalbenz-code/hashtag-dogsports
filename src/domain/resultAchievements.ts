@@ -19,6 +19,8 @@ export interface ResultAchievements {
   newQualifications: Qualification[];
 }
 
+const qualificationIdentity = ({ key, year }: Qualification) => `${key}:${year ?? ""}`;
+
 const completedTotal = (result: CompetitionResult) => {
   const score = calculateScore(result);
   return score.complete ? score.total : null;
@@ -61,14 +63,14 @@ export function detectResultAchievements(
   const previousQualificationKeys = new Set(
     previousVersion
       ? calculateScore(previousVersion).qualifications.map(
-          (qualification) => qualification.key,
+          qualificationIdentity,
         )
       : [],
   );
   const newQualifications = calculateScore(candidate).qualifications.filter(
     (qualification) =>
       CELEBRATED_QUALIFICATIONS.has(qualification.key) &&
-      !previousQualificationKeys.has(qualification.key),
+      !previousQualificationKeys.has(qualificationIdentity(qualification)),
   );
 
   return {
