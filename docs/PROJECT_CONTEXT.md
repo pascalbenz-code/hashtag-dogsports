@@ -68,6 +68,7 @@ Backups verwenden JSON-Schema-Version 3 und enthalten Ergebnisse sowie Profile. 
 | Navigation/Animation | `src/domain/appNavigation.ts`, `src/hooks/useSwipeNavigation.ts`, `src/lib/viewTransition.ts` |
 | Typen/Profile | `src/domain/types.ts`, `src/domain/profiles.ts` |
 | Ergebnisse | `src/domain/scoring.ts`, `src/domain/resultForm.ts` |
+| THS-Aufstieg/Qualifikation/Flags | `src/domain/thsRules/`; Pflege: `docs/THS_RULE_CONFIGURATION.md` |
 | Fehlerdetails | `src/domain/hurdleFaults.ts`, `slalomFaults.ts`, `obstacleFaults.ts`; gleichnamige Komponenten |
 | Leistungsrichter | `src/domain/judging.ts`, `src/components/DigitalJudgeForm.tsx`, `JudgeForm.tsx`, `IbghJudgeForm.tsx` |
 | Statistik | `src/domain/statistics.ts`, `src/components/PerformanceChart.tsx` |

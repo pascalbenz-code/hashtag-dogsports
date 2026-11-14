@@ -1,7 +1,8 @@
+import { THS_QUALIFICATION_RULES } from "./thsRules";
+import type { AgeGroup } from "./thsRules/types";
 import type {
   CompetitionClass,
   CompetitionResult,
-  CompetitionType,
   Qualification,
   QualificationKey,
   ScoreBreakdown,
@@ -16,26 +17,6 @@ export const BASE_POINTS: Record<CompetitionClass, number> = {
   "FCI-VK1": 250, "FCI-VK2": 255, "FCI-VK3": 265,
   "VDH-S-VK": 340, "VDH-HL": 0, "VDH-DK": 240,
 };
-const CLUB_AND_DISTRICT: readonly CompetitionType[] = ["Vereinsprüfung", "Kreismeisterschaft"];
-const ALL_COMPETITION_TYPES: readonly CompetitionType[] = [
-  "Vereinsprüfung", "Kreismeisterschaft", "Verbandsmeisterschaft",
-  "dhv Deutsche Meisterschaft", "VDH Deutsche Meisterschaft",
-];
-
-export const QUALIFICATION_RULES = {
-  "FCI-VK1": [
-    { key: "promotion-vk2", label: "Aufstieg-VK2", color: "gray", minObedience: 48, minTotal: 250, competitionTypes: ALL_COMPETITION_TYPES },
-  ],
-  "FCI-VK2": [
-    { key: "promotion-vk3", label: "Aufstieg-VK3", color: "gray", minObedience: 48, minTotal: 260, competitionTypes: CLUB_AND_DISTRICT },
-  ],
-  "FCI-VK3": [
-    { key: "swhv", label: "swhv-Quali", color: "green", minObedience: 48, minTotal: 250, competitionTypes: CLUB_AND_DISTRICT },
-    { key: "dhv", label: "dhv-Quali", color: "blue", minObedience: 48, minTotal: 265, competitionTypes: ["Verbandsmeisterschaft"] },
-    { key: "vdh", label: "VDH-Quali", color: "red", minObedience: 54, minTotal: 270, competitionTypes: ALL_COMPETITION_TYPES },
-  ],
-} as const;
-
 const finite = (value: number | null | undefined): value is number =>
   value !== null && value !== undefined && Number.isFinite(value);
 const round = (value: number) => Math.round(value * 100) / 100;
@@ -111,7 +92,7 @@ export function validateResult(result: CompetitionResult): string[] {
 }
 
 const runDeduction = (run: { time: number | null; faults: number | null }) => run.time! + run.faults!;
-type AgeGroup = "youngest" | "youth" | "active" | "senior";
+
 export function getAgeGroup(birthDate: string, eventDate: string): AgeGroup | null {
   const age = calculateAge(birthDate, new Date(`${eventDate}T12:00:00`));
   if (age === null) return null;
@@ -121,46 +102,31 @@ export function getAgeGroup(birthDate: string, eventDate: string): AgeGroup | nu
   return "senior";
 }
 
-const SPRINT_THRESHOLDS = {
-  swhv: {
-    male: { youngest: 210, youth: 210, active: 250, senior: 230 },
-    female: { youngest: 200, youth: 200, active: 240, senior: 220 },
-  },
-  dhv: {
-    male: { youngest: 225, youth: 230, active: 245, senior: 240 },
-    female: { youngest: 220, youth: 225, active: 240, senior: 235 },
-  },
-  vdh: {
-    male: { youngest: 250, youth: 260, active: 270, senior: 260 },
-    female: { youngest: 240, youth: 250, active: 263, senior: 250 },
-  },
-} as const;
-
-function sprintQualifications(result: CompetitionResult, total: number): Qualification[] {
-  const gender = result.handlerGender;
-  const ageGroup = getAgeGroup(result.handlerBirthDate ?? "", result.date);
-  if ((gender !== "male" && gender !== "female") || !ageGroup) return [];
+function resultQualifications(result: CompetitionResult, total: number): Qualification[] {
   const matched = new Set<QualificationKey>();
-  if (CLUB_AND_DISTRICT.includes(result.competitionType) && total >= SPRINT_THRESHOLDS.swhv[gender][ageGroup]) matched.add("swhv");
-  if (result.competitionType === "Verbandsmeisterschaft" && total >= SPRINT_THRESHOLDS.dhv[gender][ageGroup]) matched.add("dhv");
-  if (total >= SPRINT_THRESHOLDS.vdh[gender][ageGroup]) matched.add("vdh");
-  if (matched.has("dhv")) matched.add("swhv");
-  const badges: Qualification[] = [
-    { key: "swhv", label: "swhv-Quali", color: "green" },
-    { key: "dhv", label: "dhv-Quali", color: "blue" },
-    { key: "vdh", label: "VDH-Quali", color: "red" },
-  ];
-  return badges.filter((qualification) => matched.has(qualification.key));
-}
-
-function vierkampfQualifications(result: CompetitionResult, total: number) {
-  const rules = QUALIFICATION_RULES[result.className as keyof typeof QUALIFICATION_RULES];
-  const matched = new Set(rules.filter((rule) =>
-    result.obedience! >= rule.minObedience && total >= rule.minTotal &&
-    (rule.competitionTypes as readonly CompetitionType[]).includes(result.competitionType),
-  ).map((rule) => rule.key));
-  if (result.className === "FCI-VK3" && matched.has("dhv")) matched.add("swhv");
-  return rules.filter((rule) => matched.has(rule.key)).map(({ key, label, color }) => ({ key, label, color }) as Qualification);
+  const ageGroup = getAgeGroup(result.handlerBirthDate ?? "", result.date);
+  const gender = result.handlerGender;
+  for (const definition of THS_QUALIFICATION_RULES) {
+    const qualifies = definition.conditions.some((condition) => {
+      if (condition.className !== result.className ||
+          !condition.competitionTypes.includes(result.competitionType)) return false;
+      if (condition.minObedience !== undefined &&
+          (result.obedience === null || result.obedience < condition.minObedience)) return false;
+      const threshold = typeof condition.minTotal === "number"
+        ? condition.minTotal
+        : ageGroup && (gender === "male" || gender === "female")
+          ? condition.minTotal[gender][ageGroup] : null;
+      return threshold !== null && total >= threshold;
+    });
+    if (qualifies) matched.add(definition.flag.key);
+  }
+  // Kumulative Vergabe aus der Konfiguration, unabhängig von der Reihenfolge.
+  for (const key of matched) {
+    const definition = THS_QUALIFICATION_RULES.find((rule) => rule.flag.key === key);
+    for (const included of definition?.includes ?? []) matched.add(included);
+  }
+  return THS_QUALIFICATION_RULES.filter(({ flag }) => matched.has(flag.key))
+    .map(({ flag }) => ({ ...flag }));
 }
 
 export function calculateScore(result: CompetitionResult): ScoreBreakdown {
@@ -180,8 +146,6 @@ export function calculateScore(result: CompetitionResult): ScoreBreakdown {
     total = round(BASE_POINTS[result.className] + result.obedience! - runDeduction(result.hurdles) -
       runDeduction(result.slalom) - runDeduction(result.obstacle));
   }
-  const qualifications = isVierkampf(result.className)
-    ? vierkampfQualifications(result, total)
-    : result.className === "VDH-S-VK" ? sprintQualifications(result, total) : [];
+  const qualifications = resultQualifications(result, total);
   return { total, complete: true, qualifications, errors: [] };
 }

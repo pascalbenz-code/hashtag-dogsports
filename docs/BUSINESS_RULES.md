@@ -34,7 +34,7 @@ Altersklasse am Veranstaltungsdatum: bis einschließlich 14 Jüngstenklasse, 15�
 
 ## Qualifikationen und Aufstiege
 
-Qualifikationen werden nur für vollständige Ergebnisse vergeben und können kumulativ sein.
+Qualifikationen werden nur für vollständige Ergebnisse vergeben und können kumulativ sein. Bedingungen und Flag-Konfiguration liegen in den vier Dateien unter `src/domain/thsRules/`; `scoring.ts` wertet sie zentral aus. Pflege und Anwendung: `docs/THS_RULE_CONFIGURATION.md`. Die folgenden Tabellen dokumentieren den unverändert übernommenen Ausgangsstand.
 
 | Klasse/Badge | Voraussetzungen |
 | --- | --- |
