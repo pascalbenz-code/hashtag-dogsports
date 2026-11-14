@@ -51,6 +51,8 @@ Backups verwenden JSON-Schema-Version 3 und enthalten Ergebnisse sowie Profile. 
 
 ## UI-Struktur
 
+THS-Wizard-Regression und wiederholbarer Selbsttest mit 20 Neuanlagen/Bearbeitungen: `docs/THS_EDITOR_REGRESSION.md`, Befehl `npm run test:browser:ths`. Schrittwechsel und Speichern besitzen getrennte Button-Identitäten, damit „Weiter“ keine native Submit-Aktion auslöst.
+
 - Auth-Gate blockiert die komplette Fachanwendung ohne gültige Sitzung.
 - Startseite: THS-/IBGH-Auswahl und globale Profilverwaltung.
 - THS-Erfassung: Zuordnung → Prüfungsdaten → Leistungsdaten; Zwischenspeichern/Wiederaufnehmen und Wischgesten.

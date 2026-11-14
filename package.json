@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "test:browser:security": "node scripts/security-browser-check.mjs"
+    "test:browser:security": "node scripts/security-browser-check.mjs",
+    "test:browser:ths": "node scripts/ths-editor-browser-check.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",

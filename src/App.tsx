@@ -1477,11 +1477,16 @@ function Editor({
           </Button>
         ) : <span />}
         {step < 3 ? (
-          <Button type="button" onClick={() => changeStep((step + 1) as ResultFormStep)} disabled={isSaving}>
+          <Button key="next-step" type="button" onClick={(event) => {
+            // The last navigation click must not activate the submit button
+            // rendered at the same position in the following step.
+            event.preventDefault();
+            changeStep((step + 1) as ResultFormStep);
+          }} disabled={isSaving}>
             Weiter <ArrowRight aria-hidden="true" />
           </Button>
         ) : (
-          <Button type="submit" disabled={isSaving || !score.complete}>
+          <Button key="save-result" type="submit" disabled={isSaving || !score.complete}>
             <Save aria-hidden="true" /> {isSaving ? "Wird gespeichert …" : "Ergebnis speichern"}
           </Button>
         )}
