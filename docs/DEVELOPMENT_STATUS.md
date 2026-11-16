@@ -1,6 +1,6 @@
 # Entwicklungsstand
 
-Stand: 2026-11-09. Basis ist der Branch `feature/ui-ux-modernization`; `28fc5ac` war der Ausgangspunkt der nachfolgend beschriebenen Navigationsänderungen. Die konkrete Produktionszuordnung ist in Git- und Vercel-Deployment-Historie zu prüfen. Der Branch ist noch nicht als Merge nach `main` dokumentiert.
+Stand: 2026-11-16, Branch `feature/ui-ux-modernization`. Die konkrete Produktionszuordnung ist in Git- und Vercel-Deployment-Historie zu prüfen. Der Branch ist noch nicht als Merge nach `main` dokumentiert.
 
 ## Implementiert
 
@@ -19,6 +19,8 @@ Stand: 2026-11-09. Basis ist der Branch `feature/ui-ux-modernization`; `28fc5ac`
 - CI mit Node 22, Test, Lint und Build.
 
 ## Letzte relevante Änderungen
+
+2026-11-16: Modulauswahl verwendet die beiden unveränderten PNG-Originalgrafiken aus dem bereitgestellten Archiv als nebeneinander liegende THS-/IBGH-Buttons. Kopfzeilen innerhalb der Module zeigen nur den Modulnamen; die bisherigen zusätzlichen Tabtitel entfallen. Beide Bilder sind im PWA-Precache enthalten. Keine Datenmigration oder fachliche Änderung. Browser-Harnesses verwenden zugängliche Buttonnamen statt des früheren Kacheltexts; der Security-Harness prüft zusätzlich Bildladen, Seitenverhältnis und Anordnung bei 320/390/640/1280 Pixeln sowie die Kopfzeilen aller fünf Tabs beider Module. Geprüft: 373 Tests in 45 Testdateien, Lint, Produktions-Build und vollständiger Security-Browser-Harness erfolgreich; keine CSP-/Laufzeitfehler im erfolgreichen Durchlauf. Mobile/Desktop- und Hell-/Dunkel-Ansichten visuell geprüft. Ein einmaliger Timeout beim Antippen einer Ergebniskarte nach Rückwärtswischen trat im ersten Browserdurchlauf auf; im erneuten vollständigen Durchlauf war er nicht reproduzierbar, die Wischlogik wurde nicht geändert.
 
 2026-11-14: THS-Editor-Bug behoben: „Weiter“ in Schritt 2 konnte durch Wiederverwendung des Button-DOM-Elements als Submit ungewollt speichern und die Maske leeren. Getrennte React-Keys und unterbundene native Weiter-Standardaktion verhindern dies; die mobile Aktionsleiste darf umbrechen. Der neue isolierte Browser-Harness (`npm run test:browser:ths`) prüft 20 Neuanlagen und alle 20 nachträglichen Bearbeitungen über sechs Disziplinen, Gesamtwerte, Aufstiege und aktuelle Jahresflags, erhaltene IDs/Detailfehler, keine Schreibzugriffe bei Schrittwechsel, Persistenz nach Neuladen und Desktop-Tastaturbedienung. Die beiden gemeldeten Turniere sind zusätzlich mit synthetischen Profilen nachgestellt. Aktueller Stand einschließlich `f0bea4d`: 373 Tests in 45 Testdateien, Lint, Build und beide Browser-Harnesses erfolgreich; keine Laufzeit-/CSP-Fehler. Keine Datenmigration oder Änderung fachlicher Regeln. Ursache und Sollwertmatrix: `docs/THS_EDITOR_REGRESSION.md`.
 

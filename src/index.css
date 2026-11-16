@@ -853,36 +853,36 @@ html[data-navigation-direction="lateral"]::view-transition-new(app-view) {
 }
 .module-selection {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 .module-choice {
-  display: flex;
+  display: block;
   width: 100%;
-  align-items: center;
-  gap: 1rem;
-  border: 1px solid #a2c0ce66;
-  border-radius: 1.25rem;
-  background: var(--surface-elevated);
-  padding: 1.25rem;
-  color: var(--text);
-  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 1rem;
+  background: #0b0c0d;
+  padding: 0;
   box-shadow: 0 12px 36px #1776a714;
   transition:
-    border-color 160ms ease,
     transform 160ms ease,
     box-shadow 160ms ease;
 }
 .module-choice:hover,
 .module-choice:focus-visible {
-  border-color: #31abe4;
   box-shadow: 0 16px 42px #1776a726;
-  outline: none;
   transform: translateY(-2px);
 }
-.module-choice > svg {
-  width: 20px;
-  flex: none;
-  color: #1776a7;
+.module-choice:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+.module-choice > img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 .module-choice-icon {
   display: grid;
@@ -896,28 +896,6 @@ html[data-navigation-direction="lateral"]::view-transition-new(app-view) {
 }
 .module-choice-icon svg {
   width: 25px;
-}
-.module-choice-copy strong,
-.module-choice-copy > span,
-.module-choice-copy small {
-  display: block;
-}
-.module-choice-copy strong {
-  font-size: 1.3rem;
-  font-weight: 900;
-}
-.module-choice-copy > span {
-  margin-top: 0.2rem;
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  line-height: 1.4;
-}
-.module-choice-copy small {
-  margin-top: 0.55rem;
-  color: #1776a7;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.025em;
 }
 .module-dashboard-hero {
   display: flex;
@@ -1898,9 +1876,6 @@ tbody tr:hover {
 }
 
 @media (min-width: 640px) {
-  .module-selection {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .judge-summary {
     grid-template-columns: minmax(0, 1fr) 260px;
     align-items: center;
@@ -1970,14 +1945,10 @@ html[data-theme="dark"] {
   .judge-summary {
     background: linear-gradient(145deg, #1b1e20, #10232c);
   }
-  .module-choice,
   .module-dashboard-hero {
     border-color: #3a454a;
     background: linear-gradient(145deg, #1b1e20, #10232c);
     color: #f5f7f8;
-  }
-  .module-choice-copy > span {
-    color: #a2c0ce;
   }
   .judge-levels button {
     border-color: #425b67;

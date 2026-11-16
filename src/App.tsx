@@ -12,7 +12,6 @@ import {
   ArrowLeft,
   ArrowRight,
   BarChart3,
-  ChevronRight,
   ClipboardList,
   Cloud,
   Eraser,
@@ -23,7 +22,6 @@ import {
   Share2,
   Scale,
   Settings,
-  ShieldCheck,
   Trash2,
   UsersRound,
 } from "lucide-react";
@@ -127,13 +125,6 @@ const IbghJudgeForm = lazy(() =>
     default: IbghJudgeForm,
   })),
 );
-const tabTitles: Record<Tab, string> = {
-  dashboard: "Dashboard",
-  judge: "Digitaler Leistungsrichter",
-  results: "Ergebnisse",
-  new: "Neuer Eintrag",
-  stats: "Statistik",
-};
 type AppPanel = "profiles" | "cloud" | "settings" | "community" | null;
 interface AppHistoryState {
   dogsportsNavigation: true;
@@ -403,6 +394,7 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
     navigate("dashboard");
   };
   const contentVisible = !showProfiles && !showCloud && !showSettings && !showCommunity;
+  const moduleTitle = contentVisible && sportModule ? `MODUL ${sportModule.toUpperCase()}` : null;
   const nextSwipeTab = sportModule ? getNextSwipeTab(tab) : null;
   const viewKey = `${panel ?? sportModule ?? "home"}-${tab}-${editing?.id ?? "none"}`;
   const swipeHandlers = useSwipeNavigation({
@@ -435,18 +427,16 @@ function AuthenticatedApp({ cloud }: { cloud: CloudSyncController }) {
           onClick={goHome}
           aria-label="Zur Startseite"
         >
-          <span className="brand">#Dogsports</span>
-          <span className="crumb">
+          <span className="brand">{moduleTitle ?? "#Dogsports"}</span>
+          {!moduleTitle ? <span className="crumb">
             {showCommunity ? "Community · Vereine & Neuigkeiten" : showCloud
               ? "Cloud-Sicherung · alle Module"
               : showSettings
               ? "Einstellungen · alle Module"
               : showProfiles
               ? "Globale Profile · alle Module"
-              : sportModule
-              ? `Modul ${sportModule.toUpperCase()} · ${tabTitles[tab]}`
               : "Startseite · Modulauswahl"}
-          </span>
+          </span> : null}
         </button>
         <div className="header-actions">
           {cloud.user ? <NotificationBell userId={cloud.user.id} openCommunity={() => togglePanel("community")} /> : null}
@@ -620,16 +610,12 @@ function StartPage({
       <div className="module-selection">
         {!hiddenModules.includes('ths') ? <ModuleChoice
           title="THS"
-          description="Turnierhundsport mit Performance Tracker und VDH-VK Leistungsrichter."
-          details="Performance Tracker aktiv · Leistungsrichter aktiv"
-          icon={<ShieldCheck aria-hidden="true" />}
+          image="module-ths.png"
           onClick={() => openModule("ths")}
         /> : null}
         {!hiddenModules.includes('ibgh') ? <ModuleChoice
           title="IBGH"
-          description="Begleithundesport mit dem Digitalen Leistungsrichter FCI-IBGH."
-          details="Leistungsrichter aktiv · weitere Bereiche vorbereitet"
-          icon={<Medal aria-hidden="true" />}
+          image="module-ibgh.png"
           onClick={() => openModule("ibgh")}
         /> : null}
       </div>
@@ -640,26 +626,21 @@ function StartPage({
 
 function ModuleChoice({
   title,
-  description,
-  details,
-  icon,
+  image,
   onClick,
 }: {
   title: string;
-  description: string;
-  details: string;
-  icon: React.ReactNode;
+  image: string;
   onClick: () => void;
 }) {
   return (
-    <button type="button" className="module-choice" onClick={onClick}>
-      <span className="module-choice-icon">{icon}</span>
-      <span className="module-choice-copy min-w-0 flex-1">
-        <strong>{title}</strong>
-        <span>{description}</span>
-        <small>{details}</small>
-      </span>
-      <ChevronRight aria-hidden="true" />
+    <button type="button" className="module-choice" aria-label={title} onClick={onClick}>
+      <img
+        src={`${import.meta.env.BASE_URL}${image}`}
+        alt=""
+        width={1254}
+        height={1254}
+      />
     </button>
   );
 }

@@ -15,7 +15,7 @@ execFileSync('npm', ['run', 'build', '--', '--outDir', root], {
 });
 const config=JSON.parse(await readFile(path.join(repository, 'vercel.json'),'utf8'));
 const headers=Object.fromEntries(config.headers[0].headers.map(h=>[h.key,h.value]));
-const mime={'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.webp':'image/webp','.webmanifest':'application/manifest+json'};
+const mime={'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.webmanifest':'application/manifest+json'};
 const server=createServer(async(req,res)=>{
  try{
   let name=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
@@ -38,6 +38,7 @@ let notificationRead=null;
 let failNextShare=false;
 const notificationTime=new Date().toISOString();
 const notificationEvents=[{id:'event-1',club_id:communityClub.id,kind:'post_created',created_at:notificationTime,dogsports_clubs:{name:communityClub.name}},{id:'event-2',club_id:communityClub.id,kind:'member_joined',created_at:notificationTime,dogsports_clubs:{name:communityClub.name}}];
+let page;
 try{
  const context=await browser.newContext({serviceWorkers:'block', viewport:{width:390,height:844}, isMobile:true, hasTouch:true});
  await context.route('**/*',async route=>{
@@ -80,7 +81,7 @@ try{
   window.__cspViolations=[];
   document.addEventListener('securitypolicyviolation',e=>window.__cspViolations.push(e.violatedDirective+': '+e.blockedURI));
  });
- const page=await context.newPage();
+ page=await context.newPage();
  page.on('pageerror',e=>errors.push(e.message));
  await page.goto(origin);
  await page.getByRole('button',{name:'Anmelden',exact:true}).waitFor();
@@ -89,10 +90,53 @@ try{
  const user={id:'11111111-1111-4111-8111-111111111111',email:'local@example.invalid',aud:'authenticated',role:'authenticated',app_metadata:{},user_metadata:{},created_at:'2026-01-01T00:00:00Z'};
  await page.evaluate(user=>localStorage.setItem('sb-eeuugnoccfdkgslvphql-auth-token',JSON.stringify({access_token:'local-test-token',refresh_token:'local-test-refresh',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user})),user);
  await page.reload();
- await page.getByText('THS',{exact:true}).first().waitFor();
+ await page.getByRole('button',{name:'THS',exact:true}).waitFor();
  console.log('AUTH_GATE_AND_SESSION_OK');
 
- await page.getByText('THS',{exact:true}).first().click();
+ // Original image tiles stay side by side and retain their aspect ratio on phones and desktops.
+ await page.locator('.module-choice > img').evaluateAll(images=>Promise.all(images.map(image=>image.decode())));
+ for(const width of [320,390,640,1280]){
+  await page.setViewportSize({width,height:900});
+  await page.waitForTimeout(250);
+  const layout=await page.locator('.module-choice').evaluateAll(buttons=>buttons.map(button=>{
+   const image=button.querySelector('img'), box=button.getBoundingClientRect();
+   return {x:box.x,y:box.y,width:box.width,height:box.height,naturalWidth:image.naturalWidth,naturalHeight:image.naturalHeight,imageWidth:image.getBoundingClientRect().width,imageHeight:image.getBoundingClientRect().height};
+  }));
+  assert.equal(layout.length,2);
+  assert(Math.abs(layout[0].y-layout[1].y)<1 && layout[1].x>=layout[0].x+layout[0].width,'Module tiles must be side by side');
+  assert(Math.abs(layout[0].width-layout[1].width)<1,'Module tiles must have equal widths');
+  for(const tile of layout){
+   assert(tile.naturalWidth>0 && tile.naturalHeight>0,'Original image must load');
+   assert(Math.abs(tile.imageWidth/tile.imageHeight-tile.naturalWidth/tile.naturalHeight)<0.001,'Original image must not be distorted');
+   assert(Math.abs(tile.height-tile.imageHeight)<1,'Tile must contain the complete image');
+  }
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth),'Start page must fit the viewport');
+  await page.screenshot({path:`/tmp/dogsports-module-tiles-${width}.png`,fullPage:true});
+ }
+ await page.setViewportSize({width:390,height:844});
+ await page.emulateMedia({colorScheme:'dark'});
+ await page.waitForTimeout(300);
+ await page.screenshot({path:'/tmp/dogsports-module-tiles-dark.png',fullPage:true});
+ await page.emulateMedia({colorScheme:'light'});
+ await page.waitForTimeout(300);
+ for(const module of ['THS','IBGH']){
+  await page.getByRole('button',{name:module,exact:true}).press('Enter');
+  for(const tab of ['Dashboard','Leistungsrichter','Ergebnisse','Neuer Eintrag','Statistik']){
+   await page.getByRole('button',{name:tab,exact:true}).click();
+   assert.equal((await page.locator('.header-brand-button').innerText()).trim(),`MODUL ${module}`);
+   assert.equal(await page.locator('.header-brand-button .crumb').count(),0);
+  }
+  for(const width of [320,390]){
+   await page.setViewportSize({width,height:844});
+   await page.waitForTimeout(300);
+   assert(await page.locator('.header-brand-button').evaluate(button=>button.scrollWidth<=button.clientWidth),'Module title must fit the header');
+   await page.screenshot({path:`/tmp/dogsports-module-header-${module.toLowerCase()}-${width}.png`});
+  }
+  await page.getByRole('button',{name:'Zur Startseite',exact:true}).click();
+ }
+ console.log('ORIGINAL_MODULE_TILES_RESPONSIVE_LINKS_AND_HEADERS_OK');
+
+ await page.getByRole('button',{name:'THS',exact:true}).click();
  await page.getByRole('button',{name:'Neuer Eintrag',exact:true}).click();
  await page.getByRole('heading',{name:'Ergebnis erfassen'}).waitFor();
  await page.waitForTimeout(300);
@@ -176,7 +220,7 @@ try{
  await page.getByRole('button',{name:'Leistungsrichter',exact:true}).click();
  await page.getByText('DIGITALER LEISTUNGSRICHTER',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Zur Startseite',exact:true}).click();
- await page.getByText('IBGH',{exact:true}).first().click();
+ await page.getByRole('button',{name:'IBGH',exact:true}).click();
  await page.getByRole('button',{name:'Ergebnisse',exact:true}).click();
  await swipe('.app-swipe-surface',300,110);
  await page.getByRole('heading',{name:'Neuer Eintrag',exact:true}).waitFor();
@@ -217,7 +261,7 @@ try{
  console.log('COMMUNITY_CREATE_SHARE_WITHDRAW_LEAVE_JOIN_MOBILE_OK');
 
  await page.getByRole('button',{name:'Zur Startseite',exact:true}).click();
- await page.getByText('THS',{exact:true}).first().click();
+ await page.getByRole('button',{name:'THS',exact:true}).click();
  await page.getByRole('button',{name:'Ergebnisse',exact:true}).click();
  await page.getByRole('button',{name:'Im Verein teilen',exact:true}).first().click();
  const shareDialog=page.getByRole('dialog',{name:'Im Verein teilen',exact:true});
@@ -252,10 +296,10 @@ try{
  await page.getByText('#A000001',{exact:true}).waitFor();
  await page.getByRole('checkbox',{name:'IBGH anzeigen',exact:true}).uncheck();
  await page.getByRole('button',{name:'Zur Startseite',exact:true}).click();
- assert.equal(await page.getByText('IBGH',{exact:true}).count(),0);
+ assert.equal(await page.getByRole('button',{name:'IBGH',exact:true}).count(),0);
  await page.reload();
- await page.getByText('THS',{exact:true}).waitFor();
- assert.equal(await page.getByText('IBGH',{exact:true}).count(),0);
+ await page.getByRole('button',{name:'THS',exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'IBGH',exact:true}).count(),0);
  await page.getByRole('button',{name:'Darstellung einstellen',exact:true}).click();
  await page.getByRole('button',{name:'Alle Module anzeigen',exact:true}).click();
  await page.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{window.__invite=data;}}));
@@ -266,7 +310,7 @@ try{
  assert.equal(await page.evaluate(()=>window.__copiedInvite),'https://hashtag-dogsports.vercel.app');
  await page.screenshot({path:'/tmp/dogsports-settings-personalization.png',fullPage:true});
  await page.getByRole('button',{name:'Zur Startseite',exact:true}).click();
- await page.getByText('IBGH',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'IBGH',exact:true}).waitFor();
  await page.getByRole('button',{name:'Hundeführer und Hunde verwalten',exact:true}).click();
  await page.getByRole('tab',{name:'Hunde (1)',exact:true}).click();
  await page.getByText(/Hund-ID: \+A000001/).waitFor();
@@ -276,4 +320,10 @@ try{
  console.log('CSP',JSON.stringify(violations));
  console.log('ERRORS',JSON.stringify(errors));
  assert.deepEqual(violations,[]);assert.deepEqual(errors,[]);
+}catch(error){
+ if(page){
+  await page.screenshot({path:'/tmp/dogsports-security-failure.png',fullPage:true}).catch(()=>{});
+  console.error('FAILURE_STATE',await page.evaluate(()=>({text:document.body.innerText.slice(0,2500),surfaceClass:document.querySelector('.app-swipe-surface')?.className,scrollY:window.scrollY})).catch(()=>null));
+ }
+ throw error;
 }finally{await browser.close();server.close();await rm(root,{recursive:true,force:true});}

@@ -18,7 +18,7 @@ try {
   execFileSync('npm', ['run', 'build', '--', '--outDir', root], { cwd:repository, stdio:'inherit', env:{...process.env, VITE_SUPABASE_URL:'https://eeuugnoccfdkgslvphql.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY:'sb_publishable_local_test'} });
   const config = JSON.parse(await readFile(path.join(repository,'vercel.json'),'utf8'));
   const headers = Object.fromEntries(config.headers[0].headers.map(h=>[h.key,h.value]));
-  const mime = { '.html':'text/html', '.js':'application/javascript', '.css':'text/css', '.svg':'image/svg+xml', '.webp':'image/webp', '.webmanifest':'application/manifest+json' };
+  const mime = { '.html':'text/html', '.js':'application/javascript', '.css':'text/css', '.svg':'image/svg+xml', '.png':'image/png', '.webp':'image/webp', '.webmanifest':'application/manifest+json' };
   server=createServer(async(req,res)=>{
     try {
       const name=new URL(req.url,'http://localhost').pathname;
@@ -50,7 +50,7 @@ try {
   page=await context.newPage();page.setDefaultTimeout(8000);
   page.on('pageerror',error=>{errors.push(error.message);console.error('BROWSER_ERROR',error.stack);});
   page.on('dialog',dialog=>dialog.accept());
-  await page.goto(origin);await page.getByText('THS',{exact:true}).click();
+  await page.goto(origin);await page.getByRole('button',{name:'THS',exact:true}).click();
   await page.getByRole('button',{name:'Ergebnisse',exact:true}).click();
   await page.locator('input[type=file]').setInputFiles({name:'synthetic-examples.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({app:'#Dogsports',version:3,handlers:[handler,femaleHandler],dogs:[dog],results:reportedExamples}))});
   await page.getByText('2 Datensätze',{exact:true}).waitFor();
@@ -185,7 +185,7 @@ try {
     console.log('EDITED',index+1,saved.className,editedTotal,test.editedQualis.join(',')||'none');
   }
   const finalRecords=await readResults();
-  await page.reload();await page.getByText('THS',{exact:true}).click();
+  await page.reload();await page.getByRole('button',{name:'THS',exact:true}).click();
   await page.getByRole('button',{name:'Ergebnisse',exact:true}).click();
   await page.getByText('22 Datensätze',{exact:true}).waitFor();
   assert.deepEqual(await readResults(),finalRecords,'Saved edits must survive reload');

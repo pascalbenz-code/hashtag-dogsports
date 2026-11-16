@@ -1,6 +1,6 @@
 # Projektkontext #Dogsports
 
-Stand: 2026-11-09, Branch `feature/ui-ux-modernization`; Basis-Commit `28fc5ac` mit nachfolgenden lokalen Änderungen.
+Stand: 2026-11-16, Branch `feature/ui-ux-modernization`. Konkrete Commit- und Produktionszuordnung über die Git-/Vercel-Historie prüfen.
 
 ## Ziel und Architektur
 
@@ -54,7 +54,8 @@ Backups verwenden JSON-Schema-Version 3 und enthalten Ergebnisse sowie Profile. 
 THS-Wizard-Regression und wiederholbarer Selbsttest mit 20 Neuanlagen/Bearbeitungen: `docs/THS_EDITOR_REGRESSION.md`, Befehl `npm run test:browser:ths`. Schrittwechsel und Speichern besitzen getrennte Button-Identitäten, damit „Weiter“ keine native Submit-Aktion auslöst.
 
 - Auth-Gate blockiert die komplette Fachanwendung ohne gültige Sitzung.
-- Startseite: THS-/IBGH-Auswahl und globale Profilverwaltung.
+- Startseite: zwei gleich breite Bildkacheln für THS/IBGH, auch mobil nebeneinander. Unveränderte Originalgrafiken: `public/module-ths.png`, `public/module-ibgh.png`; bedienbare Buttons mit Modulnamen als zugänglicher Beschriftung. Kontogebundene Ausblendungen bleiben wirksam.
+- Modulkopfzeile: ausschließlich `MODUL THS` oder `MODUL IBGH`, unabhängig vom aktiven Tab. Globale Ansichten behalten ihre eigene Beschriftung; Profilverwaltung bleibt global erreichbar.
 - THS-Erfassung: Zuordnung → Prüfungsdaten → Leistungsdaten; Zwischenspeichern/Wiederaufnehmen und Wischgesten.
 - App-Wischsteuerung: Dashboard → Leistungsrichter → Ergebnisse → Neuer Eintrag → Statistik nach links; nach rechts entlang des Browser-Verlaufs. Innerhalb des THS-Formulars wechseln Gesten zunächst die drei Eingabeschritte; am ersten/letzten Schritt führen sie zur Ergebnisliste/Statistik. Formfelder, Diagramme, Tabellen und Bildschirmränder bleiben geschützt.
 - Ergebnisbearbeitung wird aus der Ergebnisliste geöffnet; finales Speichern leert die Maske.
